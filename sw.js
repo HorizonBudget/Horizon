@@ -7,7 +7,7 @@
 //  - Firestore traffic (firestore.googleapis.com and every other request) is never touched here.
 //    Firestore's own on-device cache handles offline data.
 // Keep SW_VERSION equal to APP_VERSION in index.html (a test checks this).
-const SW_VERSION = '2.10.0';
+const SW_VERSION = '2.11.0';
 const CACHE_PREFIX = 'horizon-';
 const CACHE_NAME = CACHE_PREFIX + 'v' + SW_VERSION;
 const NAV_TIMEOUT_MS = 5000;   // slow network: fall back to the saved copy after this long
