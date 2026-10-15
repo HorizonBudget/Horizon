@@ -513,7 +513,7 @@
 
   /* View tabs */
   .view-tabs{display:flex; align-items:flex-end; gap:22px; margin-bottom:22px; border-bottom:1px solid var(--line); position:relative;}
-  .activity-wrap{margin-left:auto; position:relative; align-self:flex-end; padding-bottom:6px; min-width:0;}
+  .activity-wrap{position:relative; align-self:flex-end; padding-bottom:6px; min-width:0;}
   .view-tab{
     background:none; border:none; padding:0 0 10px; font-size:14.5px; font-weight:600;
     color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;
@@ -788,6 +788,96 @@
   html{-webkit-text-size-adjust:100%;}
   .item-main{overflow-wrap:anywhere;}
 
+  /* ---- 2.9.0: search, month groups, repeat, paid, backup banner, undo toast ---- */
+  .search-btn{
+    margin-left:auto; margin-right:-14px; margin-bottom:6px; align-self:flex-end; flex:none;
+    display:inline-flex; align-items:center; justify-content:center; cursor:pointer;
+    width:36px; min-height:30px; padding:0; border-radius:16px;
+    background:var(--card); border:1px solid var(--line); color:var(--ink-soft);
+  }
+  .search-btn:hover{color:var(--ink); border-color:var(--ink-soft);}
+  .search-btn.open, .search-btn.active{color:var(--teal); border-color:var(--teal); background:var(--teal-light);}
+  .search-row{display:flex; align-items:center; gap:12px; margin:-8px 0 18px;}
+  .search-row[hidden]{display:none;}
+  .search-box{position:relative; flex:1; min-width:0; max-width:460px;}
+  .search-box input{border-radius:20px; padding-right:38px;}
+  .search-clear{
+    position:absolute; right:6px; top:50%; transform:translateY(-50%);
+    width:28px; height:28px; border:none; border-radius:50%; background:var(--tint); color:var(--ink-soft);
+    font-size:12px; line-height:1; cursor:pointer; padding:0;
+  }
+  .search-clear:hover{color:var(--ink);}
+  .search-clear[hidden]{display:none;}
+
+  .month-tools{display:flex; justify-content:flex-end; margin-bottom:-2px;}
+  .month-group{margin-top:6px;}
+  .month-group:first-child{margin-top:0;}
+  .month-group-head{margin:0; font:inherit;}
+  .month-group-btn{
+    display:flex; align-items:center; gap:10px; width:100%; min-height:44px; text-align:left;
+    background:var(--card); border:1px solid var(--line); border-radius:4px; padding:8px 12px;
+    font:inherit; color:var(--ink); cursor:pointer;
+  }
+  .month-group-btn:hover{border-color:var(--ink-soft);}
+  .mg-chev{flex:none; width:14px; font-size:13px; line-height:1; color:var(--ink-soft); transition:transform 0.15s ease;}
+  .month-group-btn[aria-expanded="false"] .mg-chev{transform:rotate(-90deg);}
+  .mg-dot{flex:none; width:9px; height:9px; border-radius:50%;}
+  .mg-name{font-size:15px; font-weight:600; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .mg-count{font-size:12.5px; color:var(--ink-soft); white-space:nowrap; margin-right:auto;}
+  .mg-total{flex:none; font-size:14px; font-weight:600; white-space:nowrap;}
+  .month-group-body{display:flex; flex-direction:column; gap:10px; margin-top:10px;}
+  .month-group-body[hidden]{display:none;}
+
+  .tag-repeat{
+    display:inline-flex; align-items:center; font-size:12px; line-height:1.2; padding:1px 6px;
+    border:1px solid var(--line); border-radius:20px; background:var(--tint); cursor:help;
+  }
+  .paid-line{font-family:'IBM Plex Mono',monospace; font-size:12px; color:var(--ink-soft); margin-top:5px; white-space:nowrap;}
+  .paid-diff{font-size:12px; font-weight:600; margin-top:1px; white-space:nowrap; color:var(--ink-soft);}
+  .paid-diff.under{color:var(--teal);}
+  .paid-diff.over{color:var(--coral);}
+
+  .repeat-custom{display:flex; align-items:center; gap:8px; margin-top:8px;}
+  .repeat-custom .repeat-every{font-size:14px; color:var(--ink-soft);}
+  .repeat-custom input{width:84px; flex:none;}
+  .repeat-custom select{flex:1; width:auto; min-width:0;}
+  .field-hint{font-size:12.5px; color:var(--ink-soft); margin:6px 0 0; line-height:1.45;}
+  .field-hint:empty{display:none;}
+
+  .amount-wrap{margin-top:16px; text-align:left;}
+  .money-input{position:relative;}
+  .money-prefix{position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--ink-soft); font-size:15px; pointer-events:none;}
+  .money-input input{padding-left:26px;}
+  .modal-confirm .modal-actions{flex-wrap:wrap;}
+  .modal-confirm .modal-actions .btn{min-width:84px;}
+
+  .backup-banner{background:var(--mustard-light); border-bottom:1px solid rgba(201,138,43,0.4); color:var(--ink);}
+  .backup-banner[hidden]{display:none;}
+  .backup-banner-inner{max-width:980px; margin:0 auto; padding:10px 24px; display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px 16px;}
+  .backup-banner-text{font-size:13.5px; font-weight:500;}
+  .backup-banner-actions{display:flex; gap:8px; flex-wrap:wrap;}
+  .backup-banner .btn{width:auto; margin:0; padding:8px 14px; font-size:13px;}
+
+  .toast-region{
+    position:fixed; left:0; right:0; z-index:45; pointer-events:none;
+    bottom:calc(16px + env(safe-area-inset-bottom)); padding:0 16px;
+    display:flex; justify-content:center;
+  }
+  .toast{
+    pointer-events:auto; display:flex; align-items:center; gap:14px; max-width:460px;
+    background:var(--ink); color:var(--paper); border-radius:8px; padding:9px 9px 9px 16px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.3); font-size:14px; animation:toastIn 0.18s ease-out;
+  }
+  .toast-msg{min-width:0; overflow-wrap:anywhere; line-height:1.35;}
+  .toast-undo{
+    flex:none; min-height:36px; padding:6px 14px; border-radius:6px; cursor:pointer;
+    background:transparent; color:inherit; border:1.5px solid currentColor; font:inherit; font-weight:700;
+  }
+  .toast-undo:hover{background:rgba(128,128,128,0.25);}
+  .toast-undo:focus-visible{outline:2px solid var(--paper); outline-offset:2px;}
+  @keyframes toastIn{from{opacity:0; transform:translateY(8px);} to{opacity:1; transform:none;}}
+  @media (prefers-reduced-motion: reduce){ .toast{animation:none;} .mg-chev{transition:none;} }
+
   /* ---- Phones / narrow screens ---- */
   @media (max-width:640px){
     header.top{padding:14px 16px; padding-top:max(14px, env(safe-area-inset-top)); gap:10px;}
@@ -798,6 +888,13 @@
     .top-actions .btn{padding:10px 12px; font-size:13.5px; white-space:nowrap;}
     .top-actions .btn-add{flex:1;}
     main{padding:20px 16px max(60px, env(safe-area-inset-bottom));}
+    .view-tabs{gap:18px;}
+    .search-btn{margin-right:-10px;}
+    .backup-banner-inner{padding:10px 16px;}
+    .backup-banner-actions{width:100%;}
+    .backup-banner-actions .btn{flex:1; padding-left:10px; padding-right:10px;}
+    .month-group-btn{padding:8px 10px; gap:8px;}
+    .mg-total{font-size:13.5px;}
 
     .summary-strip{grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;}
     .stat{padding:12px 14px;}
@@ -878,10 +975,23 @@
     </div>
   </header>
 
+  <div class="backup-banner" id="backupBanner" role="region" aria-label="Backup reminder" hidden>
+    <div class="backup-banner-inner">
+      <span class="backup-banner-text" id="backupBannerText"></span>
+      <span class="backup-banner-actions">
+        <button type="button" class="btn btn-primary" id="backupNowBtn" onclick="backupNowFromBanner()">Back up now</button>
+        <button type="button" class="btn btn-ghost" id="backupSnoozeBtn" onclick="snoozeBackupReminder()">Remind me in 7 days</button>
+      </span>
+    </div>
+  </div>
+
   <main>
     <div class="view-tabs">
       <button class="view-tab" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
       <button class="view-tab" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
+      <button type="button" class="search-btn" id="searchBtn" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search items" title="Search">
+        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg>
+      </button>
       <div class="activity-wrap" id="activityWrap">
         <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
           Recent activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
@@ -890,6 +1000,14 @@
           <div class="activity-list" id="activityList"></div>
         </div>
       </div>
+    </div>
+
+    <div class="search-row" id="searchRow" hidden>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search name, category, owner, note…" aria-label="Search items" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onSearchInput()">
+        <button type="button" class="search-clear" id="searchClear" onclick="clearSearch()" aria-label="Clear search" hidden>✕</button>
+      </div>
+      <button type="button" class="link-btn" onclick="closeSearch()">Close</button>
     </div>
 
     <div class="summary-strip" id="summaryStrip">
@@ -969,9 +1087,35 @@
       </div>
       <div>
         <label class="field-label">Target month</label>
-        <select id="f_month"></select>
+        <select id="f_month" onchange="updateRepeatHint()"></select>
         <button type="button" class="month-more-link" id="monthShowMoreBtn" onclick="showMoreMonths()">Show more months</button>
       </div>
+    </div>
+
+    <div class="gate-row">
+      <label class="field-label" for="f_repeat">Repeat</label>
+      <select id="f_repeat" onchange="onRepeatChange()">
+        <option value="">Doesn’t repeat</option>
+        <option value="week">Weekly</option>
+        <option value="month">Monthly</option>
+        <option value="year">Yearly</option>
+        <option value="custom">Custom…</option>
+      </select>
+      <div class="repeat-custom" id="repeatCustomRow" style="display:none;">
+        <span class="repeat-every">Every</span>
+        <input type="number" id="f_repeatEvery" min="1" max="99" step="1" value="1" inputmode="numeric" aria-label="Repeat every, how many" oninput="onRepeatEveryInput()">
+        <select id="f_repeatUnit" aria-label="Repeat unit">
+          <option value="week">week</option>
+          <option value="month">month</option>
+          <option value="year">year</option>
+        </select>
+      </div>
+      <p class="field-hint" id="repeatHint"></p>
+    </div>
+
+    <div class="gate-row" id="actualRow" style="display:none;">
+      <label class="field-label" for="f_actual">Actual price (optional)</label>
+      <input type="number" id="f_actual" inputmode="decimal" min="0" step="any" placeholder="What you actually paid">
     </div>
 
     <div class="gate-row">
@@ -1078,6 +1222,7 @@
         <button class="btn btn-ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup…</button>
         <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestoreFileChosen(this)">
       </div>
+      <p class="guide-desc" id="lastBackupLabel"></p>
       <p class="guide-desc" id="backupMsg"></p>
       <div class="settings-divider"></div>
       <p class="guide-desc"><strong>Version history.</strong> What changed in each version.</p>
@@ -1143,12 +1288,21 @@
     <h3 id="confirmTitle">Are you sure?</h3>
     <p class="gate-sub" id="confirmMsg"></p>
     <input type="text" class="confirm-field" id="confirmField" readonly style="display:none" aria-label="Text to copy">
+    <div class="amount-wrap" id="confirmAmountWrap" style="display:none">
+      <label class="field-label" for="confirmAmount" id="confirmAmountLabel">Amount</label>
+      <div class="money-input"><span class="money-prefix" aria-hidden="true">$</span><input type="number" id="confirmAmount" inputmode="decimal" min="0" step="any" placeholder="0.00" autocomplete="off"></div>
+      <p class="field-error" id="confirmAmountError" role="alert"></p>
+    </div>
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button type="button" class="btn btn-ghost" id="confirmSkip" style="display:none">Skip</button>
       <button type="button" class="btn btn-danger-solid" id="confirmOk">OK</button>
     </div>
   </div>
 </div>
+
+<!-- Undo toast (the live region stays in the page; the toast itself is added and removed) -->
+<div class="toast-region" id="toastRegion" role="status" aria-live="polite" aria-atomic="false"></div>
 
 <!-- People management modal -->
 <div class="overlay" id="peopleOverlay">
@@ -1183,7 +1337,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.8.0';
+const APP_VERSION = '2.9.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -1355,14 +1509,27 @@ function onSubcategorySelectChange(){
   }
 }
 
+// Months are stored as text like "Oct 2026". These helpers read and write that one format, so
+// the month picker, the sort order and repeating items all agree (and work past the picker's 24 months).
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+function parseMonth(str){
+  const m = /^([A-Za-z]{3})[a-z]*\.?\s+(\d{4})$/.exec(String(str || '').trim());
+  if(!m) return null;
+  const idx = MONTH_ABBR.findIndex(a => a.toLowerCase() === m[1].toLowerCase());
+  return idx < 0 ? null : { y: Number(m[2]), m: idx };
+}
+function formatMonth(y, m){
+  const total = y * 12 + m;
+  return MONTH_ABBR[((total % 12) + 12) % 12] + ' ' + Math.floor(total / 12);
+}
+function addMonthsToMonth(str, n){
+  const p = parseMonth(str);
+  return p ? formatMonth(p.y, p.m + n) : 'No date yet';
+}
 function buildMonthOptions(){
   const months = [];
   const now = new Date();
-  const start = new Date(now.getFullYear(), now.getMonth(), 1); // current month, never past
-  for(let i=0;i<24;i++){
-    const d = new Date(start.getFullYear(), start.getMonth()+i, 1);
-    months.push(d.toLocaleString('en-US',{month:'short'}) + ' ' + d.getFullYear());
-  }
+  for(let i=0;i<24;i++) months.push(formatMonth(now.getFullYear(), now.getMonth() + i));   // current month, never past
   return months;
 }
 // FUTURE_MONTHS excludes 'No date yet' and never includes months that have already passed.
@@ -1380,6 +1547,11 @@ function populateMonthSelect(selected){
 
   const visibleMonths = monthListExpanded ? FUTURE_MONTHS : FUTURE_MONTHS.slice(0, MONTHS_COLLAPSED_COUNT);
   const options = ['No date yet', ...visibleMonths];
+  // a month outside the picker's range (a past month, or a repeat that landed far ahead) must stay selectable
+  if(selected && selected !== 'No date yet' && parseMonth(selected) && !options.includes(selected)){
+    options.push(selected);
+    options.sort((a, b) => (a === 'No date yet' ? -Infinity : monthSortKey(a)) - (b === 'No date yet' ? -Infinity : monthSortKey(b)) || 0);
+  }
   sel.innerHTML = options.map(m => `<option ${m===selected?'selected':''}>${escapeHtml(m)}</option>`).join('');
 
   const btn = document.getElementById('monthShowMoreBtn');
@@ -2532,6 +2704,10 @@ function openItemModal(prefill){
   document.getElementById('f_link').value = prefill ? itemLink(prefill) : '';
   document.getElementById('f_note').value = prefill ? itemNote(prefill) : '';
   document.getElementById('linkError').textContent = '';
+  setRepeatFields(prefill ? normalizeRepeat(prefill.repeat) : null);
+  const isDone = !!(prefill && prefill.completed && editingId);
+  document.getElementById('actualRow').style.display = isDone ? '' : 'none';
+  document.getElementById('f_actual').value = isDone && hasActualCost(prefill) ? prefill.actualCost : '';
   document.getElementById('removeItemBtn').style.display = editingId ? '' : 'none';
   document.getElementById('itemOverlay').style.display = 'flex';
 }
@@ -2560,6 +2736,19 @@ function saveItem(){
     inp.focus();
     if(err.scrollIntoView) err.scrollIntoView({ block:'nearest' });
     return;
+  }
+
+  const rp = readRepeatFields();
+  if(rp.error){ askAlert(rp.error); return; }
+  const repeat = rp.repeat;
+
+  // the actual price only exists on completed items; empty clears it
+  let actualCost;   // undefined = not applicable
+  if(existing && existing.completed){
+    const actualInput = document.getElementById('f_actual');
+    const n = readAmountField(actualInput);
+    if(Number.isNaN(n)){ askAlert('The actual price must be $0 or more. Leave it empty if you’d rather not say.'); return; }
+    actualCost = n;   // null = cleared
   }
 
   if(category === 'Other'){
@@ -2597,10 +2786,27 @@ function saveItem(){
   if(editingId && !findLiveItem(editingId)) editingId = null;
   if(editingId){
     const it = findLiveItem(editingId);
+    const before = JSON.parse(JSON.stringify(it));
     Object.assign(it,{ name, category, cost, month, saved, owner, link, note, subcategory });
+    if(repeat) it.repeat = repeat; else delete it.repeat;
+    if(actualCost !== undefined){ if(actualCost === null) delete it.actualCost; else it.actualCost = actualCost; }
     logActivity(`${household.name} updated “${name}”`);
+    closeItemModal();
+    render();
+    const id = it.id;
+    showToast(`Saved changes to “${truncText(name, 40)}”.`, () => {
+      const cur = items.find(i => i.id === id);
+      if(!cur) return;
+      Object.keys(cur).forEach(k => { delete cur[k]; });
+      Object.assign(cur, before);
+      logActivity(`${household.name} undid the changes to “${before.name}”`);
+      render();
+    });
+    return;
   } else {
-    items.push({ id: Date.now()+Math.random(), name, category, cost, month, saved, owner, link, note, subcategory, completed:false });
+    const fresh = { id: Date.now()+Math.random(), name, category, cost, month, saved, owner, link, note, subcategory, completed:false };
+    if(repeat) fresh.repeat = repeat;
+    items.push(fresh);
     logActivity(`${household.name} added “${name}” — $${cost}`);
   }
   closeItemModal();
@@ -2614,6 +2820,13 @@ function deleteItem(id){
   it.deletedAt = Date.now();
   logActivity(`${household.name} removed “${it.name}”`);
   render();
+  showToast(`Removed “${truncText(it.name, 40)}”.`, () => {
+    const cur = items.find(i => i.id === id && isDeleted(i));
+    if(!cur) return;
+    delete cur.deletedAt;
+    logActivity(`${household.name} undid removing “${cur.name}”`);
+    render();
+  });
 }
 
 // "Remove item" button inside the edit window: ask first, then remove and close.
@@ -2643,7 +2856,11 @@ function editItem(id){
 let confirmResolve = null;
 let confirmReturnFocus = null;
 // opts: title, message, confirmLabel, danger (default true), info (OK-only notice, no Cancel),
-// copyText (shows a selectable field with text to copy). Resolves true on OK, false on Cancel/Escape/backdrop.
+// copyText (shows a selectable field with text to copy),
+// amount ({label}: shows a dollar amount field; read it from confirmAmountValue after OK/Skip),
+// skipLabel (adds a middle button that resolves 'skip').
+// Resolves true on OK, 'skip' on the Skip button, false on Cancel/Escape/backdrop.
+let confirmAmountValue = '';
 function askConfirm(opts){
   opts = opts || {};
   if(confirmResolve){ const r = confirmResolve; confirmResolve = null; r(false); }
@@ -2653,6 +2870,15 @@ function askConfirm(opts){
   const field = document.getElementById('confirmField');
   field.style.display = opts.copyText ? '' : 'none';
   field.value = opts.copyText || '';
+  const amountWrap = document.getElementById('confirmAmountWrap');
+  amountWrap.style.display = opts.amount ? '' : 'none';
+  document.getElementById('confirmAmount').value = '';
+  document.getElementById('confirmAmountError').textContent = '';
+  if(opts.amount) document.getElementById('confirmAmountLabel').textContent = opts.amount.label || 'Amount';
+  confirmAmountValue = '';
+  const skip = document.getElementById('confirmSkip');
+  skip.style.display = opts.skipLabel ? '' : 'none';
+  skip.textContent = opts.skipLabel || 'Skip';
   const ok = document.getElementById('confirmOk');
   ok.textContent = opts.confirmLabel || 'OK';
   ok.className = 'btn ' + ((opts.info || opts.danger === false) ? 'btn-primary' : 'btn-danger-solid');
@@ -2661,7 +2887,7 @@ function askConfirm(opts){
   document.getElementById('confirmOverlay').dataset.mode = opts.info ? 'info' : 'confirm';
   document.getElementById('confirmOverlay').style.display = 'flex';
   // focus the safe button: Cancel for questions, OK for notices
-  try { (opts.info ? ok : cancel).focus({ preventScroll:true }); } catch(e) {}
+  try { (opts.info ? ok : opts.amount ? document.getElementById('confirmAmount') : cancel).focus({ preventScroll:true }); } catch(e) {}
   if(opts.copyText){ try { field.select(); } catch(e) {} }
   return new Promise(res => { confirmResolve = res; });
 }
@@ -2676,7 +2902,32 @@ function settleConfirm(v){
   if(back && back.focus && document.contains(back)){ try { back.focus({ preventScroll:true }); } catch(e) {} }
   if(r) r(v);
 }
-document.getElementById('confirmOk').addEventListener('click', () => settleConfirm(true));
+// Reads the amount field. Returns null for empty, a number (cents) for a valid entry, or NaN when it can't be used.
+function readAmountField(inputEl){
+  const raw = String(inputEl.value || '').trim();
+  if(inputEl.validity && inputEl.validity.badInput) return NaN;
+  if(raw === '') return null;
+  const n = Number(raw);
+  if(!isFinite(n) || n < 0 || n > 1e9) return NaN;
+  return Math.round(n * 100) / 100;
+}
+document.getElementById('confirmOk').addEventListener('click', () => {
+  if(document.getElementById('confirmAmountWrap').style.display !== 'none'){
+    const input = document.getElementById('confirmAmount');
+    if(Number.isNaN(readAmountField(input))){
+      document.getElementById('confirmAmountError').textContent = 'Enter an amount of $0 or more, or tap Skip.';
+      try { input.focus({ preventScroll:true }); } catch(e) {}
+      return;
+    }
+    confirmAmountValue = input.value;
+  }
+  settleConfirm(true);
+});
+document.getElementById('confirmSkip').addEventListener('click', () => settleConfirm('skip'));
+document.getElementById('confirmAmount').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('confirmOk').click(); }
+});
+document.getElementById('confirmAmount').addEventListener('input', () => { document.getElementById('confirmAmountError').textContent = ''; });
 document.getElementById('confirmCancel').addEventListener('click', () => settleConfirm(false));
 document.getElementById('confirmOverlay').addEventListener('mousedown', e => { if(e.target.id === 'confirmOverlay') settleConfirm(false); });
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && confirmResolve){ e.stopPropagation(); settleConfirm(false); } }, true);
@@ -2863,16 +3114,22 @@ function splitMonth(m){
   return [m, ''];
 }
 
+// Chronological key; "No date yet" and anything unreadable sort after every real month.
 function monthSortKey(m){
-  if(m === 'No date yet') return Infinity;
-  const idx = MONTH_OPTIONS.indexOf(m);
-  return idx === -1 ? Infinity : idx;
+  const p = parseMonth(m);
+  return p ? p.y * 12 + p.m : Infinity;
+}
+function cmpMonth(a, b){
+  const ka = monthSortKey(a), kb = monthSortKey(b);
+  if(ka !== kb) return ka < kb ? -1 : 1;
+  const na = a === 'No date yet' ? 1 : 0, nb = b === 'No date yet' ? 1 : 0;
+  return na - nb;
 }
 
 function renderMonthFilter(){
   const wrap = document.getElementById('monthFilter');
   wrap.innerHTML = '';
-  const months = [...new Set(liveItems().map(i => i.month))].sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const months = [...new Set(liveItems().map(i => i.month))].sort(cmpMonth);
 
   if(!months.includes(activeMonthFilter) && activeMonthFilter !== 'All'){
     activeMonthFilter = 'All';
@@ -2943,6 +3200,300 @@ function updateFilterNote(){
   document.getElementById('filterSummary').style.display = n ? '' : 'none';
 }
 
+// ---- Money, actual price and repeat helpers ----
+function fmtMoney(n){
+  n = Math.round((Number(n) || 0) * 100) / 100;
+  const cents = Math.abs(n % 1) > 0.0001;
+  return '$' + n.toLocaleString('en-US', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+}
+function hasActualCost(it){ return !!it && typeof it.actualCost === 'number' && isFinite(it.actualCost) && it.actualCost >= 0; }
+// "$120 under" / "$30 over" compared with the forecast; '' when there's no actual price
+function actualDiff(it){
+  if(!hasActualCost(it)) return null;
+  const d = Math.round(((Number(it.cost) || 0) - it.actualCost) * 100) / 100;
+  if(d > 0) return { kind: 'under', text: fmtMoney(d) + ' under' };
+  if(d < 0) return { kind: 'over', text: fmtMoney(-d) + ' over' };
+  return { kind: 'even', text: 'on forecast' };
+}
+
+const REPEAT_UNITS = ['week', 'month', 'year'];
+// Returns a clean { every, unit } or null (no repeat / unreadable, so older items just don't repeat).
+function normalizeRepeat(r){
+  if(!r || typeof r !== 'object') return null;
+  const every = Number(r.every);
+  if(!Number.isInteger(every) || every < 1 || every > 99 || !REPEAT_UNITS.includes(r.unit)) return null;
+  return { every, unit: r.unit };
+}
+function repeatLabel(r){
+  r = normalizeRepeat(r);
+  if(!r) return '';
+  if(r.every === 1) return { week: 'Repeats weekly', month: 'Repeats monthly', year: 'Repeats yearly' }[r.unit];
+  return `Repeats every ${r.every} ${r.unit}s`;
+}
+// The planner works by month, so a repeat moves the month on:
+// months/years by calendar months, weeks by max(1, round(weeks*7/30)) months. "No date yet" stays put.
+function repeatMonthStep(r){
+  return r.unit === 'year' ? r.every * 12 : r.unit === 'month' ? r.every : Math.max(1, Math.round(r.every * 7 / 30));
+}
+function nextRepeatMonth(month, r){
+  r = normalizeRepeat(r);
+  if(!r) return month;
+  return addMonthsToMonth(month, repeatMonthStep(r));
+}
+function setRepeatFields(r){
+  const sel = document.getElementById('f_repeat');
+  if(!r){ sel.value = ''; }
+  else if(r.every === 1){ sel.value = r.unit; }
+  else {
+    sel.value = 'custom';
+    document.getElementById('f_repeatEvery').value = r.every;
+    document.getElementById('f_repeatUnit').value = r.unit;
+  }
+  if(sel.value !== 'custom'){ document.getElementById('f_repeatEvery').value = 1; document.getElementById('f_repeatUnit').value = 'month'; }
+  onRepeatChange();
+}
+function readRepeatFields(){
+  const v = document.getElementById('f_repeat').value;
+  if(!v) return { repeat: null };
+  if(v === 'custom'){
+    const raw = document.getElementById('f_repeatEvery').value.trim();
+    const n = Number(raw), unit = document.getElementById('f_repeatUnit').value;
+    if(!/^\d+$/.test(raw) || n < 1 || n > 99) return { error: 'Repeat every needs a whole number from 1 to 99.' };
+    if(!REPEAT_UNITS.includes(unit)) return { error: 'Pick weeks, months or years for the repeat.' };
+    return { repeat: { every: n, unit } };
+  }
+  return REPEAT_UNITS.includes(v) ? { repeat: { every: 1, unit: v } } : { repeat: null };
+}
+function onRepeatEveryInput(){
+  const n = Number(document.getElementById('f_repeatEvery').value);
+  document.querySelectorAll('#f_repeatUnit option').forEach(o => { o.textContent = o.value + (n === 1 ? '' : 's'); });
+  updateRepeatHint();
+}
+function onRepeatChange(){
+  document.getElementById('repeatCustomRow').style.display = document.getElementById('f_repeat').value === 'custom' ? '' : 'none';
+  onRepeatEveryInput();
+}
+function updateRepeatHint(){
+  const rp = readRepeatFields();
+  const hint = document.getElementById('repeatHint');
+  if(!rp.repeat){ hint.textContent = ''; return; }
+  const month = document.getElementById('f_month').value || 'No date yet';
+  const next = nextRepeatMonth(month, rp.repeat);
+  hint.textContent = (next === 'No date yet' ? 'When you check this off, a new one is added with no date.' : `When you check this off, a new one is added for ${next}.`)
+    + (rp.repeat.unit === 'week' ? ' Horizon plans by month, so weekly repeats land in the next month.' : '');
+}
+
+// ---- Undo toast: one at a time, ~6 seconds, announced to screen readers ----
+const TOAST_MS = 6000;
+let toastTimer = null, toastUndoFn = null;
+function startToastTimer(ms){
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(hideToast, ms || TOAST_MS);
+}
+function showToast(message, undoFn){
+  const region = document.getElementById('toastRegion');
+  if(!region) return;
+  clearTimeout(toastTimer);
+  toastUndoFn = typeof undoFn === 'function' ? undoFn : null;
+  region.textContent = '';
+  const t = document.createElement('div');
+  t.className = 'toast';
+  t.id = 'toast';
+  const msg = document.createElement('span');
+  msg.className = 'toast-msg';
+  msg.textContent = message;
+  t.appendChild(msg);
+  if(toastUndoFn){
+    const b = document.createElement('button');
+    b.type = 'button'; b.className = 'toast-undo'; b.id = 'toastUndo'; b.textContent = 'Undo';
+    b.addEventListener('click', runToastUndo);
+    t.appendChild(b);
+  }
+  // hovering or focusing the toast keeps it up; leaving gives a fresh moment to reach Undo
+  t.addEventListener('mouseenter', () => clearTimeout(toastTimer));
+  t.addEventListener('mouseleave', () => startToastTimer());
+  t.addEventListener('focusin', () => clearTimeout(toastTimer));
+  t.addEventListener('focusout', () => startToastTimer());
+  t.addEventListener('keydown', e => { if(e.key === 'Escape'){ e.stopPropagation(); hideToast(); } });
+  region.appendChild(t);
+  startToastTimer();
+}
+function hideToast(){
+  clearTimeout(toastTimer); toastTimer = null; toastUndoFn = null;
+  const region = document.getElementById('toastRegion');
+  if(region) region.textContent = '';
+}
+function runToastUndo(){
+  const fn = toastUndoFn;
+  hideToast();
+  if(fn) fn();
+}
+
+// ---- Search (tab row) ----
+let searchQuery = '', searchOpen = false;
+function searchTerm(){ return searchQuery.trim().toLowerCase(); }
+function itemMatchesSearch(it, q){
+  if(!q) return true;
+  return [it.name, it.category, it.subcategory, it.owner, itemNote(it), itemLink(it), typeof it.link === 'string' ? it.link : '']
+    .some(v => String(v || '').toLowerCase().includes(q));
+}
+function updateSearchUi(){
+  document.getElementById('searchRow').hidden = !searchOpen;
+  const btn = document.getElementById('searchBtn');
+  btn.setAttribute('aria-expanded', searchOpen ? 'true' : 'false');
+  btn.classList.toggle('open', searchOpen);
+  btn.classList.toggle('active', !!searchTerm());
+  document.getElementById('searchClear').hidden = !searchQuery;
+}
+function openSearch(){
+  searchOpen = true;
+  updateSearchUi();
+  const inp = document.getElementById('searchInput');
+  try { inp.focus({ preventScroll:true }); } catch(e) {}
+}
+function closeSearch(){
+  const had = !!searchQuery;
+  searchOpen = false; searchQuery = '';
+  document.getElementById('searchInput').value = '';
+  updateSearchUi();
+  if(had) renderCore();
+  try { document.getElementById('searchBtn').focus({ preventScroll:true }); } catch(e) {}
+}
+function toggleSearch(){ searchOpen ? closeSearch() : openSearch(); }
+function clearSearch(){
+  searchQuery = '';
+  const inp = document.getElementById('searchInput');
+  inp.value = '';
+  updateSearchUi();
+  renderCore();
+  try { inp.focus({ preventScroll:true }); } catch(e) {}
+}
+function onSearchInput(){
+  searchQuery = document.getElementById('searchInput').value;
+  updateSearchUi();
+  renderCore();
+}
+document.getElementById('searchInput').addEventListener('keydown', e => {
+  if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeSearch(); }
+});
+
+// ---- Month groups on the Active tab (collapsed state is remembered on this device) ----
+const COLLAPSE_KEY = 'horizonCollapsedMonths';
+let collapsedMonths = new Set();
+let shownGroupMonths = [];
+function loadCollapsedMonths(){
+  try {
+    const a = JSON.parse(localStorage.getItem(COLLAPSE_KEY) || '[]');
+    if(Array.isArray(a)) collapsedMonths = new Set(a.filter(x => typeof x === 'string'));
+  } catch(e) { /* storage unavailable: everything stays expanded */ }
+}
+function saveCollapsedMonths(){
+  const known = new Set(liveItems().map(i => i.month || 'No date yet'));
+  collapsedMonths = new Set([...collapsedMonths].filter(m => known.has(m) || shownGroupMonths.includes(m)));
+  try { localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...collapsedMonths])); } catch(e) {}
+}
+function focusGroupButton(month){
+  const b = [...document.querySelectorAll('#itemsList .month-group-btn')].find(x => x.dataset.month === month);
+  if(b) try { b.focus({ preventScroll:true }); } catch(e) {}
+}
+function toggleMonthGroup(month){
+  if(collapsedMonths.has(month)) collapsedMonths.delete(month); else collapsedMonths.add(month);
+  saveCollapsedMonths();
+  renderCore();
+  focusGroupButton(month);
+}
+function setAllMonthsCollapsed(collapse){
+  shownGroupMonths.forEach(m => { if(collapse) collapsedMonths.add(m); else collapsedMonths.delete(m); });
+  saveCollapsedMonths();
+  renderCore();
+  const b = document.getElementById('collapseAllBtn');
+  if(b) try { b.focus({ preventScroll:true }); } catch(e) {}
+}
+function buildMonthGroup(g, index){
+  const collapsed = collapsedMonths.has(g.month);
+  const total = g.items.reduce((sum, i) => sum + (Number(i.cost) || 0), 0);
+  const mc = monthColor(g.month);
+  const n = g.items.length;
+  const sec = document.createElement('section');
+  sec.className = 'month-group' + (collapsed ? ' collapsed' : '');
+  sec.setAttribute('data-month', g.month);
+  const bodyId = 'monthGroupBody' + index;
+  const h = document.createElement('h3');
+  h.className = 'month-group-head';
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.className = 'month-group-btn';
+  btn.dataset.month = g.month;
+  btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+  btn.setAttribute('aria-controls', bodyId);
+  btn.innerHTML = `<span class="mg-chev" aria-hidden="true">▾</span>`
+    + `<span class="mg-dot" style="background:${mc.solid}" aria-hidden="true"></span>`
+    + `<span class="mg-name">${escapeHtml(g.month)}</span>`
+    + `<span class="mg-count">${n} item${n === 1 ? '' : 's'}</span>`
+    + `<span class="mg-total mono" title="Total forecast for ${escAttr(g.month)}">${fmtMoney(total)}</span>`;
+  btn.addEventListener('click', () => toggleMonthGroup(g.month));
+  h.appendChild(btn);
+  const body = document.createElement('div');
+  body.className = 'month-group-body';
+  body.id = bodyId;
+  if(collapsed) body.hidden = true;
+  else g.items.forEach(item => body.appendChild(buildItemCard(item, { completedView: false })));
+  sec.appendChild(h); sec.appendChild(body);
+  return sec;
+}
+
+// ---- Backup reminder (per device) ----
+const BACKUP_KEY = 'lastBackupAt', BACKUP_SEED_KEY = 'lastBackupSeeded', BACKUP_SNOOZE_KEY = 'backupSnoozedUntil';
+const BACKUP_REMIND_DAYS = 30, BACKUP_SNOOZE_DAYS = 7;
+function lsGet(k){ try { return localStorage.getItem(k); } catch(e) { return null; } }
+function lsSet(k, v){ try { localStorage.setItem(k, v); } catch(e) {} }
+function lsDel(k){ try { localStorage.removeItem(k); } catch(e) {} }
+function storedTime(v){
+  if(v == null || v === '') return NaN;
+  return /^\d+$/.test(v) ? Number(v) : Date.parse(v);
+}
+// First run on a device: start the clock now, so nobody is nagged on day one.
+function initBackupReminder(){
+  if(Number.isNaN(storedTime(lsGet(BACKUP_KEY)))){
+    lsSet(BACKUP_KEY, String(Date.now()));
+    lsSet(BACKUP_SEED_KEY, '1');
+  }
+}
+function backupDaysSince(now){
+  const t = storedTime(lsGet(BACKUP_KEY));
+  return Number.isNaN(t) ? null : Math.floor(((now == null ? Date.now() : now) - t) / DAY_MS);
+}
+function updateBackupBanner(){
+  const el = document.getElementById('backupBanner');
+  if(!el) return;
+  const now = Date.now();
+  const days = backupDaysSince(now);
+  const snoozedUntil = storedTime(lsGet(BACKUP_SNOOZE_KEY));
+  const show = days !== null && days >= BACKUP_REMIND_DAYS && !(snoozedUntil > now);
+  el.hidden = !show;
+  if(show) document.getElementById('backupBannerText').textContent = `It’s been ${days} days since your last backup.`;
+}
+function snoozeBackupReminder(){
+  lsSet(BACKUP_SNOOZE_KEY, String(Date.now() + BACKUP_SNOOZE_DAYS * DAY_MS));
+  updateBackupBanner();
+}
+function backupNowFromBanner(){ exportBackup(); }
+function updateLastBackupLabel(){
+  const el = document.getElementById('lastBackupLabel');
+  if(!el) return;
+  const t = storedTime(lsGet(BACKUP_KEY));
+  if(Number.isNaN(t)){ el.textContent = 'Last backup: not recorded on this device.'; return; }
+  const when = new Date(t).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  el.textContent = lsGet(BACKUP_SEED_KEY) === '1'
+    ? `Last backup: none yet on this device. Reminders count from ${when}.`
+    : `Last backup: ${when}`;
+}
+
+function paidHtml(item){
+  const d = actualDiff(item);
+  return `<div class="paid-line">Paid ${fmtMoney(item.actualCost)}</div><div class="paid-diff ${d.kind}">${escapeHtml(d.text)}</div>`;
+}
+
 function buildItemCard(item, opts){
   opts = opts || {};
   const oc = ownerColor(item.owner);
@@ -2983,6 +3534,7 @@ function buildItemCard(item, opts){
           ${item.subcategory ? `<span class="tag tag-subcat">${escapeHtml(item.subcategory)}</span>` : ''}
           ${!opts.completedView && !item.owner ? `<span class="tag tag-warn" title="No one assigned yet">No owner</span>` : ''}
           ${!opts.completedView && item.month === 'No date yet' ? `<span class="tag tag-warn" title="No target month set">No month</span>` : ''}
+          ${normalizeRepeat(item.repeat) ? `<span class="tag-repeat" role="img" aria-label="${escAttr(repeatLabel(item.repeat))}" title="${escAttr(repeatLabel(item.repeat))}">🔁</span>` : ''}
         </div>
         ${itemLinkNoteHtml(item)}
         <div class="item-actions">
@@ -2991,7 +3543,8 @@ function buildItemCard(item, opts){
       </div>
     </div>
     <div class="item-amount">
-      <div class="item-amount-value">$${item.cost.toLocaleString()}</div>
+      <div class="item-amount-value">${fmtMoney(item.cost)}</div>
+      ${opts.completedView && hasActualCost(item) ? paidHtml(item) : ''}
     </div>
   `;
   return card;
@@ -3006,35 +3559,86 @@ const ANIM_STRIKE_MS = 650;
 const ANIM_POP_MS = 220;
 const ANIM_COLLAPSE_MS = 650;
 
+// Checking an item opens a small dialog asking what was actually paid (optional).
+// Mark complete = with whatever was typed, Skip = no amount, Cancel/Escape/backdrop = nothing happens.
 function completeItem(id){
+  const it = findLiveItem(id);
+  if(!it || it.completed) return Promise.resolve(false);
+  const uncheck = () => {
+    const c = document.querySelector(`[data-item-id="${id}"] .complete-check`);
+    if(c) c.checked = false;
+  };
+  return askConfirm({
+    title: 'Mark complete',
+    message: `“${it.name}” was forecast at ${fmtMoney(it.cost)}.`,
+    amount: { label: 'What did you actually pay? (optional)' },
+    confirmLabel: 'Mark complete', skipLabel: 'Skip', danger: false
+  }).then(res => {
+    if(!res){ uncheck(); return false; }
+    let actual = null;
+    if(res === true){
+      const n = Number(String(confirmAmountValue).trim());
+      if(String(confirmAmountValue).trim() !== '' && isFinite(n) && n >= 0) actual = Math.round(n * 100) / 100;
+    }
+    animateCompletion(id, () => finishCompleting(id, { actualCost: actual }));
+    return true;
+  });
+}
+
+// strike through the name, a quick pop, then collapse so the items below slide up
+function animateCompletion(id, done){
   const card = document.querySelector(`[data-item-id="${id}"]`);
-  if(!card){ finishCompleting(id); return; }
-
-  // stage 1: strike through the name
+  if(!card){ done(); return; }
   card.classList.add('card-strike');
-
   setTimeout(() => {
-    // stage 2: a quick pop, then collapse so the items below slide up
     const h = card.scrollHeight;
     card.style.maxHeight = h + 'px';
     card.classList.add('card-pop');
-
     setTimeout(() => {
       card.classList.remove('card-pop');
       card.classList.add('card-collapsed');
     }, ANIM_POP_MS);
-
-    setTimeout(() => finishCompleting(id), ANIM_POP_MS + ANIM_COLLAPSE_MS);
+    setTimeout(done, ANIM_POP_MS + ANIM_COLLAPSE_MS);
   }, ANIM_STRIKE_MS);
 }
 
-function finishCompleting(id){
+// opts.actualCost: a number when the person said what they paid, otherwise nothing.
+function finishCompleting(id, opts){
+  opts = opts || {};
   const it = findLiveItem(id);
-  if(it){
-    it.completed = true;
-    logActivity(`${household.name} marked “${it.name}” as complete`);
+  if(!it || it.completed){ render(); return null; }
+  const hasActual = typeof opts.actualCost === 'number' && isFinite(opts.actualCost) && opts.actualCost >= 0;
+  it.completed = true;
+  if(hasActual) it.actualCost = opts.actualCost; else delete it.actualCost;
+
+  // a repeating item leaves a fresh copy behind, moved on by one step
+  let copy = null;
+  const rep = normalizeRepeat(it.repeat);
+  if(rep){
+    copy = {
+      id: Date.now() + Math.random(), name: it.name, category: it.category, subcategory: it.subcategory || '',
+      cost: it.cost, month: nextRepeatMonth(it.month, rep), saved: 0, owner: it.owner || '',
+      link: it.link || '', note: it.note || '', repeat: { every: rep.every, unit: rep.unit }, completed: false
+    };
+    items.push(copy);
   }
+  let text = `${household.name} marked “${it.name}” as complete`;
+  if(hasActual) text += ` — paid ${fmtMoney(opts.actualCost)}`;
+  if(copy) text += `; next one added for ${copy.month}`;
+  logActivity(text);
   render();
+
+  const copyId = copy ? copy.id : null;
+  const short = truncText(it.name, 40);
+  const msg = copy ? `“${short}” complete. Next one added for ${copy.month}.` : `“${short}” marked complete.`;
+  showToast(msg, () => {
+    const cur = items.find(i => i.id === id);
+    if(cur){ cur.completed = false; delete cur.actualCost; }
+    if(copyId !== null) items = items.filter(i => i.id !== copyId);
+    logActivity(`${household.name} undid completing “${it.name}”`);
+    render();
+  });
+  return copy;
 }
 
 let confirmOnRestore = true;
@@ -3053,13 +3657,23 @@ function onRestoreCheckboxChange(id, checkboxEl){
   restoreItem(id);
 }
 
+// Moving back to Active drops the actual price (an active item has none); Undo brings it back.
 function restoreItem(id){
   const it = findLiveItem(id);
-  if(it){
-    it.completed = false;
-    logActivity(`${household.name} restored “${it.name}” to active`);
-  }
+  if(!it) { render(); return; }
+  const hadActual = hasActualCost(it), actual = it.actualCost;
+  it.completed = false;
+  delete it.actualCost;
+  logActivity(`${household.name} restored “${it.name}” to active`);
   render();
+  showToast(`“${truncText(it.name, 40)}” moved back to Active.`, () => {
+    const cur = items.find(i => i.id === id);
+    if(!cur) return;
+    cur.completed = true;
+    if(hadActual) cur.actualCost = actual;
+    logActivity(`${household.name} undid restoring “${cur.name}”`);
+    render();
+  });
 }
 
 // ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
@@ -3116,6 +3730,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.9.0', date:'2026-10-15', items:['The Active list is now grouped by month. Tap a month to fold it up or open it again; each month shows how many items it has and what they add up to. “Collapse all / Expand all” does every month at once, and Horizon remembers your choice on this device.','When you check an item off, Horizon now asks what you actually paid (optional). Completed items show “Paid $X” and how far under or over the forecast you came out. You can also add or fix the amount later when you edit a completed item.','New search button on the Active / Completed row. Type to find items by name, category, subcategory, owner, note or link; the month totals follow your search.','Items can now repeat: weekly, monthly, yearly, or every few weeks, months or years. Checking one off adds the next one automatically, and repeating items show a 🔁 badge.','After you complete, remove or restore an item, or save changes to one, a small Undo message appears for a few seconds.','Horizon reminds you to back up if it has been 30 days, with a “Back up now” button or “Remind me in 7 days”. Settings → Advanced shows when you last backed up.'] },
   { v:'2.8.0', date:'2026-10-15', items:['Every pop-up question and notice now appears inside Horizon instead of your browser’s own box, so restoring an item, restoring a backup, leaving a household and form mistakes all look and behave like the rest of the app.'] },
   { v:'2.7.0', date:'2026-10-15', items:['When you add or change someone’s photo in People, you can now drag it into place and zoom in before saving, so their face fits the circle.','The owner’s photo on each item card is now exactly as tall as the month badge above it.','The category label on each card is now the same size as the item name.','The 🔗 link and 📝 note icons on cards now sit in outlined boxes, so they stand out on light themes.','The Remove button is no longer on every card. Open an item with Edit and use “Remove item” there; it asks before removing.','Removed items now wait in Settings → Deleted items for 30 days. You can restore one or delete it for good, or empty them all.'] },
   { v:'2.6.0', date:'2026-10-15', items:['On each item card the owner’s photo now sits under the month and is larger. The name beside it is gone (hover or long-press the photo to see it).'] },
@@ -3154,6 +3769,7 @@ function openSettingsModal(tab){
   document.getElementById('shareCode').textContent = household.code || '—';
   document.getElementById('settingsHhName').value = householdName;
   document.getElementById('backupMsg').textContent = '';
+  updateLastBackupLabel();
   document.getElementById('syncDetail').textContent = cloud.mode === 'cloud'
     ? 'Changes save automatically and show up on everyone’s devices within a second or two.'
     : 'Sharing isn’t switched on yet, so this board only lives on this device and is lost when you close the page. See the setup guide to turn it on.';
@@ -3225,7 +3841,11 @@ function renderCore(){
 function renderBoard(){
   document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
   document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
-  const completedItems = liveItems().filter(i => i.completed);
+  const q = searchTerm();
+  const allCompleted = liveItems().filter(i => i.completed);
+  const completedItems = allCompleted.filter(i => itemMatchesSearch(i, q));
+  updateSearchUi();
+  updateBackupBanner();
 
   const summaryStrip = document.getElementById('summaryStrip');
   const sectionTitleEl = document.getElementById('sectionTitle');
@@ -3247,10 +3867,12 @@ function renderBoard(){
     document.getElementById('filterSummary').style.display = completedItems.length ? '' : 'none';
 
     list.innerHTML = '';
-    if(completedItems.length === 0){
+    if(completedItems.length === 0 && q){
+      list.innerHTML = `<div class="empty">No items match “${escapeHtml(searchQuery.trim())}”</div>`;
+    } else if(completedItems.length === 0){
       list.innerHTML = '<div class="empty">Nothing completed yet. Check an item off from Active to see it here.</div>';
     } else {
-      const sorted = [...completedItems].sort((a,b) => monthSortKey(a.month) - monthSortKey(b.month));
+      const sorted = [...completedItems].sort((a,b) => cmpMonth(a.month, b.month));
       sorted.forEach(item => list.appendChild(buildItemCard(item, { completedView: true })));
     }
 
@@ -3271,6 +3893,7 @@ function renderBoard(){
   const activeItems = liveItems().filter(i => !i.completed);
   let visible = activeMonthFilter === 'All' ? activeItems : activeItems.filter(i => i.month === activeMonthFilter);
   if(activeCategoryFilter !== 'All') visible = visible.filter(i => i.category === activeCategoryFilter);
+  if(q) visible = visible.filter(i => itemMatchesSearch(i, q));
 
   // "sort by subcategory" only makes sense once a single category with subcategories is selected
   const catHasSub = activeCategoryFilter !== 'All'
@@ -3284,24 +3907,40 @@ function renderBoard(){
     sortMode = 'month';
   }
 
-  if(activeItems.length === 0){
+  shownGroupMonths = [];
+  if(visible.length === 0 && q){
+    list.innerHTML = `<div class="empty">No items match “${escapeHtml(searchQuery.trim())}”</div>`;
+  } else if(activeItems.length === 0){
     list.innerHTML = '<div class="empty">Nothing on the board yet. Tap “+ Add future item” to add the first thing you’ll need to buy.</div>';
   } else if(visible.length === 0){
     list.innerHTML = '<div class="empty">Nothing matches this filter yet.</div>';
   } else {
-    const sorted = sortMode === 'subcategory'
-      ? [...visible].sort((a,b) => {
-          const subA = a.subcategory || '￿';
-          const subB = b.subcategory || '￿';
-          const c = subA.localeCompare(subB);
-          return c !== 0 ? c : monthSortKey(a.month) - monthSortKey(b.month);
-        })
-      : [...visible].sort((a,b) => monthSortKey(a.month) - monthSortKey(b.month));
-    sorted.forEach(item => list.appendChild(buildItemCard(item, { completedView: false })));
+    // one section per month, oldest first, "No date yet" last; sorting applies inside each section
+    const byMonth = new Map();
+    visible.forEach(it => {
+      const key = it.month || 'No date yet';
+      if(!byMonth.has(key)) byMonth.set(key, { month: key, items: [] });
+      byMonth.get(key).items.push(it);
+    });
+    const groups = [...byMonth.values()].sort((a, b) => cmpMonth(a.month, b.month));
+    if(sortMode === 'subcategory'){
+      groups.forEach(g => g.items.sort((a, b) => (a.subcategory || '￿').localeCompare(b.subcategory || '￿')));
+    }
+    shownGroupMonths = groups.map(g => g.month);
+    if(groups.length >= 2){
+      const allCollapsed = groups.every(g => collapsedMonths.has(g.month));
+      const tools = document.createElement('div');
+      tools.className = 'month-tools';
+      tools.innerHTML = `<button type="button" class="link-btn" id="collapseAllBtn">${allCollapsed ? 'Expand all' : 'Collapse all'}</button>`;
+      tools.firstChild.addEventListener('click', () => setAllMonthsCollapsed(!allCollapsed));
+      list.appendChild(tools);
+    }
+    groups.forEach((g, i) => list.appendChild(buildMonthGroup(g, i)));
   }
 
   // stats — reflect whichever month/category filters are currently active
   const activeFilters = [activeMonthFilter, activeCategoryFilter].filter(f => f !== 'All');
+  if(q) activeFilters.push('“' + searchQuery.trim() + '”');
   const filterLabel = activeFilters.length ? activeFilters.join(' · ') : null;
 
   document.getElementById('statCount').textContent = visible.length;
@@ -3434,11 +4073,11 @@ function renderStyleGuide(){
   const sampleMonth = (i, fallback) => m[i] || fallback;
   const add = (id, item, opts) => document.getElementById(id).appendChild(buildItemCard(item, Object.assign({ preview: true }, opts || {})));
 
-  add('guideCardsFull', { id: 'g1', name: 'Car registration renewal', category: 'Vehicle', subcategory: 'Honda Civic', cost: 150, month: sampleMonth(1, 'No date yet'), owner: 'Dana', link: 'https://www.amazon.com/Some-Very-Long-Product-Name-Stainless-Steel-Edition/dp/B0123456789?tag=horizon-20&ref=sr_1_3&keywords=washing+machine+front+load' });
+  add('guideCardsFull', { id: 'g1', name: 'Car registration renewal', category: 'Vehicle', subcategory: 'Honda Civic', cost: 150, month: sampleMonth(1, 'No date yet'), owner: 'Dana', repeat: { every: 1, unit: 'year' }, link: 'https://www.amazon.com/Some-Very-Long-Product-Name-Stainless-Steel-Edition/dp/B0123456789?tag=horizon-20&ref=sr_1_3&keywords=washing+machine+front+load' });
   add('guideCardsMissing', { id: 'g2', name: 'New washing machine', category: 'Home', subcategory: '', cost: 700, month: 'No date yet', owner: '', link: '' });
   add('guideCardsNote', { id: 'g3', name: 'Holiday gifts', category: 'Holidays & Gifts', subcategory: '', cost: 500, month: sampleMonth(2, 'No date yet'), owner: 'Sam', link: '', note: 'Ask the grandparents what they want first.\nIdeas: https://www.etsy.com/listing/123456/handmade-gift-set, then compare prices.' });
   add('guideCardsBoth', { id: 'g5', name: 'Family photo session', category: 'Holidays & Gifts', subcategory: '', cost: 300, month: sampleMonth(3, 'No date yet'), owner: 'Alex', link: 'https://example.com/book', note: 'Call to confirm the time first.' });
-  add('guideCardsDone', { id: 'g4', name: 'Dental cleaning', category: 'Health', subcategory: '', cost: 150, month: sampleMonth(0, 'No date yet'), owner: 'Sam', link: '' }, { completedView: true });
+  add('guideCardsDone', { id: 'g4', name: 'Dental cleaning', category: 'Health', subcategory: '', cost: 150, month: sampleMonth(0, 'No date yet'), owner: 'Sam', link: '', actualCost: 135 }, { completedView: true });
 }
 
 function guideEngineTry(val){
@@ -3660,6 +4299,11 @@ function exportBackup(){
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
     const n = liveItems().length;
     msg.textContent = `Backup saved (${n} item${n === 1 ? '' : 's'}, ${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
+    lsSet(BACKUP_KEY, String(Date.now()));
+    lsDel(BACKUP_SEED_KEY); lsDel(BACKUP_SNOOZE_KEY);
+    updateBackupBanner();
+    updateLastBackupLabel();
+    showToast(msg.textContent);
   } catch(e){ msg.textContent = 'Couldn’t create the backup file on this device.'; }
 }
 function onRestoreFileChosen(input){
@@ -3719,6 +4363,8 @@ function resumeSession(){
 }
 
 loadSettings();
+loadCollapsedMonths();
+initBackupReminder();
 resumeSession();
 </script>
 </body>
