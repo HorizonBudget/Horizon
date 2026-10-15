@@ -1,0 +1,2764 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Ledger — Household Forecast</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root{
+    color-scheme:light;
+    --paper:#EEF1ED;
+    --card:#F8FAF7;
+    --field:#FFFFFF;
+    --ink:#1F2A24;
+    --ink-soft:#5A665D;
+    --line: rgba(31,42,36,0.12);
+    --tint: rgba(31,42,36,0.07);
+    --hover: rgba(31,42,36,0.05);
+    --overlay: rgba(31,42,36,0.4);
+    --warn-fg:#7A5A17;
+    --mustard:#C98A2B;
+    --coral:#C1524B;
+    --teal:#3F6D64;
+    --teal-light: rgba(63,109,100,0.14);
+    --mustard-light: rgba(201,138,43,0.16);
+    --coral-light: rgba(193,82,75,0.14);
+  }
+  :root[data-theme="dark"]{
+    color-scheme:dark;
+    --paper:#131719;
+    --card:#1B2123;
+    --field:#242B2D;
+    --ink:#E6ECE8;
+    --ink-soft:#9DAAA2;
+    --line: rgba(230,236,232,0.14);
+    --tint: rgba(230,236,232,0.09);
+    --hover: rgba(230,236,232,0.07);
+    --overlay: rgba(0,0,0,0.6);
+    --warn-fg:#F0C877;
+    --mustard:#E0A94A;
+    --coral:#E8847C;
+    --teal:#6DB5A4;
+    --teal-light: rgba(109,181,164,0.2);
+    --mustard-light: rgba(224,169,74,0.2);
+    --coral-light: rgba(232,132,124,0.2);
+  }
+
+  :root[data-theme="warm"]{
+    color-scheme:light;
+    --paper:#F3EEE6; --card:#FBF8F2; --field:#FFFFFF; --ink:#2B2620; --ink-soft:#6B6256;
+    --line: rgba(43,38,32,0.13); --tint: rgba(43,38,32,0.07); --hover: rgba(43,38,32,0.05); --overlay: rgba(43,38,32,0.4);
+    --warn-fg:#7A5A17; --mustard:#C98A2B; --coral:#C1524B; --teal:#A85A3A;
+    --teal-light: rgba(168,90,58,0.14); --mustard-light: rgba(201,138,43,0.16); --coral-light: rgba(193,82,75,0.14);
+  }
+  :root[data-theme="ocean"]{
+    color-scheme:light;
+    --paper:#E9F0F6; --card:#F5F9FC; --field:#FFFFFF; --ink:#14263A; --ink-soft:#52667A;
+    --line: rgba(20,38,58,0.13); --tint: rgba(20,38,58,0.07); --hover: rgba(20,38,58,0.05); --overlay: rgba(20,38,58,0.4);
+    --warn-fg:#7A5A17; --mustard:#C98A2B; --coral:#C1524B; --teal:#2F6E9E;
+    --teal-light: rgba(47,110,158,0.14); --mustard-light: rgba(201,138,43,0.16); --coral-light: rgba(193,82,75,0.14);
+  }
+  :root[data-theme="midnight"]{
+    color-scheme:dark;
+    --paper:#0E1320; --card:#161C2E; --field:#1E2640; --ink:#E4E9F5; --ink-soft:#98A3BE;
+    --line: rgba(228,233,245,0.15); --tint: rgba(228,233,245,0.09); --hover: rgba(228,233,245,0.07); --overlay: rgba(0,0,0,0.65);
+    --warn-fg:#F0C877; --mustard:#E0A94A; --coral:#E8847C; --teal:#7BA7E8;
+    --teal-light: rgba(123,167,232,0.2); --mustard-light: rgba(224,169,74,0.2); --coral-light: rgba(232,132,124,0.2);
+  }
+  :root[data-theme="mocha"]{
+    color-scheme:dark;
+    --paper:#1A1512; --card:#231C18; --field:#2D2420; --ink:#F0E8E0; --ink-soft:#AE9E92;
+    --line: rgba(240,232,224,0.15); --tint: rgba(240,232,224,0.09); --hover: rgba(240,232,224,0.07); --overlay: rgba(0,0,0,0.65);
+    --warn-fg:#F0C877; --mustard:#E0A94A; --coral:#E8847C; --teal:#E0A070;
+    --teal-light: rgba(224,160,112,0.2); --mustard-light: rgba(224,169,74,0.2); --coral-light: rgba(232,132,124,0.2);
+  }
+  .theme-picker{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 4px;}
+  .theme-opt{
+    display:flex; align-items:center; gap:8px; padding:7px 12px 7px 8px; cursor:pointer;
+    border:1.5px solid var(--line); border-radius:22px; background:var(--field); color:var(--ink);
+    font:inherit; font-size:13px;
+  }
+  .theme-opt.active{border-color:var(--teal); box-shadow:0 0 0 1px var(--teal);}
+  .theme-swatch{width:22px; height:22px; border-radius:50%; border:1px solid rgba(128,128,128,0.4); flex-shrink:0;}
+  .setting-label{font-size:13px; font-weight:600; color:var(--ink);}
+  *{box-sizing:border-box;}
+  body{
+    margin:0;
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Inter',sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .display{font-family:'Fraunces',serif;}
+  .mono{font-family:'IBM Plex Mono',monospace;}
+
+  /* ---- Gate screen ---- */
+  #gate{
+    min-height:100vh;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:24px;
+  }
+  .gate-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:44px 40px;
+    max-width:400px;
+    width:100%;
+    box-shadow:0 1px 0 rgba(31,42,36,0.04);
+    position:relative;
+  }
+  .gate-card::before{
+    content:"";
+    position:absolute;
+    top:0; left:24px;
+    width:34px; height:10px;
+    background:var(--mustard);
+    border-radius:0 0 3px 3px;
+  }
+  .gate-eyebrow{
+    font-size:11px;
+    letter-spacing:0.14em;
+    text-transform:uppercase;
+    color:var(--ink-soft);
+    margin-bottom:10px;
+    font-weight:600;
+  }
+  .gate-title{
+    font-size:30px;
+    font-weight:600;
+    margin:0 0 8px;
+    line-height:1.15;
+  }
+  .gate-sub{
+    color:var(--ink-soft);
+    font-size:14.5px;
+    line-height:1.5;
+    margin:0 0 28px;
+  }
+  .field-label{
+    font-size:12px;
+    font-weight:600;
+    text-transform:uppercase;
+    letter-spacing:0.08em;
+    color:var(--ink-soft);
+    display:block;
+    margin-bottom:6px;
+  }
+  input[type=text], input[type=number], select{
+    width:100%;
+    padding:11px 12px;
+    border:1px solid var(--line);
+    border-radius:3px;
+    font-size:15px;
+    font-family:'Inter',sans-serif;
+    background:var(--field);
+    color:var(--ink);
+  }
+  input:focus, select:focus, button:focus-visible{
+    outline:2px solid var(--teal);
+    outline-offset:1px;
+  }
+  .gate-row{margin-bottom:16px;}
+  .btn{
+    border:none;
+    border-radius:3px;
+    padding:12px 20px;
+    font-size:14.5px;
+    font-weight:600;
+    font-family:'Inter',sans-serif;
+    cursor:pointer;
+    transition:transform 0.08s ease, opacity 0.15s ease;
+  }
+  .btn:active{transform:translateY(1px);}
+  .btn-primary{
+    background:var(--ink);
+    color:var(--paper);
+    width:100%;
+    margin-top:6px;
+  }
+  .btn-primary:hover{opacity:0.88;}
+  .gate-hint{
+    font-size:12.5px;
+    color:var(--ink-soft);
+    margin-top:16px;
+    line-height:1.5;
+  }
+  .gate-link{
+    background:none; border:none; padding:6px 0 0; cursor:pointer;
+    font:inherit; font-size:12.5px; color:var(--teal); text-decoration:underline;
+  }
+  .app-version{font-size:12px; color:var(--ink-soft); margin:16px 0 0; text-align:center;}
+  .opt{font-weight:400; color:var(--ink-soft);}
+  .gate-error{font-size:12.5px; color:var(--coral); margin-top:12px; line-height:1.5; min-height:0;}
+  .gate-error:empty{display:none;}
+  .sync-pill{font-size:11.5px; color:var(--ink-soft);}
+  .sync-pill.ok{color:var(--teal);}
+  .sync-pill.err{color:var(--coral);}
+  .share-box{display:flex; gap:8px; align-items:center; margin:8px 0 4px;}
+  .share-code{flex:1; font-family:ui-monospace,Menlo,monospace; font-size:13px; padding:9px 11px; border:1px solid var(--line); border-radius:8px; background:var(--field); color:var(--ink); word-break:break-all;}
+  .gate-divider{
+    display:flex; align-items:center; gap:12px;
+    margin:22px 0;
+    color:var(--ink-soft);
+    font-size:12px;
+  }
+  .gate-divider::before, .gate-divider::after{
+    content:""; flex:1; height:1px; background:var(--line);
+  }
+
+  /* ---- App shell ---- */
+  #app{display:none; min-height:100vh;}
+  header.top{
+    background:var(--card);
+    border-bottom:1px solid var(--line);
+    padding:20px 32px;
+    display:flex;
+    align-items:center;
+    justify-content:space-between;
+    flex-wrap:wrap;
+    gap:14px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:30px;height:30px;background:var(--ink);border-radius:3px;
+    display:flex;align-items:center;justify-content:center;
+    color:var(--paper); font-family:'Fraunces',serif; font-weight:700; font-size:15px;
+  }
+  .brand-name{font-size:16px; font-weight:600;}
+  .brand-code{font-size:12px; color:var(--ink-soft);}
+  .top-actions{display:flex; gap:10px; align-items:center;}
+  .btn-ghost{
+    background:transparent;
+    border:1px solid var(--line);
+    color:var(--ink);
+  }
+  .btn-ghost:hover{background:var(--hover);}
+  .btn-add{
+    background:var(--teal);
+    color:#fff;
+  }
+  .btn-add:hover{opacity:0.9;}
+  :root[data-theme="dark"] .btn-add, :root[data-theme="midnight"] .btn-add, :root[data-theme="mocha"] .btn-add{color:var(--paper);}
+
+  main{
+    max-width:980px;
+    margin:0 auto;
+    padding:32px 24px 80px;
+  }
+
+  .summary-strip{
+    display:grid;
+    grid-template-columns:repeat(2,1fr);
+    gap:14px;
+    margin-bottom:30px;
+  }
+  .stat{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:16px 18px;
+  }
+  .stat-label{font-size:11.5px; text-transform:uppercase; letter-spacing:0.07em; color:var(--ink-soft); font-weight:600;}
+  .stat-value{font-size:26px; font-weight:600; font-family:'Fraunces',serif; margin-top:4px;}
+  .stat-sub{font-size:12.5px; color:var(--ink-soft); margin-top:2px;}
+
+  .section-head{
+    display:flex; align-items:baseline; justify-content:space-between;
+    margin:34px 0 14px;
+    flex-wrap:wrap;
+    gap:10px;
+  }
+  .section-title{font-size:19px; font-weight:600;}
+  .section-note{font-size:12.5px; color:var(--ink-soft);}
+
+  /* Month filter */
+  .month-filter{
+    display:flex; flex-wrap:wrap; gap:8px;
+    margin-bottom:20px;
+  }
+  .month-pill{
+    font-family:'IBM Plex Mono',monospace;
+    font-size:12.5px; font-weight:500;
+    padding:7px 14px;
+    border-radius:20px;
+    border:1px solid var(--line);
+    background:var(--card);
+    color:var(--ink-soft);
+    cursor:pointer;
+    transition:all 0.12s ease;
+    white-space:nowrap;
+  }
+  .month-pill:hover{border-color:var(--mustard); color:var(--ink);}
+  .month-pill.active{
+    background:var(--ink);
+    border-color:var(--ink);
+    color:var(--paper);
+  }
+  .month-pill .count{
+    opacity:0.6; margin-left:4px;
+  }
+  .sort-control{
+    display:flex; align-items:center; gap:8px; margin-bottom:16px;
+  }
+  .sort-label{font-size:12.5px; color:var(--ink-soft); font-weight:600;}
+  .sort-control select{
+    width:auto; padding:6px 10px; font-size:13px; border-radius:20px;
+  }
+
+  /* Month badge on card */
+  .month-badge{
+    display:inline-flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    background:var(--mustard-light);
+    border:1px solid rgba(201,138,43,0.3);
+    border-radius:5px;
+    padding:6px 10px;
+    min-width:64px;
+    margin-right:14px;
+  }
+  .month-badge-label{
+    font-family:'Fraunces',serif;
+    font-weight:600;
+    font-size:15px;
+    color:#8A6110;
+    line-height:1.1;
+  }
+  .month-badge-sub{
+    font-size:9.5px;
+    text-transform:uppercase;
+    letter-spacing:0.05em;
+    color:#8A6110;
+    opacity:0.75;
+  }
+  .card-body{display:flex; align-items:flex-start;}
+
+  /* Owner chip */
+  .owner-chip{
+    display:inline-flex; align-items:center; gap:5px;
+    font-size:11.5px; font-weight:600;
+    padding:2px 9px 2px 6px;
+    border-radius:20px;
+    margin-top:5px;
+  }
+  .owner-dot{
+    width:7px; height:7px; border-radius:50%;
+    flex-shrink:0;
+  }
+
+  .empty{
+    border:1px dashed var(--line);
+    border-radius:4px;
+    padding:36px 20px;
+    text-align:center;
+    color:var(--ink-soft);
+    font-size:14px;
+  }
+
+  .items{display:flex; flex-direction:column; gap:10px;}
+  .item-card{
+    background:var(--card);
+    border:1px solid var(--line);
+    border-radius:4px;
+    padding:16px 18px 16px 20px;
+    display:grid;
+    grid-template-columns: 1fr auto;
+    gap:10px 18px;
+    position:relative;
+    align-items:center;
+  }
+  .item-card::before{
+    content:"";
+    position:absolute; left:0; top:10px; bottom:10px; width:4px;
+    border-radius:2px;
+    background:var(--cat-color, var(--ink-soft));
+  }
+
+  .item-main{min-width:0; padding-right:30px;}
+  .item-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px;}
+  .item-name{font-size:15.5px; font-weight:600; position:relative; display:inline-block;}
+  .item-name::after{
+    content:''; position:absolute; left:0; top:50%; height:2px; width:0%;
+    background:var(--ink-soft); transition:width 0.6s ease;
+  }
+  .tag{
+    font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
+    padding:2px 7px; border-radius:20px;
+  }
+  .tag-cat{background:var(--tint); color:var(--ink-soft);}
+  .tag-subcat{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
+  .item-owner{font-size:12px; color:var(--ink-soft); margin-top:4px;}
+  .item-note{
+    font-size:12.5px; color:var(--ink-soft); margin-top:6px;
+    display:flex; align-items:center; gap:5px;
+  }
+  .item-note a{color:var(--teal); text-decoration:none; font-weight:500;}
+  .item-note a:hover{text-decoration:underline;}
+  .item-note .note-icon{opacity:0.7;}
+
+  .item-amount{width:120px; flex-shrink:0; text-align:right; padding-top:16px;}
+  .item-amount-value{
+    font-family:'IBM Plex Mono',monospace; font-size:20px; font-weight:600; color:var(--ink);
+  }
+  .item-actions{display:flex; gap:6px; margin-top:8px;}
+
+  /* Complete checkbox */
+  .complete-check{
+    position:absolute; top:14px; right:16px;
+    width:20px; height:20px; margin:0;
+    border:1.5px solid var(--line); border-radius:4px;
+    background:var(--field); cursor:pointer;
+    appearance:none; -webkit-appearance:none;
+    display:flex; align-items:center; justify-content:center;
+    transition:background 0.15s ease, border-color 0.15s ease;
+    flex-shrink:0;
+  }
+  .complete-check:hover{border-color:var(--teal);}
+  .complete-check:checked{background:var(--teal); border-color:var(--teal);}
+  .complete-check:checked::after{
+    content:'✓'; color:#fff; font-size:13px; font-weight:700; line-height:1;
+  }
+  .complete-check.restore-check{border-color:var(--teal); background:var(--teal);}
+  .complete-check.restore-check::after{content:'✓'; color:#fff; font-size:13px; font-weight:700;}
+
+  /* Complete animation: strike-through -> pop -> collapse */
+  .item-card{
+    transition: max-height 0.7s ease, opacity 0.55s ease, transform 0.55s ease,
+                margin 0.7s ease, padding 0.7s ease, border-width 0.7s ease;
+  }
+  .card-strike .item-name::after{width:100%;}
+  .card-strike .item-name{color:var(--ink-soft); transition:color 0.6s ease;}
+  .card-strike{opacity:0.7; transition:opacity 0.5s ease;}
+  .card-pop{transform:scale(1.04); transition:transform 0.25s ease-out;}
+  .card-collapsed{
+    max-height:0 !important; opacity:0 !important; transform:scale(0.9);
+    margin-top:0 !important; margin-bottom:0 !important;
+    padding-top:0 !important; padding-bottom:0 !important;
+    border-width:0 !important; overflow:hidden;
+  }
+
+  /* View tabs */
+  .view-tabs{display:flex; gap:22px; margin-bottom:22px; border-bottom:1px solid var(--line);}
+  .view-tab{
+    background:none; border:none; padding:0 0 10px; font-size:14.5px; font-weight:600;
+    color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;
+  }
+  .view-tab:hover{color:var(--ink);}
+  .view-tab.active{color:var(--ink); border-bottom-color:var(--teal);}
+  .restore-row{display:flex; gap:6px; margin-top:8px;}
+  .setting-row{
+    display:flex; align-items:flex-start; gap:10px; cursor:pointer;
+    font-size:14px; color:var(--ink); line-height:1.4; padding:4px 0;
+  }
+  .setting-row input{width:auto; margin-top:2px; accent-color:var(--teal); cursor:pointer;}
+  .icon-btn{
+    background:none; border:1px solid var(--line); border-radius:3px;
+    font-size:11.5px; padding:5px 9px; cursor:pointer; color:var(--ink-soft);
+  }
+  .icon-btn:hover{background:var(--hover); color:var(--ink);}
+
+  /* Activity */
+  .activity-list{display:flex; flex-direction:column; gap:8px;}
+  .activity-row{
+    font-size:13px; color:var(--ink-soft);
+    display:flex; gap:8px; align-items:baseline;
+    padding:8px 0; border-bottom:1px solid var(--line);
+  }
+  .activity-row:last-child{border-bottom:none;}
+  .activity-who{font-weight:600; color:var(--ink);}
+  .activity-time{margin-left:auto; font-size:11.5px; font-family:'IBM Plex Mono',monospace;}
+
+  /* Modal */
+  .overlay{
+    display:none;
+    position:fixed; inset:0; background:var(--overlay);
+    align-items:center; justify-content:center; padding:20px; z-index:50;
+  }
+  .modal{
+    background:var(--card); border-radius:5px; max-width:460px; width:100%;
+    padding:30px 30px 26px; max-height:88vh; overflow-y:auto;
+    border:1px solid var(--line);
+  }
+  .modal h3{margin:0 0 4px; font-size:20px; font-weight:600;}
+  .modal .gate-sub{margin-bottom:20px;}
+  .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
+  .modal-actions{display:flex; gap:10px; margin-top:22px;}
+  .modal-actions .btn{flex:1;}
+  .chip-row{display:flex; flex-wrap:wrap; gap:7px; margin-top:6px;}
+  .chip{
+    font-size:12.5px; padding:6px 12px; border-radius:20px;
+    border:1px solid var(--line); background:var(--field); cursor:pointer; color:var(--ink-soft);
+  }
+  .chip:hover{border-color:var(--teal); color:var(--teal);}
+  .chip.selected{background:var(--ink); color:var(--paper); border-color:var(--ink);}
+
+  /* Category add row */
+  .cat-row{display:flex; gap:8px; margin-top:8px;}
+  .cat-row input{flex:1;}
+  .cat-row button{
+    border:1px solid var(--line); background:var(--field); border-radius:3px;
+    font-size:12.5px; font-weight:600; padding:0 14px; cursor:pointer; color:var(--ink);
+    white-space:nowrap;
+  }
+  .cat-row button:hover{border-color:var(--teal); color:var(--teal);}
+
+  .subcat-toggle-link{
+    background:none; border:none; padding:0;
+    color:var(--teal); font-weight:600; cursor:pointer; font-size:13px;
+    text-decoration:underline;
+  }
+
+  /* Name suggestion hint */
+  .name-hint{
+    font-size:12.5px; color:var(--ink-soft); margin-top:6px; min-height:18px;
+  }
+  .name-hint button{
+    background:none; border:none; padding:0; margin-left:4px;
+    color:var(--teal); font-weight:600; cursor:pointer; font-size:12.5px;
+    text-decoration:underline;
+  }
+
+  /* Owner select row + avatar */
+  .owner-row{display:flex; gap:8px; align-items:center;}
+  .owner-row select{flex:1;}
+  .btn-manage{
+    border:1px solid var(--line); background:var(--field); border-radius:3px;
+    font-size:12.5px; font-weight:600; padding:0 12px; height:44px; cursor:pointer; color:var(--ink);
+    white-space:nowrap;
+  }
+  .btn-manage:hover{border-color:var(--teal); color:var(--teal);}
+
+  .avatar{
+    width:26px; height:26px; border-radius:50%;
+    display:inline-flex; align-items:center; justify-content:center;
+    font-size:11px; font-weight:700; color:#fff;
+    object-fit:cover; flex-shrink:0;
+  }
+  .avatar-sm{width:18px; height:18px; font-size:9px;}
+
+  .people-list{display:flex; flex-direction:column; gap:8px; margin-bottom:20px;}
+  .person-row{
+    display:flex; align-items:center; gap:10px;
+    padding:8px 10px; border:1px solid var(--line); border-radius:4px; background:var(--field);
+  }
+  .person-row .person-name{flex:1; font-size:14px; font-weight:500;}
+  .person-remove{
+    background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px;
+  }
+  .person-remove:hover{color:var(--coral);}
+  .add-person-form{
+    border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
+  }
+  .avatar-upload-row{display:flex; align-items:center; gap:12px; margin-top:10px;}
+  .avatar-preview{
+    width:44px; height:44px; border-radius:50%; background:var(--tint);
+    display:flex; align-items:center; justify-content:center; font-size:13px;
+    color:var(--ink-soft); overflow:hidden; flex-shrink:0; object-fit:cover;
+  }
+  .file-btn{
+    border:1px solid var(--line); background:var(--field); border-radius:3px;
+    font-size:12.5px; padding:8px 12px; cursor:pointer; color:var(--ink);
+  }
+  .file-btn:hover{border-color:var(--teal); color:var(--teal);}
+
+  .month-more-link{
+    background:none; border:none; padding:0; margin-top:6px;
+    color:var(--teal); font-weight:600; cursor:pointer; font-size:12px;
+    text-decoration:underline; display:none;
+  }
+
+  /* Inline new-category reveal */
+  .new-cat-row{display:none; gap:8px; margin-top:8px;}
+  .new-cat-row.show{display:flex;}
+  .new-cat-row input{flex:1;}
+  .new-cat-row button{
+    border:1px solid var(--line); background:var(--field); border-radius:3px;
+    font-size:12.5px; font-weight:600; padding:0 14px; cursor:pointer; color:var(--ink);
+    white-space:nowrap;
+  }
+  .new-cat-row button:hover{border-color:var(--teal); color:var(--teal);}
+
+  /* Missing-info flag, shown on the card itself */
+  .tag-warn{
+    background:var(--mustard-light); color:var(--warn-fg);
+    border:1px solid rgba(201,138,43,0.5);
+  }
+
+  /* Collapsible activity */
+  .activity-toggle{
+    display:flex; align-items:center; gap:6px; cursor:pointer;
+    background:none; border:none; padding:0; font-size:19px; font-weight:600; color:var(--ink);
+    font-family:'Inter',sans-serif;
+  }
+  .activity-toggle .caret{
+    font-size:12px; color:var(--ink-soft); transition:transform 0.15s ease;
+  }
+  .activity-toggle.open .caret{transform:rotate(90deg);}
+  .activity-panel{
+    display:none;
+    max-height:220px;
+    overflow-y:auto;
+    border:1px solid var(--line);
+    border-radius:4px;
+    background:var(--card);
+    padding:4px 16px;
+  }
+  .activity-panel.open{display:block;}
+
+  /* Style guide (Settings > View style guide) */
+  .modal.modal-wide{max-width:780px;}
+  .guide-section{margin:0 0 28px;}
+  .guide-section h4{margin:0 0 4px; font-size:15.5px; font-weight:600;}
+  .guide-desc{font-size:13px; color:var(--ink-soft); margin:0 0 12px; line-height:1.45;}
+  .guide-row{display:flex; flex-wrap:wrap; gap:8px; align-items:center;}
+  .guide-label{
+    font-size:11.5px; text-transform:uppercase; letter-spacing:0.07em;
+    color:var(--ink-soft); font-weight:600; margin:14px 0 6px;
+  }
+  .guide-list{display:flex; flex-direction:column; gap:10px;}
+  .guide-static{cursor:default;}
+  .guide-engine-out{
+    margin-top:10px; padding:10px 12px; border:1px dashed var(--line); border-radius:4px;
+    font-size:13px; color:var(--ink); min-height:40px; line-height:1.5;
+  }
+  .guide-actions{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
+  .guide-actions .btn{flex:0 0 auto;}
+  .settings-divider{border-top:1px solid var(--line); margin:18px 0 6px;}
+
+  html{-webkit-text-size-adjust:100%;}
+  .item-main{overflow-wrap:anywhere;}
+  .item-note a{overflow-wrap:anywhere; word-break:break-all;}
+
+  /* ---- Phones / narrow screens ---- */
+  @media (max-width:640px){
+    header.top{padding:14px 16px; padding-top:max(14px, env(safe-area-inset-top)); gap:10px;}
+    .brand{min-width:0; width:100%;}
+    .brand > div:last-child{min-width:0;}
+    .brand-name{white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
+    .top-actions{width:100%; gap:8px;}
+    .top-actions .btn{padding:10px 12px; font-size:13.5px; white-space:nowrap;}
+    .top-actions .btn-add{flex:1;}
+    main{padding:20px 16px max(60px, env(safe-area-inset-bottom));}
+
+    .summary-strip{grid-template-columns:1fr 1fr; gap:10px; margin-bottom:20px;}
+    .stat{padding:12px 14px;}
+    .stat-value{font-size:22px;}
+    .stat-sub{font-size:11.5px;}
+    .section-head{margin:24px 0 12px;}
+
+    /* cards keep the two-column layout (details left, amount right), just tighter */
+    .item-card{grid-template-columns:minmax(0,1fr) auto; padding:14px 14px 14px 18px; gap:8px 12px; align-items:start;}
+    .card-body{min-width:0;}
+    .month-badge{min-width:48px; padding:5px 7px; margin-right:10px;}
+    .month-badge-label{font-size:13.5px;}
+    .item-main{padding-right:0;}
+    .item-name{font-size:15px;}
+    .item-amount{width:auto; text-align:right; padding-top:26px;}
+    .item-amount-value{font-size:17px;}
+    .complete-check{top:12px; right:12px; width:22px; height:22px;}
+
+    /* 16px inputs stop iOS Safari from zooming in when a field is tapped */
+    input, select, textarea{font-size:16px !important;}
+    .grid-2{grid-template-columns:1fr;}
+    .overlay{padding:12px; align-items:flex-end;}
+    .modal{padding:22px 18px calc(18px + env(safe-area-inset-bottom)); max-height:92vh; max-height:92dvh;}
+    .modal-actions{flex-wrap:wrap;}
+    .share-box{flex-wrap:wrap;}
+    .share-code{flex-basis:100%;}
+    .gate-card{padding-left:20px; padding-right:20px;}
+  }
+</style>
+</head>
+<body>
+
+<!-- GATE -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-eyebrow">Household Forecast</div>
+    <h1 class="gate-title display">What's coming up<br>that isn't budgeted yet.</h1>
+    <p class="gate-sub">A shared list for future expenses — the ones EveryDollar doesn't see yet because they're not this month's problem. Enter your household code to open your shared board.</p>
+
+    <div class="gate-row">
+      <label class="field-label" for="householdCode">Household code</label>
+      <input type="text" id="householdCode" placeholder="e.g. MAPLE-HARBOR-4827" maxlength="40" autocapitalize="characters" autocomplete="off">
+      <button type="button" class="gate-link" onclick="generateHouseholdCode()">Make me a code</button>
+    </div>
+    <div class="gate-row" id="gateHhNameRow">
+      <label class="field-label" for="householdNameInput">Household name <span class="opt">(optional, just for show)</span></label>
+      <input type="text" id="householdNameInput" placeholder="e.g. The Smiths" maxlength="40" autocomplete="off">
+    </div>
+    <div class="gate-row">
+      <label class="field-label" for="yourName">Your name</label>
+      <input type="text" id="yourName" placeholder="e.g. Sam">
+    </div>
+    <button class="btn btn-primary" id="gateBtn" onclick="enterApp()">Open household board</button>
+    <p class="gate-error" id="gateError" role="alert"></p>
+    <p class="gate-hint" id="gateHint">New here? Tap “Make me a code,” then give the same code to your family. Anyone who enters it sees the same board, so keep it between you. The household name is optional and only shows at the top of the board; if your family already set one, you'll see theirs.</p>
+  </div>
+</div>
+
+<!-- APP -->
+<div id="app">
+  <header class="top">
+    <div class="brand">
+      <div class="brand-mark display">L</div>
+      <div>
+        <div class="brand-name" id="hhTitle">Household board</div>
+        <div class="brand-code"><span id="hhCodeLabel">Code: —</span> · <span class="sync-pill" id="syncPill"></span></div>
+      </div>
+    </div>
+    <div class="top-actions">
+      <button class="btn btn-ghost" onclick="openPeopleModal()">+ Person</button>
+      <button class="btn btn-ghost" onclick="openSettingsModal()" title="Settings">⚙</button>
+      <button class="btn btn-add" onclick="openItemModal()">+ Add future item</button>
+    </div>
+  </header>
+
+  <main>
+    <div class="view-tabs">
+      <button class="view-tab" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
+      <button class="view-tab" id="tabCompletedBtn" onclick="switchTab('completed')">Completed <span id="completedCount">(0)</span></button>
+    </div>
+
+    <div class="summary-strip" id="summaryStrip">
+      <div class="stat">
+        <div class="stat-label">Items on the radar</div>
+        <div class="stat-value mono" id="statCount">0</div>
+        <div class="stat-sub" id="statCountSub">nothing yet</div>
+      </div>
+      <div class="stat">
+        <div class="stat-label">Total forecasted</div>
+        <div class="stat-value mono" id="statNeeded">$0</div>
+        <div class="stat-sub" id="statNeededSub">across all future items</div>
+      </div>
+    </div>
+
+    <div class="section-head">
+      <div class="section-title" id="sectionTitle">Coming up</div>
+      <div class="section-note" id="filterNote">Showing all months</div>
+    </div>
+    <div class="month-filter" id="monthFilter"></div>
+    <div class="month-filter" id="categoryFilter"></div>
+    <div class="sort-control" id="sortControl" style="display:none;">
+      <span class="sort-label">Sort by</span>
+      <select id="sortModeSelect" onchange="onSortModeChange()">
+        <option value="month">Month</option>
+        <option value="subcategory">Subcategory</option>
+      </select>
+    </div>
+    <div class="items" id="itemsList"></div>
+
+    <div class="section-head">
+      <button class="activity-toggle" id="activityToggle" onclick="toggleActivity()">
+        <span class="caret">▶</span> Recent activity
+      </button>
+      <div class="section-note" id="activityCount">0 updates</div>
+    </div>
+    <div class="activity-panel" id="activityPanel">
+      <div class="activity-list" id="activityList"></div>
+    </div>
+  </main>
+</div>
+
+<!-- Add/Edit Item Modal -->
+<div class="overlay" id="itemOverlay">
+  <div class="modal">
+    <h3 id="modalTitle">Add a future item</h3>
+    <p class="gate-sub">Doesn't need to be exact yet — you can adjust the estimate later.</p>
+
+    <div class="gate-row">
+      <label class="field-label">Item name</label>
+      <input type="text" id="f_name" placeholder="e.g. Car registration renewal" oninput="onNameInput()">
+      <div class="name-hint" id="nameHint"></div>
+    </div>
+
+    <div class="gate-row">
+      <label class="field-label">Category</label>
+      <select id="f_category" onchange="onCategoryChange()"></select>
+      <div class="new-cat-row" id="newCatRow">
+        <input type="text" id="f_newCategory" placeholder="Name your new category...">
+      </div>
+    </div>
+
+    <div class="gate-row">
+      <button type="button" class="subcat-toggle-link" id="subcatToggleBtn" onclick="toggleSubcategoryField()">+ Add subcategory</button>
+      <div id="subcategoryFieldWrap" style="display:none;">
+        <label class="field-label">Subcategory (optional)</label>
+        <input type="text" id="f_subcategoryText" placeholder="e.g. Honda Civic">
+        <select id="f_subcategorySelect" onchange="onSubcategorySelectChange()" style="display:none;"></select>
+        <div class="new-cat-row" id="newSubcatRow">
+          <input type="text" id="f_newSubcategory" placeholder="Name your new subcategory...">
+        </div>
+      </div>
+    </div>
+
+    <div class="grid-2 gate-row">
+      <div>
+        <label class="field-label">Estimated cost</label>
+        <input type="number" id="f_cost" placeholder="e.g. 150" oninput="onCostInput()">
+      </div>
+      <div>
+        <label class="field-label">Target month</label>
+        <select id="f_month"></select>
+        <button type="button" class="month-more-link" id="monthShowMoreBtn" onclick="showMoreMonths()">Show more months</button>
+      </div>
+    </div>
+
+    <div class="gate-row">
+      <label class="field-label">Who's on it? (optional)</label>
+      <div class="owner-row">
+        <select id="f_owner"></select>
+        <button class="btn-manage" onclick="openPeopleModal()">People</button>
+      </div>
+    </div>
+
+    <div class="gate-row">
+      <label class="field-label">Link or notes (optional)</label>
+      <input type="text" id="f_link" placeholder="e.g. a product link, or a quick note">
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeItemModal()">Cancel</button>
+      <button class="btn btn-primary" onclick="saveItem()">Save item</button>
+    </div>
+  </div>
+</div>
+
+<!-- Settings modal -->
+<div class="overlay" id="settingsOverlay">
+  <div class="modal">
+    <h3>Settings</h3>
+    <p class="gate-sub">A couple of small preferences for how the board looks and behaves.</p>
+    <div class="setting-label">Theme</div>
+    <div class="theme-picker" id="themePicker"></div>
+    <label class="setting-row">
+      <input type="checkbox" id="settingsConfirmRestore" onchange="onConfirmRestoreSettingChange()">
+      <span>Ask for confirmation before restoring a completed item back to Active</span>
+    </label>
+    <div class="settings-divider"></div>
+    <div id="sharingSection">
+      <label class="field-label" for="settingsHhName">Household name <span class="opt">(just for show)</span></label>
+      <input type="text" id="settingsHhName" maxlength="40" placeholder="e.g. The Smiths" oninput="onHouseholdNameInput()">
+      <p class="guide-desc" style="margin-top:14px"><strong>Share with family.</strong> Anyone who enters this household code sees and edits the same board, on any phone or computer.</p>
+      <div class="share-box">
+        <div class="share-code" id="shareCode">—</div>
+        <button class="btn btn-ghost" id="copyCodeBtn" onclick="copyHouseholdCode('code')">Copy code</button>
+        <button class="btn btn-ghost" id="copyLinkBtn" onclick="copyHouseholdCode('link')">Copy invite link</button>
+      </div>
+      <p class="guide-desc" id="syncDetail"></p>
+      <div class="guide-actions">
+        <button class="btn btn-ghost" onclick="leaveHousehold()">Leave this household on this device</button>
+      </div>
+    </div>
+    <div class="settings-divider"></div>
+    <p class="guide-desc"><strong>Backup.</strong> Save a copy of everything on the board to a file you can keep, or restore the board from one.</p>
+    <div class="guide-actions">
+      <button class="btn btn-ghost" onclick="exportBackup()">Export backup</button>
+      <button class="btn btn-ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup…</button>
+      <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestoreFileChosen(this)">
+    </div>
+    <p class="guide-desc" id="backupMsg"></p>
+    <div class="settings-divider"></div>
+    <p class="guide-desc">Not sure what something looks like? The style guide shows every card, tag, color and flag with sample data, so you don't have to add test items.</p>
+    <div class="guide-actions">
+      <button class="btn btn-ghost" onclick="openStyleGuide()">View style guide</button>
+    </div>
+    <p class="app-version" id="appVersion"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeSettingsModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Style guide -->
+<div class="overlay" id="guideOverlay">
+  <div class="modal modal-wide">
+    <h3>Style guide</h3>
+    <p class="gate-sub">Everything below is sample data. Nothing here is saved to your board, and it follows your light or dark setting.</p>
+    <div id="guideBody"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closeStyleGuide()">Back to settings</button>
+    </div>
+  </div>
+</div>
+
+<!-- People management modal -->
+<div class="overlay" id="peopleOverlay">
+  <div class="modal">
+    <h3>People</h3>
+    <p class="gate-sub">Add household members so you can assign items to them and spot who owns what at a glance.</p>
+    <div class="people-list" id="peopleList"></div>
+    <div class="add-person-form">
+      <label class="field-label">Name</label>
+      <input type="text" id="p_name" placeholder="e.g. Sam">
+      <div class="avatar-upload-row">
+        <div class="avatar-preview" id="p_avatarPreview">＋</div>
+        <input type="file" id="p_photo" accept="image/*" style="display:none" onchange="onPhotoChosen()">
+        <button class="file-btn" onclick="document.getElementById('p_photo').click()">Upload photo</button>
+        <button class="file-btn" id="p_clearPhoto" style="display:none" onclick="clearPhotoChoice()">Remove</button>
+      </div>
+      <div class="modal-actions">
+        <button class="btn btn-primary" onclick="addPerson()">Add person</button>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost" onclick="closePeopleModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ============================================================
+//  FIREBASE SETTINGS — paste your project's values here.
+//  (Firebase console → Project settings → Your apps → Web app → "firebaseConfig".)
+//  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
+// ============================================================
+// App version. Bump this on every release and add a line to the Version History doc.
+const APP_VERSION = '2.1.0';
+
+const FIREBASE_CONFIG = {
+  apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
+  authDomain: "spending-forecast-939d9.firebaseapp.com",
+  projectId: "spending-forecast-939d9",
+  storageBucket: "spending-forecast-939d9.firebasestorage.app",
+  messagingSenderId: "235640080111",
+  appId: "1:235640080111:web:14b546f21e01d5c55ebd1a"
+};
+
+let household = { code: '', name: '' };   // code = shared key, name = the signed-in person
+let householdName = '';                    // display name for the household, shared and just for show
+let items = [];
+let activity = [];
+let editingId = null;
+let activeMonthFilter = 'All';
+let activeTab = 'active';
+let sortMode = 'month';
+function onSortModeChange(){
+  sortMode = document.getElementById('sortModeSelect').value;
+  render();
+}
+let activeCategoryFilter = 'All';
+let people = [];
+let pendingPhotoData = null;
+let activityOpen = false;
+
+function toggleActivity(){
+  activityOpen = !activityOpen;
+  document.getElementById('activityPanel').classList.toggle('open', activityOpen);
+  document.getElementById('activityToggle').classList.toggle('open', activityOpen);
+}
+
+let CATEGORIES = ['Clothing','Education','Electronics','Health','Holidays & Gifts','Home','Kids','Pets','Subscriptions','Travel','Vehicle'];
+// 'Other' is a fixed sentinel, always shown last, used to trigger adding a brand-new category.
+
+function sortedCategoryList(){
+  return [...CATEGORIES].sort((a,b) => a.localeCompare(b)).concat(['Other']);
+}
+
+function populateCategorySelect(selected){
+  const sel = document.getElementById('f_category');
+  const list = sortedCategoryList();
+  sel.innerHTML = list.map(c => `<option ${c===selected?'selected':''}>${escapeHtml(c)}</option>`).join('');
+  document.getElementById('newCatRow').classList.remove('show');
+  document.getElementById('f_newCategory').value = '';
+}
+
+function onCategoryChange(){
+  categoryManuallyPicked = true;
+  const val = document.getElementById('f_category').value;
+  const row = document.getElementById('newCatRow');
+  if(val === 'Other'){
+    row.classList.add('show');
+    document.getElementById('f_newCategory').focus();
+  } else {
+    row.classList.remove('show');
+  }
+  // subcategories are scoped to a category, so switching category resets that field
+  populateSubcategoryField(val === 'Other' ? null : val, '');
+}
+
+// category name -> array of subcategory names that have been used under it
+let SUBCATEGORIES = {};
+
+function toggleSubcategoryField(show){
+  const wrap = document.getElementById('subcategoryFieldWrap');
+  const btn = document.getElementById('subcatToggleBtn');
+  const shouldShow = show !== undefined ? show : wrap.style.display === 'none';
+  wrap.style.display = shouldShow ? '' : 'none';
+  btn.style.display = shouldShow ? 'none' : '';
+  if(shouldShow){
+    const textField = document.getElementById('f_subcategoryText');
+    if(textField.style.display !== 'none') textField.focus();
+  }
+}
+
+function populateSubcategoryField(category, selectedValue){
+  const textField = document.getElementById('f_subcategoryText');
+  const selectField = document.getElementById('f_subcategorySelect');
+  const newRow = document.getElementById('newSubcatRow');
+  const existing = (category && SUBCATEGORIES[category]) ? SUBCATEGORIES[category] : [];
+
+  newRow.classList.remove('show');
+  document.getElementById('f_newSubcategory').value = '';
+  // only auto-expand the field when there's already a value to show (e.g. editing an item)
+  toggleSubcategoryField(!!selectedValue);
+
+  if(existing.length === 0){
+    // nothing created yet for this category — plain type-in field
+    textField.style.display = '';
+    selectField.style.display = 'none';
+    textField.value = selectedValue || '';
+    return;
+  }
+
+  // subcategories already exist for this category — switch to a dropdown
+  textField.style.display = 'none';
+  selectField.style.display = '';
+  const sorted = [...existing].sort((a,b) => a.localeCompare(b));
+  const options = ['', ...sorted, 'Other'];
+  const valueInList = selectedValue && sorted.includes(selectedValue);
+  selectField.innerHTML = options.map(o => {
+    const label = o === '' ? 'None' : o;
+    const isSelected = valueInList ? (o === selectedValue) : (o === '' && !selectedValue);
+    return `<option value="${escapeHtml(o)}" ${isSelected?'selected':''}>${escapeHtml(label)}</option>`;
+  }).join('');
+
+  if(selectedValue && !valueInList){
+    // the item's saved subcategory isn't in this category's list yet (e.g. category just changed) — offer it via Other
+    selectField.value = 'Other';
+    newRow.classList.add('show');
+    document.getElementById('f_newSubcategory').value = selectedValue;
+  }
+}
+
+function onSubcategorySelectChange(){
+  const val = document.getElementById('f_subcategorySelect').value;
+  const row = document.getElementById('newSubcatRow');
+  if(val === 'Other'){
+    row.classList.add('show');
+    document.getElementById('f_newSubcategory').focus();
+  } else {
+    row.classList.remove('show');
+  }
+}
+
+function buildMonthOptions(){
+  const months = [];
+  const now = new Date();
+  const start = new Date(now.getFullYear(), now.getMonth(), 1); // current month, never past
+  for(let i=0;i<24;i++){
+    const d = new Date(start.getFullYear(), start.getMonth()+i, 1);
+    months.push(d.toLocaleString('en-US',{month:'short'}) + ' ' + d.getFullYear());
+  }
+  return months;
+}
+// FUTURE_MONTHS excludes 'No date yet' and never includes months that have already passed.
+const FUTURE_MONTHS = buildMonthOptions();
+const MONTH_OPTIONS = ['No date yet', ...FUTURE_MONTHS];
+const MONTHS_COLLAPSED_COUNT = 5;
+let monthListExpanded = false;
+
+function populateMonthSelect(selected){
+  const sel = document.getElementById('f_month');
+  // If the currently selected month isn't in the collapsed view, auto-expand so it stays visible.
+  const selectedIsBeyondCollapsed = selected && selected !== 'No date yet'
+    && FUTURE_MONTHS.indexOf(selected) >= MONTHS_COLLAPSED_COUNT;
+  if(selectedIsBeyondCollapsed) monthListExpanded = true;
+
+  const visibleMonths = monthListExpanded ? FUTURE_MONTHS : FUTURE_MONTHS.slice(0, MONTHS_COLLAPSED_COUNT);
+  const options = ['No date yet', ...visibleMonths];
+  sel.innerHTML = options.map(m => `<option ${m===selected?'selected':''}>${escapeHtml(m)}</option>`).join('');
+
+  const btn = document.getElementById('monthShowMoreBtn');
+  if(btn){
+    btn.style.display = monthListExpanded ? 'none' : (FUTURE_MONTHS.length > MONTHS_COLLAPSED_COUNT ? 'inline-block' : 'none');
+  }
+}
+
+function showMoreMonths(){
+  monthListExpanded = true;
+  const current = document.getElementById('f_month').value;
+  populateMonthSelect(current);
+}
+
+function populateOwnerSelect(selected){
+  const sel = document.getElementById('f_owner');
+  let opts = '<option value="">No one yet</option>';
+  opts += people.map(p => `<option ${p.name===selected?'selected':''}>${escapeHtml(p.name)}</option>`).join('');
+  sel.innerHTML = opts;
+}
+
+// ---- Suggestion engine ---------------------------------------------------------------
+// A built-in catalog of typical US prices (rough averages, meant as a starting point, not a quote).
+// Format per line:  name/synonym/synonym:typical price
+const PRICE_CATALOG = {
+'Vehicle': `
+registration renewal/car registration/vehicle registration/tag renewal/license plate/registration:150
+drivers license/driver license/license renewal:40
+oil change:90
+tire rotation:40
+snow tire/winter tire:700
+tire/tyre:600
+brake pad/brake job/brake:350
+car battery/battery replacement:180
+windshield wiper/wiper blade:30
+windshield/windshield replacement:300
+wheel alignment/alignment:100
+transmission:2500
+engine repair/engine:1500
+check engine light/diagnostic:120
+state inspection/emissions test/smog check/inspection:50
+car insurance/auto insurance:700
+car wash:20
+car detailing/detailing:200
+cabin air filter:40
+tune up/car service/car maintenance/car repair:250
+dash cam:120
+floor mat/all weather floor mat:120
+roof rack:300
+trailer hitch/tow hitch:400
+jump starter:80
+coolant flush/radiator:150
+spark plug:200
+muffler/exhaust:400
+roadside assistance/aaa:60
+down payment on car/car down payment:3000
+motorcycle:9000
+`,
+'Home': `
+hvac service/hvac/furnace repair/furnace/heating repair:200
+air conditioner/window ac/ac unit:350
+ac repair:300
+furnace filter/air filter/hvac filter:25
+water filter/fridge filter:40
+gutter cleaning/gutter:180
+roof repair/roof:1500
+plumber/plumbing:300
+water heater:900
+pest control/exterminator:150
+chimney sweep/chimney:200
+fence:1500
+driveway:2000
+painting/repaint/paint:400
+septic:400
+property tax/home tax:1200
+homeowners insurance/home insurance:1400
+hoa dues/hoa:300
+lawn care/lawn service/landscaping:200
+tree removal/tree trimming:600
+sprinkler/irrigation:250
+mulch:100
+fertilizer/weed killer:60
+snow blower:700
+carpet cleaning:200
+window cleaning:150
+pressure washing:200
+deck repair/deck:1500
+new floors/flooring:3000
+carpet:2000
+kitchen remodel:15000
+bathroom remodel:9000
+smoke detector/smoke alarm/carbon monoxide detector:30
+fire extinguisher:30
+security system/home security/doorbell camera:200
+smart thermostat/thermostat:150
+light bulb/led bulb:30
+ceiling fan:150
+garage door opener/garage door:500
+smart lock/door lock/new locks/locksmith:150
+mattress:900
+pillow:60
+bedding/sheets/comforter:120
+couch/sofa:900
+recliner/armchair:350
+dining table/table:600
+desk:250
+bookshelf/shelving:150
+dresser:400
+area rug/rug:250
+curtain/blinds:150
+lamp:60
+mirror:80
+refrigerator/fridge:1200
+dishwasher:600
+washer and dryer:1400
+washing machine/washer:700
+clothes dryer/dryer:650
+oven/range/stove:900
+microwave:120
+robot vacuum/roomba:250
+vacuum:200
+blender:50
+toaster oven/toaster:40
+espresso machine:400
+coffee maker/coffee machine:90
+air fryer:100
+crockpot/slow cooker/instant pot:80
+stand mixer/kitchenaid:350
+food processor:100
+rice cooker:50
+hair dryer/blow dryer:40
+straightener/flat iron/curling iron:60
+electric toothbrush:70
+electric razor/razor:70
+ironing board/iron:40
+air purifier:150
+humidifier/dehumidifier:80
+space heater:60
+grill/bbq/barbecue:350
+patio furniture/outdoor furniture:700
+fire pit:200
+lawn mower/mower:350
+leaf blower/weed eater/trimmer:150
+power tool/drill:120
+tool set/toolbox:100
+ladder:100
+cookware/pots and pans/knife set:200
+dinnerware/dishes:100
+towel:50
+storage bin:40
+cleaning supplies:40
+trash can:50
+appliance:500
+furniture:600
+home repair/handyman:250
+electrician:300
+`,
+'Electronics': `
+tv/television:500
+laptop:800
+desktop computer/desktop/pc/computer:900
+monitor:250
+keyboard/mouse:60
+printer:150
+ink/toner:60
+tablet/ipad:400
+iphone/android/cell phone/smartphone/phone:700
+phone case/screen protector:30
+headphones/earbuds/airpods:150
+bluetooth speaker/soundbar/speaker:150
+game console/xbox/playstation/ps5/nintendo switch:450
+video game:60
+router/wifi/modem:120
+smart watch/apple watch/fitbit:300
+camera:600
+gopro/action camera:350
+drone:500
+external hard drive/ssd:90
+charger/charging cable:25
+kindle/e-reader:110
+projector:400
+vr headset:400
+smart speaker/echo/alexa/google home:50
+roku/fire stick/apple tv/streaming device:50
+webcam:70
+microphone:100
+surge protector:25
+`,
+'Kids': `
+school supplies:150
+backpack/lunchbox:60
+school uniform:150
+school fees:100
+field trip:30
+school pictures/school photos:50
+yearbook:40
+summer camp/camp:400
+daycare/day care/childcare:1000
+babysitter/babysitting:100
+tutoring/tutor:300
+music lessons/piano lessons/guitar lessons/violin lessons:150
+dance class/ballet/gymnastics/swim lessons/karate:150
+sports registration/team fees/sports:200
+cleats/soccer cleats:60
+sports gear/sports equipment:150
+helmet:50
+stroller:300
+crib/bassinet:350
+car seat/booster seat:200
+high chair:100
+diapers/wipes/baby formula/formula:100
+baby monitor:100
+toys/lego:50
+bike/bicycle/scooter:200
+trampoline:300
+swing set/playset:700
+prom/homecoming:300
+graduation party/graduation:200
+drivers ed/driver ed:400
+test prep/sat prep/act prep:60
+application fees/college application:100
+first communion/baptism/bar mitzvah/confirmation:200
+senior pictures:300
+class ring:300
+school lunch:300
+`,
+'Education': `
+tuition:5000
+college/university:10000
+graduate school/grad school:15000
+textbook:300
+online course/udemy/coursera/course:100
+certification/exam fee:300
+coding bootcamp/bootcamp:12000
+conference/workshop:500
+professional development/continuing education:400
+language class/language lessons:150
+dorm supplies/dorm:400
+meal plan:2000
+student fees:200
+`,
+'Health': `
+dental cleaning/teeth cleaning/dental/dentist:150
+invisalign/braces/orthodontist:5000
+retainer:300
+root canal:1000
+dental crown/crown:1200
+cavity filling/filling:200
+wisdom teeth:1500
+dentures:2000
+eyeglasses/prescription glasses/glasses:250
+contact lenses/contacts:200
+eye exam:120
+lasik:4000
+annual physical/checkup/physical/doctor visit/doctor:100
+dermatologist/dermatology/specialist:200
+therapy/therapist/counseling:150
+chiropractor:75
+physical therapy:100
+massage/acupuncture:90
+prescription/medication/pharmacy:50
+vitamins/supplements:40
+hearing aids:2000
+mammogram/colonoscopy/screening:300
+flu shot/vaccine/immunization:40
+urgent care/emergency room/er visit:500
+surgery:5000
+health insurance:400
+deductible:1500
+gym membership/gym/ymca:50
+personal trainer:300
+treadmill:800
+peloton:1500
+exercise bike:600
+dumbbells/weights/yoga mat:80
+running shoes:130
+haircut/hair cut/barber:40
+hair color/highlights/salon:150
+manicure/pedicure/nails:50
+skincare/makeup:60
+waxing/eyebrows:50
+`,
+'Pets': `
+vet visit/veterinarian/vet:150
+puppy shots/kitten shots/puppy vaccine/kitten vaccine/dog vaccine/cat vaccine/pet vaccine:80
+spay/neuter:300
+dog food/cat food/pet food:50
+adopt a dog/puppy:300
+adopt a cat/kitten:150
+pet insurance:40
+pet grooming/grooming/groomer:70
+pet boarding/boarding/kennel/pet sitter/dog walker:60
+flea and tick/heartworm:40
+dog crate/pet bed/leash/collar:50
+cat litter/litter box/litter:25
+aquarium/fish tank:150
+dog training/obedience class:200
+pet dental:400
+microchip:50
+pet license:20
+`,
+'Clothing': `
+winter coat/coat/jacket:150
+sneakers/boots/shoes:100
+dress shoes:120
+tuxedo/suit:400
+formal dress/dress:150
+jeans/pants:50
+shirt/tee:30
+underwear/socks:30
+back to school clothes/school clothes:200
+wardrobe/clothing/clothes:200
+swimsuit:50
+work clothes/work boots:120
+purse/handbag/wallet:100
+watch:150
+sunglasses:100
+belt/tie:30
+snow pants/gloves/hat/scarf/winter gear:60
+bridesmaid dress:150
+tailoring/alterations/dry cleaning:30
+`,
+'Holidays & Gifts': `
+christmas gifts/holiday gifts/christmas/holiday:500
+christmas tree:100
+christmas decorations/halloween decorations/decorations:80
+halloween costume/costume:40
+halloween/candy:50
+thanksgiving dinner/thanksgiving:150
+easter:60
+valentines day/valentine:60
+mothers day/fathers day:70
+birthday party:250
+birthday gift/birthday:100
+anniversary dinner/anniversary:150
+wedding gift:100
+baby shower:60
+engagement ring:5000
+wedding:15000
+bridal shower/bachelorette:150
+graduation gift:50
+teacher gift:40
+stocking stuffers:50
+wrapping paper/gift wrap:30
+greeting card/cards:20
+flowers/bouquet:60
+fireworks:80
+party supplies:60
+gift:75
+`,
+'Subscriptions': `
+netflix:190
+hulu:120
+disney plus:140
+hbo max/max/hbo:200
+spotify/apple music:130
+youtube premium:140
+amazon prime/prime:139
+costco membership/costco/sams club:65
+microsoft 365/office 365:100
+adobe/creative cloud:260
+icloud/google one/dropbox:40
+chatgpt/claude/ai subscription:240
+antivirus/norton/mcafee:60
+vpn:60
+domain renewal/domain name/domain:20
+web hosting/hosting/website:150
+newspaper/magazine/new york times:100
+audible/kindle unlimited:150
+patreon:60
+xbox game pass/playstation plus/gaming subscription:80
+password manager/1password/lastpass:36
+streaming service/streaming:150
+app subscription:50
+duolingo:80
+museum membership/zoo membership/membership:100
+software license/license:120
+subscription:120
+`,
+'Travel': `
+family vacation/vacation:2500
+family trip/trip:1000
+flight/airfare/plane ticket:400
+airbnb/vrbo/hotel/lodging:600
+rental car:300
+cruise:2500
+disney world/disneyland/disney:4000
+road trip:600
+campsite/camping:150
+national park pass/park pass:80
+passport renewal/passport:165
+visa:100
+travel insurance:120
+luggage/suitcase:150
+honeymoon:4000
+ski trip/ski pass/lift ticket:800
+beach trip:1200
+family reunion:800
+theme park/amusement park/six flags:300
+concert ticket/concert:150
+game ticket/sporting event:120
+weekend getaway/getaway:500
+tsa precheck/global entry:100
+airport parking:100
+baggage fee:60
+souvenirs:50
+`,
+'Other': `
+donation/tithe/charity:100
+life insurance:600
+tax preparation/accountant/taxes:250
+lawyer/attorney/legal fees/last will:500
+notary:15
+storage unit:600
+movers/moving truck/moving:1500
+funeral:8000
+family photos/photographer/portraits:300
+craft supplies/hobby:60
+`
+};
+
+// Broader single-word hints, used when no catalog item matches (category only, no price).
+const CATEGORY_HINTS = {
+  'Vehicle': 'car truck suv van vehicle auto automotive motorcycle engine mechanic dmv sedan',
+  'Home': 'house home kitchen bathroom bedroom yard garden lawn garage furniture appliance repair electrician contractor renovation cleaning',
+  'Kids': 'kid child children baby toddler infant school daycare teen teenager nursery',
+  'Health': 'doctor medical teeth eye health clinic hospital medicine fitness',
+  'Holidays & Gifts': 'present party celebration',
+  'Travel': 'airport resort travel hotel flight',
+  'Subscriptions': 'subscription membership monthly annual renewal software',
+  'Pets': 'pet dog cat puppy kitten hamster horse bird',
+  'Clothing': 'outfit boot sock',
+  'Education': 'class college university degree training exam',
+  'Electronics': 'gadget wireless bluetooth console gaming',
+};
+
+function normalizeText(s){
+  return String(s).toLowerCase().replace(/['’]/g, '').replace(/[^a-z0-9]+/g, ' ').trim();
+}
+function singularize(w){
+  if(w.length > 4 && w.endsWith('ies')) return w.slice(0, -3) + 'y';
+  if(/(ches|shes|sses|xes)$/.test(w)) return w.slice(0, -2);
+  if(w.length > 3 && w.endsWith('s') && !/(ss|us|is)$/.test(w)) return w.slice(0, -1);
+  return w;
+}
+function canon(s){
+  return normalizeText(s).split(' ').filter(Boolean).map(singularize).join(' ');
+}
+function editDistance(a, b){
+  if(a === b) return 0;
+  const m = a.length, n = b.length;
+  if(!m) return n;
+  if(!n) return m;
+  let prev = Array.from({length: n + 1}, (_, i) => i);
+  for(let i = 1; i <= m; i++){
+    const cur = [i];
+    for(let j = 1; j <= n; j++){
+      cur[j] = Math.min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    }
+    prev = cur;
+  }
+  return prev[n];
+}
+
+const CATALOG = [];
+const VOCAB = new Set();
+const HINT_INDEX = {};
+(function buildCatalog(){
+  for(const [category, block] of Object.entries(PRICE_CATALOG)){
+    block.split('\n').forEach(line => {
+      line = line.trim();
+      if(!line) return;
+      const idx = line.lastIndexOf(':');
+      const price = Number(line.slice(idx + 1));
+      const names = line.slice(0, idx).split('/').map(s => s.trim()).filter(Boolean);
+      const terms = names.map(canon);
+      CATALOG.push({ category, price, names, terms });
+      terms.forEach(t => t.split(' ').forEach(w => { if(w.length >= 5) VOCAB.add(w); }));
+    });
+  }
+  for(const [category, words] of Object.entries(CATEGORY_HINTS)){
+    words.split(' ').forEach(w => { HINT_INDEX[canon(w)] = category; });
+  }
+})();
+
+function matchCatalog(canonInput){
+  const padded = ' ' + canonInput + ' ';
+  let best = null;
+  for(const entry of CATALOG){
+    for(let i = 0; i < entry.terms.length; i++){
+      const t = entry.terms[i];
+      if(padded.includes(' ' + t + ' ')){
+        const score = t.length + t.split(' ').length * 3; // longer, more specific phrases win
+        if(!best || score > best.score) best = { entry, score, name: entry.names[i] };
+      }
+    }
+  }
+  return best;
+}
+
+// Fix likely typos by snapping long words to the closest word we know.
+function fuzzyCorrect(canonInput){
+  let changed = false;
+  const fixed = canonInput.split(' ').map(w => {
+    if(w.length < 5 || VOCAB.has(w)) return w;
+    const maxD = w.length >= 9 ? 2 : 1;
+    let bestWord = null, bestD = maxD + 1;
+    for(const v of VOCAB){
+      if(Math.abs(v.length - w.length) > maxD) continue;
+      const d = editDistance(w, v);
+      if(d < bestD){ bestD = d; bestWord = v; }
+    }
+    if(bestWord){ changed = true; return bestWord; }
+    return w;
+  });
+  return changed ? fixed.join(' ') : null;
+}
+
+// Returns { category, price|null, label|null, confidence: 'match' | 'close' | 'guess' } or null.
+function suggestForName(name){
+  const input = canon(name);
+  if(!input) return null;
+
+  let m = matchCatalog(input);
+  if(m) return { category: m.entry.category, price: m.entry.price, label: m.name, confidence: 'match' };
+
+  const fixed = fuzzyCorrect(input);
+  if(fixed){
+    m = matchCatalog(fixed);
+    if(m) return { category: m.entry.category, price: m.entry.price, label: m.name, confidence: 'close' };
+  }
+
+  const tally = {};
+  input.split(' ').forEach(w => { const c = HINT_INDEX[w]; if(c) tally[c] = (tally[c] || 0) + 1; });
+  const ranked = Object.entries(tally).sort((a, b) => b[1] - a[1]);
+  if(ranked.length) return { category: ranked[0][0], price: null, label: null, confidence: 'guess' };
+  return null;
+}
+
+// Optional real-AI lookup. A web page can't hold an API key safely, so this needs a small server
+// that asks a model and replies with { "category": "...", "price": 123 }. Leave blank to stay offline.
+const AI_SUGGEST_URL = '';
+let aiTimer = null, aiToken = 0;
+function scheduleAiSuggest(name){
+  if(!AI_SUGGEST_URL) return;
+  clearTimeout(aiTimer);
+  const token = ++aiToken;
+  aiTimer = setTimeout(async () => {
+    try {
+      const res = await fetch(AI_SUGGEST_URL, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, categories: sortedCategoryList().filter(c => c !== 'Other') })
+      });
+      if(!res.ok) return;
+      const data = await res.json();
+      if(token !== aiToken || document.getElementById('f_name').value.trim() !== name) return;
+      const category = sortedCategoryList().includes(data.category) ? data.category : null;
+      const price = Number(data.price) > 0 ? Math.round(Number(data.price)) : null;
+      if(!category && !price) return;
+      applySuggestion({ category: category || document.getElementById('f_category').value, price, label: null, confidence: 'ai' });
+    } catch(e) { /* stay with the offline suggestion */ }
+  }, 600);
+}
+
+let costManuallyEdited = false;
+let categoryManuallyPicked = false;
+function onCostInput(){ costManuallyEdited = true; }
+
+function suggestionHintHtml(s){
+  const cat = `<strong>${escapeHtml(s.category)}</strong>`;
+  const price = s.price != null ? `<strong>$${s.price.toLocaleString()}</strong>` : '';
+  if(s.confidence === 'match') return `Looks like ${cat}, about ${price} for a typical ${escapeHtml(s.label)}. Adjust anytime.`;
+  if(s.confidence === 'close') return `Closest match: ${escapeHtml(s.label)}. ${cat}, about ${price}. Adjust anytime.`;
+  if(s.confidence === 'ai') return `AI estimate: ${cat}${price ? ', about ' + price : ''}. Adjust anytime.`;
+  return `Best guess: ${cat}. No typical price on file, so add your own estimate.`;
+}
+
+function applySuggestion(s){
+  const categorySel = document.getElementById('f_category');
+  const costField = document.getElementById('f_cost');
+  if(!categoryManuallyPicked && s.category && categorySel.value !== s.category && sortedCategoryList().includes(s.category)){
+    populateCategorySelect(s.category);
+    populateSubcategoryField(s.category, '');
+  }
+  if(!costManuallyEdited) costField.value = s.price != null ? s.price : '';
+  document.getElementById('nameHint').innerHTML = suggestionHintHtml(s);
+}
+
+function onNameInput(){
+  const name = document.getElementById('f_name').value.trim();
+  const hint = document.getElementById('nameHint');
+  const costField = document.getElementById('f_cost');
+
+  if(!name){
+    hint.innerHTML = '';
+    if(!costManuallyEdited) costField.value = '';
+    return;
+  }
+  const s = suggestForName(name);
+  if(s){
+    applySuggestion(s);
+  } else {
+    if(!costManuallyEdited) costField.value = '';
+    hint.textContent = name.length >= 4 ? 'No typical price on file for this one. Pick a category and add your own estimate.' : '';
+  }
+  if(!s || s.confidence === 'guess') scheduleAiSuggest(name);
+}
+
+// ---- Color system: every color is one base hex; light and dark tones are derived from it ----
+function hexToRgb(h){ const n = parseInt(h.slice(1), 16); return [(n >> 16) & 255, (n >> 8) & 255, n & 255]; }
+function mixHex(h, target, amt){
+  const a = hexToRgb(h), b = hexToRgb(target);
+  return '#' + a.map((v, i) => Math.round(v + (b[i] - v) * amt).toString(16).padStart(2, '0')).join('');
+}
+const THEMES = [
+  { key:'light',    label:'Sage',     dark:false, paper:'#EEF1ED', card:'#F8FAF7', accent:'#3F6D64' },
+  { key:'warm',     label:'Sand',     dark:false, paper:'#F3EEE6', card:'#FBF8F2', accent:'#A85A3A' },
+  { key:'ocean',    label:'Ocean',    dark:false, paper:'#E9F0F6', card:'#F5F9FC', accent:'#2F6E9E' },
+  { key:'dark',     label:'Dark',     dark:true,  paper:'#131719', card:'#1B2123', accent:'#6DB5A4' },
+  { key:'midnight', label:'Midnight', dark:true,  paper:'#0E1320', card:'#161C2E', accent:'#7BA7E8' },
+  { key:'mocha',    label:'Mocha',    dark:true,  paper:'#1A1512', card:'#231C18', accent:'#E0A070' }
+];
+function isDarkTheme(){ const t = THEMES.find(x => x.key === theme); return !!(t && t.dark); }
+function themePickerHtml(){
+  return THEMES.map(t => `<button type="button" class="theme-opt${t.key === theme ? ' active' : ''}" onclick="setTheme('${t.key}')">
+    <span class="theme-swatch" style="background:linear-gradient(135deg, ${t.paper} 0 45%, ${t.accent} 45% 100%)"></span>${t.label}</button>`).join('');
+}
+function renderThemePicker(){
+  const el = document.getElementById('themePicker');
+  if(el) el.innerHTML = themePickerHtml();
+}
+function colorSet(hex){
+  const [r, g, b] = hexToRgb(hex);
+  if(isDarkTheme()){
+    return { solid: hex, fg: mixHex(hex, '#ffffff', 0.5), bg: `rgba(${r},${g},${b},0.34)`, border: `rgba(${r},${g},${b},0.75)` };
+  }
+  return { solid: hex, fg: mixHex(hex, '#000000', 0.45), bg: `rgba(${r},${g},${b},0.42)`, border: `rgba(${r},${g},${b},0.7)` };
+}
+function neutralSet(){
+  return isDarkTheme()
+    ? { solid:'#7A877F', fg:'#B5C0B9', bg:'rgba(230,236,232,0.1)', border:'rgba(230,236,232,0.22)' }
+    : { solid:'#5A665D', fg:'#5A665D', bg:'rgba(31,42,36,0.1)', border:'rgba(31,42,36,0.18)' };
+}
+function hashIndex(str, mod){
+  let h = 0;
+  for(let i = 0; i < str.length; i++){ h = str.charCodeAt(i) + ((h << 5) - h); }
+  return Math.abs(h) % mod;
+}
+const PALETTE = ['#C98A2B','#4A85A8','#C1524B','#3F6D64','#7C6FB5','#5F8F3E','#B5556F','#C9782B','#4A6FA5','#6B7F3A','#8F4E7A','#4E8F7D'];
+function monthColor(m){
+  if(!m || m === 'No date yet') return neutralSet();
+  return colorSet(PALETTE[hashIndex(m, PALETTE.length)]);
+}
+const FIXED_CATEGORY_HEX = {
+  'Vehicle':'#C98A2B', 'Home':'#3F6D64', 'Kids':'#C1524B', 'Health':'#7C6FB5', 'Holidays & Gifts':'#B5556F',
+  'Subscriptions':'#4A85A8', 'Travel':'#5F8F3E', 'Clothing':'#8F4E7A', 'Education':'#4E8F7D',
+  'Electronics':'#4A6FA5', 'Pets':'#6B7F3A'
+};
+function categoryColor(c){
+  if(c === 'Other') return neutralSet();
+  return colorSet(FIXED_CATEGORY_HEX[c] || PALETTE[hashIndex(c, PALETTE.length)]);
+}
+const OWNER_HEX = ['#C98A2B','#3F6D64','#C1524B','#7C6FB5','#4A85A8','#5F8F3E','#B5556F'];
+function ownerColor(name){
+  if(!name) return neutralSet();
+  return colorSet(OWNER_HEX[hashIndex(name, OWNER_HEX.length)]);
+}
+
+function initials(name){
+  if(!name) return '?';
+  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+}
+
+function avatarHtml(name, size){
+  const cls = 'avatar' + (size==='sm' ? ' avatar-sm' : '');
+  const person = people.find(p => p.name === name);
+  const oc = ownerColor(name);
+  if(person && person.photo){
+    return `<img class="${cls}" src="${person.photo}" alt="${escapeHtml(name)}">`;
+  }
+  return `<span class="${cls}" style="background:${oc.solid}">${escapeHtml(initials(name))}</span>`;
+}
+
+function openPeopleModal(){
+  renderPeopleList();
+  document.getElementById('peopleOverlay').style.display = 'flex';
+}
+function closePeopleModal(){
+  document.getElementById('peopleOverlay').style.display = 'none';
+  populateOwnerSelect(document.getElementById('f_owner').value);
+}
+
+function renderPeopleList(){
+  const wrap = document.getElementById('peopleList');
+  if(people.length === 0){
+    wrap.innerHTML = '<div class="empty">No one added yet — add your first household member below.</div>';
+  } else {
+    wrap.innerHTML = people.map(p => `
+      <div class="person-row">
+        ${avatarHtml(p.name)}
+        <span class="person-name">${escapeHtml(p.name)}</span>
+        <button class="person-remove" onclick="removePerson('${p.id}')">Remove</button>
+      </div>
+    `).join('');
+  }
+  document.getElementById('p_name').value = '';
+  clearPhotoChoice();
+}
+
+function onPhotoChosen(){
+  const file = document.getElementById('p_photo').files[0];
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // shrink to a small square so photos stay tiny in the shared database
+    const img = new Image();
+    img.onload = () => {
+      try {
+        const S = 160, c = document.createElement('canvas');
+        c.width = c.height = S;
+        const side = Math.min(img.width, img.height);
+        c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, S, S);
+        pendingPhotoData = c.toDataURL('image/jpeg', 0.8);
+      } catch(err){ pendingPhotoData = e.target.result; }
+      showPhotoPreview();
+    };
+    img.onerror = () => { pendingPhotoData = e.target.result; showPhotoPreview(); };
+    img.src = e.target.result;
+  };
+  reader.readAsDataURL(file);
+}
+function showPhotoPreview(){
+  document.getElementById('p_avatarPreview').innerHTML = `<img src="${pendingPhotoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
+  document.getElementById('p_clearPhoto').style.display = 'inline-block';
+}
+function clearPhotoChoice(){
+  pendingPhotoData = null;
+  document.getElementById('p_avatarPreview').innerHTML = '＋';
+  document.getElementById('p_photo').value = '';
+  document.getElementById('p_clearPhoto').style.display = 'none';
+}
+
+function addPerson(){
+  const name = document.getElementById('p_name').value.trim();
+  if(!name){ alert('Give this person a name.'); return; }
+  people.push({ id: Date.now()+Math.random(), name, photo: pendingPhotoData });
+  logActivity(`${household.name} added ${name} to the household`);
+  renderPeopleList();
+  render();
+}
+function removePerson(id){
+  const p = people.find(x => x.id == id);
+  people = people.filter(x => x.id != id);
+  if(p) logActivity(`${household.name} removed ${p.name} from the household`);
+  renderPeopleList();
+  render();
+}
+
+const SUGGESTIONS = [
+  {name:'Car registration renewal', category:'Vehicle', cost:150},
+  {name:'Tires', category:'Vehicle', cost:600},
+  {name:'Oil change / service', category:'Vehicle', cost:90},
+  {name:'HVAC filter / service', category:'Home', cost:120},
+  {name:'Gutter cleaning', category:'Home', cost:180},
+  {name:'Property tax', category:'Home', cost:1200},
+  {name:'School supplies', category:'Kids', cost:150},
+  {name:'Sports registration & gear', category:'Kids', cost:200},
+  {name:'Summer camp', category:'Kids', cost:400},
+  {name:'Dental cleanings', category:'Health', cost:150},
+  {name:'Glasses / contacts', category:'Health', cost:250},
+  {name:'Holiday gifts', category:'Holidays & Gifts', cost:500},
+  {name:'Birthdays this year', category:'Holidays & Gifts', cost:300},
+  {name:'Annual software/subscriptions', category:'Subscriptions', cost:200},
+  {name:'Annual family trip', category:'Travel', cost:1000},
+];
+
+function updateHouseholdTitle(){
+  document.getElementById('hhTitle').textContent = householdName || 'Our household';
+  document.title = (householdName ? householdName + ' · ' : '') + 'Household Forecast';
+}
+function onHouseholdNameInput(){
+  householdName = document.getElementById('settingsHhName').value.trim();
+  updateHouseholdTitle();
+  render();
+}
+
+function setGateError(msg){ document.getElementById('gateError').textContent = msg || ''; }
+
+async function enterApp(){
+  const btn = document.getElementById('gateBtn');
+  setGateError('');
+  const code = document.getElementById('householdCode').value.trim().toUpperCase().replace(/\s+/g, '-');
+  const name = document.getElementById('yourName').value.trim();
+  const typedHhName = document.getElementById('householdNameInput').value.trim();
+  if(!code || !name){
+    setGateError('Add a household code and your name to continue.');
+    return;
+  }
+  if(!/^[A-Z0-9_-]{6,40}$/.test(code)){
+    setGateError('Household codes are 6–40 letters, numbers or dashes, like MAPLE-HARBOR-4827.');
+    return;
+  }
+  household = { code, name };
+  householdName = '';
+  btn.disabled = true;
+  btn.textContent = 'Connecting…';
+  try {
+    if(cloudConfigured()){
+      const remote = await cloudConnect(code);
+      if(remote){
+        applyState(stateFromDoc(remote));
+        cloud.lastJson = stableJson(snapshotState());
+      }
+      cloud.mode = 'cloud';
+      cloud.ready = true;
+    } else {
+      cloud.mode = 'local';
+    }
+  } catch(e){
+    cloudDisconnect();
+    setGateError(friendlyCloudError(e));
+    btn.disabled = false;
+    btn.textContent = 'Open household board';
+    return;
+  }
+  btn.disabled = false;
+  btn.textContent = 'Open household board';
+  if(!householdName && typedHhName) householdName = typedHhName;   // an existing household's name wins
+  if(!people.some(p => p.name.toLowerCase() === name.toLowerCase())){
+    people.push({ id: Date.now()+Math.random(), name, photo: null });
+    logActivity(`${name} joined the household`);
+  }
+  try { localStorage.setItem('ledgerHousehold', JSON.stringify({ code, name })); } catch(e) {}
+  updateHouseholdTitle();
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('hhCodeLabel').textContent = 'Signed in as ' + household.name;
+  setCloudStatus(cloud.mode === 'cloud' ? 'ok' : 'local');
+  render();
+}
+
+function logActivity(text){
+  activity.unshift({ text, time: new Date() });
+  activity = activity.slice(0, 6);
+}
+
+function timeAgo(t){
+  const secs = Math.max(0, Math.round((Date.now() - new Date(t).getTime()) / 1000));
+  if(isNaN(secs) || secs < 60) return 'just now';
+  const mins = Math.round(secs / 60);
+  if(mins < 60) return mins + 'm ago';
+  const hrs = Math.round(mins / 60);
+  if(hrs < 24) return hrs + 'h ago';
+  return Math.round(hrs / 24) + 'd ago';
+}
+
+function openItemModal(prefill){
+  editingId = prefill && prefill.id ? prefill.id : null;
+  document.getElementById('modalTitle').textContent = editingId ? 'Edit item' : 'Add a future item';
+  document.getElementById('f_name').value = prefill ? prefill.name : '';
+  document.getElementById('nameHint').innerHTML = '';
+  // no name typed yet for a brand-new item, so don't lock the category to a fixed default —
+  // let the first alphabetical option show until a name suggests a real category
+  populateCategorySelect(prefill ? prefill.category : null);
+  populateSubcategoryField(prefill ? prefill.category : null, prefill ? (prefill.subcategory||'') : '');
+  document.getElementById('f_cost').value = prefill ? prefill.cost : '';
+  costManuallyEdited = !!(prefill && prefill.cost);
+  categoryManuallyPicked = !!prefill;
+  monthListExpanded = false;
+  populateMonthSelect(prefill ? prefill.month : 'No date yet');
+  populateOwnerSelect(prefill ? (prefill.owner||'') : '');
+  document.getElementById('f_link').value = prefill ? (prefill.link||'') : '';
+  document.getElementById('itemOverlay').style.display = 'flex';
+}
+function closeItemModal(){ document.getElementById('itemOverlay').style.display = 'none'; }
+
+function saveItem(){
+  const name = document.getElementById('f_name').value.trim();
+  let category = document.getElementById('f_category').value;
+  const cost = parseFloat(document.getElementById('f_cost').value) || 0;
+  const month = document.getElementById('f_month').value || 'No date yet';
+  const existing = editingId ? items.find(i => i.id === editingId) : null;
+  const saved = existing ? existing.saved : 0;
+  const owner = document.getElementById('f_owner').value;
+  const link = document.getElementById('f_link').value.trim();
+
+  if(!name || !cost){
+    alert('Give the item a name and an estimated cost.');
+    return;
+  }
+
+  if(category === 'Other'){
+    const newCat = document.getElementById('f_newCategory').value.trim();
+    if(!newCat){
+      alert('Type a name for the new category, then hit Add.');
+      return;
+    }
+    if(!CATEGORIES.includes(newCat)) CATEGORIES.push(newCat);
+    category = newCat;
+  }
+
+  // subcategory: only read it if the person actually opened that field
+  let subcategory = '';
+  const subWrapOpen = document.getElementById('subcategoryFieldWrap').style.display !== 'none';
+  if(subWrapOpen){
+    const subSelectVisible = document.getElementById('f_subcategorySelect').style.display !== 'none';
+    if(subSelectVisible){
+      const subVal = document.getElementById('f_subcategorySelect').value;
+      if(subVal === 'Other'){
+        subcategory = document.getElementById('f_newSubcategory').value.trim();
+      } else {
+        subcategory = subVal; // '' means "None"
+      }
+    } else {
+      subcategory = document.getElementById('f_subcategoryText').value.trim();
+    }
+  }
+  if(subcategory){
+    if(!SUBCATEGORIES[category]) SUBCATEGORIES[category] = [];
+    if(!SUBCATEGORIES[category].includes(subcategory)) SUBCATEGORIES[category].push(subcategory);
+  }
+
+  // someone else may have removed this item while the edit window was open
+  if(editingId && !items.some(i => i.id === editingId)) editingId = null;
+  if(editingId){
+    const it = items.find(i => i.id === editingId);
+    Object.assign(it,{ name, category, cost, month, saved, owner, link, subcategory });
+    logActivity(`${household.name} updated “${name}”`);
+  } else {
+    items.push({ id: Date.now()+Math.random(), name, category, cost, month, saved, owner, link, subcategory, completed:false });
+    logActivity(`${household.name} added “${name}” — $${cost}`);
+  }
+  closeItemModal();
+  render();
+}
+
+function deleteItem(id){
+  const it = items.find(i => i.id === id);
+  items = items.filter(i => i.id !== id);
+  logActivity(`${household.name} removed “${it.name}”`);
+  render();
+}
+
+function editItem(id){
+  const it = items.find(i => i.id === id);
+  openItemModal(it);
+}
+
+
+
+
+function isUrl(str){
+  return /^https?:\/\//i.test(str.trim());
+}
+
+function splitMonth(m){
+  if(!m || m === 'No date yet') return ['TBD', 'no date'];
+  const parts = m.trim().split(/\s+/);
+  if(parts.length >= 2) return [parts[0], parts.slice(1).join(' ')];
+  return [m, ''];
+}
+
+function monthSortKey(m){
+  if(m === 'No date yet') return Infinity;
+  const idx = MONTH_OPTIONS.indexOf(m);
+  return idx === -1 ? Infinity : idx;
+}
+
+function renderMonthFilter(){
+  const wrap = document.getElementById('monthFilter');
+  wrap.innerHTML = '';
+  const months = [...new Set(items.map(i => i.month))].sort((a,b) => monthSortKey(a) - monthSortKey(b));
+
+  if(!months.includes(activeMonthFilter) && activeMonthFilter !== 'All'){
+    activeMonthFilter = 'All';
+  }
+
+  const allPill = document.createElement('div');
+  allPill.className = 'month-pill' + (activeMonthFilter === 'All' ? ' active' : '');
+  allPill.innerHTML = `All months <span class="count">${items.length}</span>`;
+  allPill.onclick = () => { activeMonthFilter = 'All'; render(); };
+  wrap.appendChild(allPill);
+
+  months.forEach(m => {
+    const count = items.filter(i => i.month === m).length;
+    const mc = monthColor(m);
+    const isActive = activeMonthFilter === m;
+    const pill = document.createElement('div');
+    pill.className = 'month-pill colored-pill' + (isActive ? ' active' : '');
+    pill.style.background = isActive ? mc.solid : mc.bg;
+    pill.style.borderColor = mc.border;
+    pill.style.color = isActive ? '#fff' : mc.fg;
+    pill.innerHTML = `${escapeHtml(m)} <span class="count">${count}</span>`;
+    pill.onclick = () => { activeMonthFilter = m; render(); };
+    wrap.appendChild(pill);
+  });
+
+  updateFilterNote();
+}
+
+function renderCategoryFilter(){
+  const wrap = document.getElementById('categoryFilter');
+  wrap.innerHTML = '';
+  const cats = [...new Set(items.map(i => i.category))].sort((a,b) => a.localeCompare(b));
+
+  if(!cats.includes(activeCategoryFilter) && activeCategoryFilter !== 'All'){
+    activeCategoryFilter = 'All';
+  }
+
+  const allPill = document.createElement('div');
+  allPill.className = 'month-pill' + (activeCategoryFilter === 'All' ? ' active' : '');
+  allPill.innerHTML = `All categories <span class="count">${items.length}</span>`;
+  allPill.onclick = () => { activeCategoryFilter = 'All'; render(); };
+  wrap.appendChild(allPill);
+
+  cats.forEach(c => {
+    const count = items.filter(i => i.category === c).length;
+    const cc = categoryColor(c);
+    const isActive = activeCategoryFilter === c;
+    const pill = document.createElement('div');
+    pill.className = 'month-pill colored-pill' + (isActive ? ' active' : '');
+    pill.style.background = isActive ? cc.solid : cc.bg;
+    pill.style.borderColor = cc.border;
+    pill.style.color = isActive ? '#fff' : cc.fg;
+    pill.innerHTML = `${escapeHtml(c)} <span class="count">${count}</span>`;
+    pill.onclick = () => { activeCategoryFilter = c; render(); };
+    wrap.appendChild(pill);
+  });
+}
+
+function updateFilterNote(){
+  const parts = [];
+  if(activeMonthFilter !== 'All') parts.push(activeMonthFilter);
+  if(activeCategoryFilter !== 'All') parts.push(activeCategoryFilter);
+  document.getElementById('filterNote').textContent =
+    parts.length ? `Filtered to ${parts.join(' · ')}` : 'Showing everything';
+}
+
+function buildItemCard(item, opts){
+  opts = opts || {};
+  const oc = ownerColor(item.owner);
+  const mc = monthColor(item.month);
+  const [monthWord, monthYear] = splitMonth(item.month);
+
+  const card = document.createElement('div');
+  card.className = 'item-card';
+  card.setAttribute('data-cat', item.category);
+  card.setAttribute('data-item-id', item.id);
+  card.style.setProperty('--cat-color', categoryColor(item.category).solid);
+
+  let checkboxHtml;
+  if(opts.preview && opts.completedView){
+    checkboxHtml = `<input type="checkbox" class="complete-check restore-check" checked title="Restore checkbox (sample)" onchange="this.checked=true">`;
+  } else if(opts.preview){
+    checkboxHtml = `<input type="checkbox" class="complete-check" title="Try it: check to see the completion animation" onchange="demoComplete(this)">`;
+  } else if(opts.completedView){
+    checkboxHtml = `<input type="checkbox" class="complete-check restore-check" checked title="Mark as not complete" onchange="onRestoreCheckboxChange(${item.id}, this)">`;
+  } else {
+    checkboxHtml = `<input type="checkbox" class="complete-check" title="Mark complete" onchange="completeItem(${item.id})">`;
+  }
+
+  card.innerHTML = `
+    ${checkboxHtml}
+    <div class="card-body">
+      <div class="month-badge" style="background:${mc.bg}; border-color:${mc.border};">
+        <div class="month-badge-label" style="color:${mc.fg};">${escapeHtml(monthWord)}</div>
+        <div class="month-badge-sub" style="color:${mc.fg};">${escapeHtml(monthYear)}</div>
+      </div>
+      <div class="item-main">
+        <div class="item-top">
+          <span class="item-name">${escapeHtml(item.name)}</span>
+          <span class="tag tag-cat">${escapeHtml(item.category)}</span>
+          ${item.subcategory ? `<span class="tag tag-subcat">${escapeHtml(item.subcategory)}</span>` : ''}
+          ${!opts.completedView && !item.owner ? `<span class="tag tag-warn" title="No one assigned yet">No owner</span>` : ''}
+          ${!opts.completedView && item.month === 'No date yet' ? `<span class="tag tag-warn" title="No target month set">No month</span>` : ''}
+        </div>
+        ${item.owner ? `<div class="owner-chip" style="background:${oc.bg}; color:${oc.fg};">${avatarHtml(item.owner,'sm')}${escapeHtml(item.owner)}</div>` : ''}
+        ${item.link ? `<div class="item-note"><span class="note-icon">${isUrl(item.link) ? '🔗' : '📝'}</span>${isUrl(item.link) ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.link)}</a>` : escapeHtml(item.link)}</div>` : ''}
+        <div class="item-actions">
+          <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>Edit</button>
+          <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="deleteItem(${item.id})"`}>Remove</button>
+        </div>
+      </div>
+    </div>
+    <div class="item-amount">
+      <div class="item-amount-value">$${item.cost.toLocaleString()}</div>
+    </div>
+  `;
+  return card;
+}
+
+function switchTab(tab){
+  activeTab = tab;
+  render();
+}
+
+const ANIM_STRIKE_MS = 650;
+const ANIM_POP_MS = 220;
+const ANIM_COLLAPSE_MS = 650;
+
+function completeItem(id){
+  const card = document.querySelector(`[data-item-id="${id}"]`);
+  if(!card){ finishCompleting(id); return; }
+
+  // stage 1: strike through the name
+  card.classList.add('card-strike');
+
+  setTimeout(() => {
+    // stage 2: a quick pop, then collapse so the items below slide up
+    const h = card.scrollHeight;
+    card.style.maxHeight = h + 'px';
+    card.classList.add('card-pop');
+
+    setTimeout(() => {
+      card.classList.remove('card-pop');
+      card.classList.add('card-collapsed');
+    }, ANIM_POP_MS);
+
+    setTimeout(() => finishCompleting(id), ANIM_POP_MS + ANIM_COLLAPSE_MS);
+  }, ANIM_STRIKE_MS);
+}
+
+function finishCompleting(id){
+  const it = items.find(i => i.id === id);
+  if(it){
+    it.completed = true;
+    logActivity(`${household.name} marked “${it.name}” as complete`);
+  }
+  render();
+}
+
+let confirmOnRestore = true;
+
+function onRestoreCheckboxChange(id, checkboxEl){
+  if(confirmOnRestore){
+    const it = items.find(i => i.id === id);
+    const ok = confirm(`Move “${it ? it.name : 'this item'}” back to Active?`);
+    if(!ok){
+      checkboxEl.checked = true; // put the checkbox back since the user backed out
+      return;
+    }
+  }
+  restoreItem(id);
+}
+
+function restoreItem(id){
+  const it = items.find(i => i.id === id);
+  if(it){
+    it.completed = false;
+    logActivity(`${household.name} restored “${it.name}” to active`);
+  }
+  render();
+}
+
+// ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
+let theme = 'light';
+
+function loadSettings(){
+  try {
+    const saved = JSON.parse(localStorage.getItem('ledgerSettings') || '{}');
+    if(THEMES.some(t => t.key === saved.theme)) theme = saved.theme;
+    else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
+    if(typeof saved.confirmOnRestore === 'boolean') confirmOnRestore = saved.confirmOnRestore;
+  } catch(e) { /* storage unavailable: fall back to defaults */ }
+  applyTheme();
+}
+function saveSettings(){
+  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore })); } catch(e) {}
+}
+function applyTheme(){
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+function openSettingsModal(){
+  document.getElementById('appVersion').textContent = 'Household Forecast · version ' + APP_VERSION;
+  const signedIn = !!household.code;
+  document.getElementById('sharingSection').style.display = signedIn ? 'block' : 'none';
+  document.getElementById('shareCode').textContent = household.code || '—';
+  document.getElementById('settingsHhName').value = householdName;
+  document.getElementById('backupMsg').textContent = '';
+  document.getElementById('syncDetail').textContent = cloud.mode === 'cloud'
+    ? 'Changes save automatically and show up on everyone’s devices within a second or two.'
+    : 'Sharing isn’t switched on yet, so this board only lives on this device and is lost when you close the page. See the setup guide to turn it on.';
+  document.getElementById('settingsConfirmRestore').checked = confirmOnRestore;
+  renderThemePicker();
+  document.getElementById('settingsOverlay').style.display = 'flex';
+}
+function closeSettingsModal(){
+  document.getElementById('settingsOverlay').style.display = 'none';
+}
+function onConfirmRestoreSettingChange(){
+  confirmOnRestore = document.getElementById('settingsConfirmRestore').checked;
+  saveSettings();
+}
+function setTheme(t){
+  theme = t;
+  applyTheme();
+  saveSettings();
+  renderThemePicker();
+  // colors that are computed in JS (pills, badges, chips) need a redraw
+  if(document.getElementById('app').style.display === 'block') render();
+  if(document.getElementById('guideOverlay').style.display === 'flex') renderStyleGuide();
+}
+
+// every data change ends in render(); that's the single place we notice "something changed, sync it"
+function render(){
+  renderCore();
+  cloudSchedulePush();
+}
+
+function renderCore(){
+  document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
+  document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
+  const completedItems = items.filter(i => i.completed);
+  document.getElementById('completedCount').textContent = `(${completedItems.length})`;
+
+  const summaryStrip = document.getElementById('summaryStrip');
+  const monthFilterEl = document.getElementById('monthFilter');
+  const categoryFilterEl = document.getElementById('categoryFilter');
+  const sectionTitleEl = document.getElementById('sectionTitle');
+  const filterNoteEl = document.getElementById('filterNote');
+  const list = document.getElementById('itemsList');
+
+  if(activeTab === 'completed'){
+    summaryStrip.style.display = 'none';
+    monthFilterEl.style.display = 'none';
+    categoryFilterEl.style.display = 'none';
+    document.getElementById('sortControl').style.display = 'none';
+    sectionTitleEl.textContent = 'Completed';
+    filterNoteEl.textContent = completedItems.length
+      ? `${completedItems.length} item${completedItems.length>1?'s':''} checked off`
+      : '';
+
+    list.innerHTML = '';
+    if(completedItems.length === 0){
+      list.innerHTML = '<div class="empty">Nothing completed yet. Check an item off from Active to see it here.</div>';
+    } else {
+      const sorted = [...completedItems].sort((a,b) => monthSortKey(a.month) - monthSortKey(b.month));
+      sorted.forEach(item => list.appendChild(buildItemCard(item, { completedView: true })));
+    }
+
+    renderActivity();
+    return;
+  }
+
+  summaryStrip.style.display = '';
+  monthFilterEl.style.display = '';
+  categoryFilterEl.style.display = '';
+  sectionTitleEl.textContent = 'Coming up';
+
+  renderMonthFilter();
+  renderCategoryFilter();
+  updateFilterNote();
+
+  list.innerHTML = '';
+  const activeItems = items.filter(i => !i.completed);
+  let visible = activeMonthFilter === 'All' ? activeItems : activeItems.filter(i => i.month === activeMonthFilter);
+  if(activeCategoryFilter !== 'All') visible = visible.filter(i => i.category === activeCategoryFilter);
+
+  // "sort by subcategory" only makes sense once a single category with subcategories is selected
+  const catHasSub = activeCategoryFilter !== 'All'
+    && SUBCATEGORIES[activeCategoryFilter] && SUBCATEGORIES[activeCategoryFilter].length > 0;
+  const sortControl = document.getElementById('sortControl');
+  if(catHasSub){
+    sortControl.style.display = '';
+    document.getElementById('sortModeSelect').value = sortMode;
+  } else {
+    sortControl.style.display = 'none';
+    sortMode = 'month';
+  }
+
+  if(activeItems.length === 0){
+    list.innerHTML = '<div class="empty">Nothing on the board yet. Add an item, or tap “Suggested items” up top to seed your list.</div>';
+  } else if(visible.length === 0){
+    list.innerHTML = '<div class="empty">Nothing matches this filter yet.</div>';
+  } else {
+    const sorted = sortMode === 'subcategory'
+      ? [...visible].sort((a,b) => {
+          const subA = a.subcategory || '￿';
+          const subB = b.subcategory || '￿';
+          const c = subA.localeCompare(subB);
+          return c !== 0 ? c : monthSortKey(a.month) - monthSortKey(b.month);
+        })
+      : [...visible].sort((a,b) => monthSortKey(a.month) - monthSortKey(b.month));
+    sorted.forEach(item => list.appendChild(buildItemCard(item, { completedView: false })));
+  }
+
+  // stats — reflect whichever month/category filters are currently active
+  const activeFilters = [activeMonthFilter, activeCategoryFilter].filter(f => f !== 'All');
+  const filterLabel = activeFilters.length ? activeFilters.join(' · ') : null;
+
+  document.getElementById('statCount').textContent = visible.length;
+  document.getElementById('statCountSub').textContent = visible.length === 1
+    ? (filterLabel ? `1 thing in ${filterLabel}` : '1 thing to plan for')
+    : (visible.length
+        ? (filterLabel ? `in ${filterLabel}` : `across ${new Set(visible.map(i=>i.category)).size} categories`)
+        : 'nothing yet');
+
+  const totalForecasted = visible.reduce((sum,i)=> sum + (i.cost || 0), 0);
+  document.getElementById('statNeeded').textContent = '$' + Math.round(totalForecasted).toLocaleString();
+  document.getElementById('statNeededSub').textContent = filterLabel ? `for ${filterLabel}` : 'across all future items';
+
+  renderActivity();
+}
+
+function renderActivity(){
+  const actList = document.getElementById('activityList');
+  actList.innerHTML = '';
+  document.getElementById('activityCount').textContent = activity.length === 1 ? '1 update' : `${activity.length} updates`;
+  if(activity.length === 0){
+    actList.innerHTML = '<div class="empty">No activity yet.</div>';
+  } else {
+    activity.forEach(a => {
+      const row = document.createElement('div');
+      row.className = 'activity-row';
+      row.innerHTML = `<span>${escapeHtml(a.text)}</span><span class="activity-time">${timeAgo(a.time)}</span>`;
+      actList.appendChild(row);
+    });
+  }
+}
+
+// ---- Style guide: shows every visual element with sample data (nothing is saved) ----
+function guidePillHtml(label, colors, active, count){
+  const bg = active ? colors.solid : colors.bg;
+  const fg = active ? '#fff' : colors.fg;
+  return `<span class="month-pill guide-static" style="background:${bg}; border-color:${colors.border}; color:${fg};">${escapeHtml(label)}${count != null ? ` <span class="count">${count}</span>` : ''}</span>`;
+}
+
+function openStyleGuide(){
+  closeSettingsModal();
+  renderStyleGuide();
+  document.getElementById('guideOverlay').style.display = 'flex';
+}
+function closeStyleGuide(){
+  document.getElementById('guideOverlay').style.display = 'none';
+  openSettingsModal();
+}
+
+function renderStyleGuide(){
+  const m = FUTURE_MONTHS;
+  const body = document.getElementById('guideBody');
+  const catList = sortedCategoryList();
+  const sampleOwners = ['Dana', 'Sam', 'Alex', 'Jordan', 'Riley'];
+
+  body.innerHTML = `
+    <div class="setting-label">Theme (same setting as in Settings, so you can compare looks here)</div>
+    <div class="theme-picker">${themePickerHtml()}</div>
+
+    <div class="guide-section">
+      <h4>Item cards</h4>
+      <p class="guide-desc">Each card has the target month on the left, the name and tags in the middle, and the estimated cost on the right. The thin stripe on the left edge is the category color. Check the box on the first sample to watch the completion animation (it comes back afterward so you can replay it).</p>
+      <div class="guide-label">Everything filled in</div>
+      <div class="guide-list" id="guideCardsFull"></div>
+      <div class="guide-label">Missing an owner and a month (warning flags appear)</div>
+      <div class="guide-list" id="guideCardsMissing"></div>
+      <div class="guide-label">With a note instead of a link</div>
+      <div class="guide-list" id="guideCardsNote"></div>
+      <div class="guide-label">On the Completed tab (the checked box restores it)</div>
+      <div class="guide-list" id="guideCardsDone"></div>
+    </div>
+
+    <div class="guide-section">
+      <h4>Month colors</h4>
+      <p class="guide-desc">Every month keeps its own color on its card badge and its filter pill. A selected pill turns solid. "No date yet" stays gray.</p>
+      <div class="guide-row">
+        ${m.slice(0, 6).map((mo, i) => guidePillHtml(mo, monthColor(mo), i === 0, i + 1)).join('')}
+        ${guidePillHtml('No date yet', monthColor('No date yet'), false, 2)}
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h4>Category colors</h4>
+      <p class="guide-desc">Categories use the same filled-pill style, and the color also shows as the stripe on each card. New categories you create get their own color automatically.</p>
+      <div class="guide-row">
+        ${catList.map((c, i) => guidePillHtml(c, categoryColor(c), i === 0, null)).join('')}
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h4>People</h4>
+      <p class="guide-desc">Each person keeps one color. Their initials show until you upload a photo under + Person.</p>
+      <div class="guide-row">
+        ${sampleOwners.map(n => { const oc = ownerColor(n); return `<span class="owner-chip" style="background:${oc.bg}; color:${oc.fg}; margin-top:0;">${avatarHtml(n, 'sm')}${escapeHtml(n)}</span>`; }).join('')}
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h4>Tags and flags</h4>
+      <p class="guide-desc">Gray tags describe the item. Yellow flags mean something is missing. Click Edit on the card to fill it in and the flag goes away.</p>
+      <div class="guide-row">
+        <span class="tag tag-cat">Category</span>
+        <span class="tag tag-subcat">Subcategory</span>
+        <span class="tag tag-warn">No owner</span>
+        <span class="tag tag-warn">No month</span>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h4>Summary cards</h4>
+      <p class="guide-desc">These two cards follow whichever month and category filters are selected.</p>
+      <div class="summary-strip" style="margin-bottom:0;">
+        <div class="stat"><div class="stat-label">Items on the radar</div><div class="stat-value mono">4</div><div class="stat-sub">across 3 categories</div></div>
+        <div class="stat"><div class="stat-label">Total forecasted</div><div class="stat-value mono">$1,520</div><div class="stat-sub">across all future items</div></div>
+      </div>
+    </div>
+
+    <div class="guide-section">
+      <h4>Suggestion engine</h4>
+      <p class="guide-desc">As you type an item name, the board suggests a category and a typical price. Try a few names here. Prices are rough US averages for planning, not quotes, and typos and plurals are handled.</p>
+      <input type="text" id="guideEngineInput" placeholder="Try: hair dryer, refridgerator, dog food, braces" oninput="guideEngineTry(this.value)">
+      <div class="guide-engine-out" id="guideEngineOut">Type an item name to see what the board would suggest.</div>
+    </div>
+  `;
+
+  const sampleMonth = (i, fallback) => m[i] || fallback;
+  const add = (id, item, opts) => document.getElementById(id).appendChild(buildItemCard(item, Object.assign({ preview: true }, opts || {})));
+
+  add('guideCardsFull', { id: 'g1', name: 'Car registration renewal', category: 'Vehicle', subcategory: 'Honda Civic', cost: 150, month: sampleMonth(1, 'No date yet'), owner: 'Dana', link: 'https://example.com/dmv' });
+  add('guideCardsMissing', { id: 'g2', name: 'New washing machine', category: 'Home', subcategory: '', cost: 700, month: 'No date yet', owner: '', link: '' });
+  add('guideCardsNote', { id: 'g3', name: 'Holiday gifts', category: 'Holidays & Gifts', subcategory: '', cost: 500, month: sampleMonth(2, 'No date yet'), owner: 'Sam', link: 'Ask the grandparents what they want first' });
+  add('guideCardsDone', { id: 'g4', name: 'Dental cleaning', category: 'Health', subcategory: '', cost: 150, month: sampleMonth(0, 'No date yet'), owner: 'Sam', link: '' }, { completedView: true });
+}
+
+function guideEngineTry(val){
+  const out = document.getElementById('guideEngineOut');
+  if(!val.trim()){ out.textContent = 'Type an item name to see what the board would suggest.'; return; }
+  const s = suggestForName(val);
+  out.innerHTML = s ? suggestionHintHtml(s) : 'No typical price on file for this one. You would pick a category and add your own estimate.';
+}
+
+// Plays the same strike, pop and collapse as a real completion, then brings the sample back.
+function demoComplete(cb){
+  const card = cb.closest('.item-card');
+  if(!card || card.dataset.demoRunning) return;
+  card.dataset.demoRunning = '1';
+  card.classList.add('card-strike');
+  setTimeout(() => {
+    const h = card.scrollHeight;
+    card.style.maxHeight = h + 'px';
+    card.classList.add('card-pop');
+    setTimeout(() => { card.classList.remove('card-pop'); card.classList.add('card-collapsed'); }, ANIM_POP_MS);
+    setTimeout(() => {
+      card.classList.remove('card-strike', 'card-collapsed');
+      cb.checked = false;
+      setTimeout(() => { card.style.maxHeight = ''; delete card.dataset.demoRunning; }, 800);
+    }, ANIM_POP_MS + ANIM_COLLAPSE_MS + 700);
+  }, ANIM_STRIKE_MS);
+}
+
+function escapeHtml(str){
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+// ============================================================
+//  Cloud sync (Firebase Firestore). One document per household code.
+//  The whole board (items, people, activity, categories) lives in that document.
+// ============================================================
+const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
+const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '' };
+
+function cloudConfigured(){
+  return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
+}
+
+// JSON with sorted keys, so the same data always produces the same string
+function stableJson(v){
+  if(Array.isArray(v)) return '[' + v.map(stableJson).join(',') + ']';
+  if(v && typeof v === 'object') return '{' + Object.keys(v).sort().filter(k => v[k] !== undefined).map(k => JSON.stringify(k) + ':' + stableJson(v[k])).join(',') + '}';
+  return JSON.stringify(v === undefined ? null : v);
+}
+
+function snapshotState(){
+  return JSON.parse(JSON.stringify({
+    items, people,
+    activity: activity.map(a => ({ text: a.text, time: new Date(a.time).toISOString() })),
+    categories: CATEGORIES,
+    subcategories: SUBCATEGORIES,
+    householdName
+  }));
+}
+function stateFromDoc(d){
+  return {
+    items: Array.isArray(d.items) ? d.items : [],
+    people: Array.isArray(d.people) ? d.people : [],
+    activity: Array.isArray(d.activity) ? d.activity : [],
+    categories: Array.isArray(d.categories) ? d.categories : null,
+    subcategories: d.subcategories && typeof d.subcategories === 'object' ? d.subcategories : null,
+    householdName: typeof d.householdName === 'string' ? d.householdName : ''
+  };
+}
+function applyState(s){
+  items = s.items;
+  people = s.people;
+  activity = s.activity.map(a => ({ text: a.text, time: new Date(a.time) })).slice(0, 6);
+  if(s.categories) CATEGORIES = s.categories;
+  if(s.subcategories) SUBCATEGORIES = s.subcategories;
+  householdName = s.householdName || '';
+  updateHouseholdTitle();
+}
+
+async function makeFirebaseAdapter(){
+  const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
+  const [appM, fsM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]);
+  const app = appM.initializeApp(FIREBASE_CONFIG);
+  let db;
+  try {
+    // keeps a local copy so the board still opens and accepts edits briefly offline
+    db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) });
+  } catch(e){ db = fsM.getFirestore(app); }
+  return {
+    subscribe(code, onData, onError){
+      return fsM.onSnapshot(fsM.doc(db, 'households', code),
+        snap => onData(snap.exists() ? snap.data() : null, snap.metadata.fromCache), onError);
+    },
+    push(code, data){ return fsM.setDoc(fsM.doc(db, 'households', code), data); }
+  };
+}
+function getAdapter(){
+  return window.__cloudAdapterFactory ? Promise.resolve(window.__cloudAdapterFactory()) : makeFirebaseAdapter();
+}
+
+function cloudConnect(code){
+  return new Promise(async (resolve, reject) => {
+    let settled = false;
+    const finish = (fn, v) => { if(!settled){ settled = true; clearTimeout(t); fn(v); } };
+    const t = setTimeout(() => finish(reject, new Error('timeout')), 12000);
+    try {
+      cloud.adapter = await getAdapter();
+      cloud.unsub = cloud.adapter.subscribe(code, (data, fromCache) => {
+        // an empty answer from the local cache isn't proof the household is new; wait for the server
+        if(!data && fromCache) return;
+        if(!settled){ finish(resolve, data); return; }
+        if(data && data.clientId !== clientId) cloudApplyRemote(data);
+      }, err => {
+        if(!settled) finish(reject, err);
+        else setCloudStatus('err');
+      });
+    } catch(e){ finish(reject, e); }
+  });
+}
+function cloudDisconnect(){
+  try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
+  cloud.unsub = null; cloud.ready = false; cloud.adapter = null; cloud.lastJson = '';
+  clearTimeout(cloud.timer); cloud.timer = null;
+}
+function friendlyCloudError(e){
+  const code = e && e.code;
+  if(code === 'permission-denied') return 'The shared database refused the request. Check that the security rules from the setup guide are published.';
+  if(e && e.message === 'timeout') return 'Couldn’t reach the shared database. Check your connection and the Firebase settings in the app file, then try again.';
+  return 'Couldn’t connect to the shared database' + (e && e.message ? ' (' + e.message + ')' : '') + '.';
+}
+
+function cloudApplyRemote(data){
+  const remote = stateFromDoc(data);
+  const j = stableJson(JSON.parse(JSON.stringify({
+    items: remote.items, people: remote.people, activity: remote.activity,
+    categories: remote.categories || CATEGORIES, subcategories: remote.subcategories || SUBCATEGORIES,
+    householdName: remote.householdName
+  })));
+  if(j === cloud.lastJson) return;
+  clearTimeout(cloud.timer); cloud.timer = null;
+  applyState(remote);
+  cloud.lastJson = stableJson(snapshotState());
+  renderCore();
+  setCloudStatus('ok');
+}
+
+function cloudSchedulePush(){
+  if(!cloud.ready) return;
+  if(stableJson(snapshotState()) === cloud.lastJson) return;
+  setCloudStatus('saving');
+  clearTimeout(cloud.timer);
+  cloud.timer = setTimeout(cloudFlush, 400);
+}
+function cloudFlush(){
+  clearTimeout(cloud.timer); cloud.timer = null;
+  if(!cloud.ready) return;
+  const state = snapshotState();
+  const j = stableJson(state);
+  if(j === cloud.lastJson){ setCloudStatus('ok'); return; }
+  cloud.lastJson = j;
+  const payload = JSON.parse(JSON.stringify(Object.assign({}, state, { clientId, updatedAt: new Date().toISOString() })));
+  Promise.resolve(cloud.adapter.push(household.code, payload))
+    .then(() => { if(!cloud.timer) setCloudStatus('ok'); })
+    .catch(() => {
+      cloud.lastJson = '';
+      setCloudStatus('err');
+      clearTimeout(cloud.timer);
+      cloud.timer = setTimeout(cloudFlush, 5000); // try again shortly
+    });
+}
+
+function setCloudStatus(kind){
+  const el = document.getElementById('syncPill');
+  if(!el) return;
+  const text = { ok: '● Synced', saving: 'Saving…', err: 'Not saved — retrying', local: 'This device only' }[kind] || '';
+  el.textContent = text;
+  el.className = 'sync-pill' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
+  el.title = kind === 'local' ? 'Sharing isn’t set up yet. See the setup guide.' : '';
+}
+
+window.addEventListener('online', () => { if(cloud.ready) cloudFlush(); });
+window.addEventListener('offline', () => { if(cloud.ready) setCloudStatus('err'); });
+document.addEventListener('visibilitychange', () => { if(document.hidden && cloud.timer) cloudFlush(); });
+window.addEventListener('pagehide', () => { if(cloud.timer) cloudFlush(); });
+
+// ---- Household code helpers ----
+const CODE_WORDS = ['MAPLE','HARBOR','CEDAR','RIVER','SUNNY','PINE','AMBER','CLOVER','MEADOW','FALCON','WILLOW','COBALT','JUNIPER','ORCHARD','PEBBLE','LANTERN','TIMBER','SPARROW','BRIGHT','QUARTZ'];
+function generateHouseholdCode(){
+  const r = new Uint32Array(3);
+  (window.crypto || window.msCrypto).getRandomValues(r);
+  const code = CODE_WORDS[r[0] % CODE_WORDS.length] + '-' + CODE_WORDS[r[1] % CODE_WORDS.length] + '-' + String(1000 + (r[2] % 9000));
+  document.getElementById('householdCode').value = code;
+  setGateError('');
+}
+
+function copyHouseholdCode(kind){
+  const text = kind === 'link' ? (location.href.split('#')[0] + '#join=' + household.code) : household.code;
+  const btn = document.getElementById(kind === 'link' ? 'copyLinkBtn' : 'copyCodeBtn');
+  const label = btn.textContent;
+  const done = () => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = label; }, 1500); };
+  try {
+    navigator.clipboard.writeText(text).then(done, () => { window.prompt('Copy this:', text); });
+  } catch(e){ window.prompt('Copy this:', text); }
+}
+
+function exportBackup(){
+  const msg = document.getElementById('backupMsg');
+  try {
+    const data = Object.assign({ app: 'household-forecast', version: 1, exportedAt: new Date().toISOString(), householdCode: household.code }, snapshotState());
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `household-forecast-backup-${new Date().toISOString().slice(0,10)}.json`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(a.href), 4000);
+    msg.textContent = `Backup saved (${items.length} item${items.length === 1 ? '' : 's'}, ${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
+  } catch(e){ msg.textContent = 'Couldn’t create the backup file on this device.'; }
+}
+function onRestoreFileChosen(input){
+  const msg = document.getElementById('backupMsg');
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  const reader = new FileReader();
+  reader.onload = () => {
+    try {
+      const d = JSON.parse(reader.result);
+      if(!d || d.app !== 'household-forecast' || !Array.isArray(d.items) || !Array.isArray(d.people)) throw new Error('bad');
+      if(!confirm(`Replace everything on the board with this backup (${d.items.length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`)) return;
+      applyState(stateFromDoc(d));
+      logActivity(`${household.name} restored the board from a backup`);
+      render();
+      msg.textContent = 'Board restored from backup.';
+    } catch(e){ msg.textContent = 'That file doesn’t look like a Household Forecast backup.'; }
+  };
+  reader.readAsText(file);
+}
+
+function leaveHousehold(){
+  if(!confirm('Leave this household on this device? Nothing is deleted. Your family keeps the board and you can come back with the code.')) return;
+  try { localStorage.removeItem('ledgerHousehold'); } catch(e) {}
+  cloudDisconnect();
+  location.reload();
+}
+
+// On load: prefill the gate from an invite link or the last household used on this device,
+// and (when sharing is on) go straight back into the board.
+function resumeSession(){
+  let saved = null;
+  try { saved = JSON.parse(localStorage.getItem('ledgerHousehold') || 'null'); } catch(e) {}
+  const m = /[#&]join=([A-Za-z0-9_-]{6,40})/.exec(location.hash || '');
+  if(m) document.getElementById('householdCode').value = m[1].toUpperCase();
+  else if(saved && saved.code) document.getElementById('householdCode').value = saved.code;
+  if(saved && saved.name) document.getElementById('yourName').value = saved.name;
+  if(!cloudConfigured()){
+    document.getElementById('gateHint').textContent = 'Sharing isn’t switched on yet, so this board stays on this device and is lost when you close the page. Follow the setup guide to turn it on.';
+  }
+  if(!m && saved && saved.code && saved.name && cloudConfigured()) enterApp();
+}
+
+loadSettings();
+resumeSession();
+</script>
+</body>
+</html>
