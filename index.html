@@ -367,8 +367,9 @@
     border-radius:5px;
     padding:6px 10px;
     min-width:64px;
-    margin-right:14px;
   }
+  .card-side{display:flex; flex-direction:column; align-items:center; gap:8px; margin-right:14px; flex-shrink:0;}
+  .avatar-lg{width:44px; height:44px; font-size:16px;}
   .month-badge-label{
     font-family:'Fraunces',serif;
     font-weight:600;
@@ -742,7 +743,9 @@
     /* cards keep the two-column layout (details left, amount right), just tighter */
     .item-card{grid-template-columns:minmax(0,1fr) auto; padding:14px 14px 14px 18px; gap:8px 12px; align-items:start;}
     .card-body{min-width:0;}
-    .month-badge{min-width:48px; padding:5px 7px; margin-right:10px;}
+    .month-badge{min-width:48px; padding:5px 7px;}
+    .card-side{margin-right:10px;}
+    .avatar-lg{width:38px; height:38px; font-size:14px;}
     .month-badge-label{font-size:13.5px;}
     .item-main{padding-right:0;}
     .item-name{font-size:15px;}
@@ -1060,7 +1063,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.5.0';
+const APP_VERSION = '2.6.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -2011,7 +2014,7 @@ function initials(name){
 }
 
 function avatarHtml(name, size){
-  const cls = 'avatar' + (size==='sm' ? ' avatar-sm' : '');
+  const cls = 'avatar' + (size==='sm' ? ' avatar-sm' : size==='lg' ? ' avatar-lg' : '');
   const person = people.find(p => p.name === name);
   const oc = ownerColor(name);
   if(person && person.photo){
@@ -2528,9 +2531,12 @@ function buildItemCard(item, opts){
   card.innerHTML = `
     ${checkboxHtml}
     <div class="card-body">
-      <div class="month-badge" style="background:${mc.bg}; border-color:${mc.border};">
-        <div class="month-badge-label" style="color:${mc.fg};">${escapeHtml(monthWord)}</div>
-        <div class="month-badge-sub" style="color:${mc.fg};">${escapeHtml(monthYear)}</div>
+      <div class="card-side">
+        <div class="month-badge" style="background:${mc.bg}; border-color:${mc.border};">
+          <div class="month-badge-label" style="color:${mc.fg};">${escapeHtml(monthWord)}</div>
+          <div class="month-badge-sub" style="color:${mc.fg};">${escapeHtml(monthYear)}</div>
+        </div>
+        ${item.owner ? `<span title="${escapeHtml(item.owner)}" style="display:inline-flex;">${avatarHtml(item.owner,'lg')}</span>` : ''}
       </div>
       <div class="item-main">
         <div class="item-top">
@@ -2540,7 +2546,6 @@ function buildItemCard(item, opts){
           ${!opts.completedView && !item.owner ? `<span class="tag tag-warn" title="No one assigned yet">No owner</span>` : ''}
           ${!opts.completedView && item.month === 'No date yet' ? `<span class="tag tag-warn" title="No target month set">No month</span>` : ''}
         </div>
-        ${item.owner ? `<div class="owner-chip" style="background:${oc.bg}; color:${oc.fg};">${avatarHtml(item.owner,'sm')}${escapeHtml(item.owner)}</div>` : ''}
         ${itemLinkNoteHtml(item)}
         <div class="item-actions">
           <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>Edit</button>
@@ -2672,6 +2677,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.6.0', date:'2026-10-15', items:['On each item card the owner’s photo now sits under the month and is larger. The name beside it is gone (hover or long-press the photo to see it).'] },
   { v:'2.5.0', date:'2026-10-15', items:['Items now have a separate Link and Note. Links show as a short site name (like amazon.com) instead of the whole address.','Web addresses typed inside a note become tappable links too.','Older items keep working: anything that was plain text in the old link field now shows as a note, and is tidied up the next time you save that item.'] },
   { v:'2.4.1', date:'2026-10-15', items:['You can now add, change or remove the photo of someone already in People, using the new Change photo / Remove photo buttons on each row.'] },
   { v:'2.4.0', date:'2026-10-15', items:['Save your own themes: name a custom theme and it shows up under “My themes” in Settings (kept on this device).','Recent activity now sits on the Active / Completed tab row as a small dropdown.','Month, category and sort filters are tucked behind a Filters button that shows how many are on, with a Clear link.','Removed the item count after “Completed”.'] },
