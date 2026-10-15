@@ -598,6 +598,11 @@
     background:none; border:none; color:var(--ink-soft); cursor:pointer; font-size:12px;
   }
   .person-remove:hover{color:var(--coral);}
+  .person-row{flex-wrap:wrap;}
+  .person-row .person-name{min-width:80px; overflow-wrap:anywhere;}
+  .person-actions{display:flex; flex-wrap:wrap; gap:6px; align-items:center; justify-content:flex-end;}
+  .person-actions .icon-btn, .person-actions .person-remove{min-height:32px; display:inline-flex; align-items:center;}
+  .person-actions .person-remove{padding:5px 9px;}
   .add-person-form{
     border-top:1px solid var(--line); padding-top:16px; margin-top:4px;
   }
@@ -1021,6 +1026,7 @@
         <input type="file" id="p_photo" accept="image/*" style="display:none" onchange="onPhotoChosen()">
         <button class="file-btn" onclick="document.getElementById('p_photo').click()">Upload photo</button>
         <button class="file-btn" id="p_clearPhoto" style="display:none" onclick="clearPhotoChoice()">Remove</button>
+        <input type="file" id="p_rowPhoto" accept="image/*" style="display:none" onchange="onRowPhotoChosen()">
       </div>
       <div class="modal-actions">
         <button class="btn btn-primary" onclick="addPerson()">Add person</button>
@@ -1039,7 +1045,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.4.0';
+const APP_VERSION = '2.4.1';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -2017,7 +2023,11 @@ function renderPeopleList(){
       <div class="person-row">
         ${avatarHtml(p.name)}
         <span class="person-name">${escapeHtml(p.name)}</span>
-        <button class="person-remove" onclick="removePerson('${p.id}')">Remove</button>
+        <span class="person-actions">
+          <button class="icon-btn" onclick="changePersonPhoto('${p.id}')">${p.photo ? 'Change photo' : 'Add photo'}</button>
+          ${p.photo ? `<button class="icon-btn" onclick="removePersonPhoto('${p.id}')">Remove photo</button>` : ''}
+          <button class="person-remove" onclick="removePerson('${p.id}')">Remove</button>
+        </span>
       </div>
     `).join('');
   }
@@ -2025,28 +2035,60 @@ function renderPeopleList(){
   clearPhotoChoice();
 }
 
-function onPhotoChosen(){
-  const file = document.getElementById('p_photo').files[0];
-  if(!file) return;
+// Shrinks an image file to a 160x160 centered-crop JPEG and hands the data URL to cb.
+// Falls back to the original data URL if canvas or image decoding fails.
+function resizePhotoFile(file, cb){
   const reader = new FileReader();
   reader.onload = e => {
     // shrink to a small square so photos stay tiny in the shared database
     const img = new Image();
     img.onload = () => {
+      let out;
       try {
         const S = 160, c = document.createElement('canvas');
         c.width = c.height = S;
         const side = Math.min(img.width, img.height);
         c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, S, S);
-        pendingPhotoData = c.toDataURL('image/jpeg', 0.8);
-      } catch(err){ pendingPhotoData = e.target.result; }
-      showPhotoPreview();
+        out = c.toDataURL('image/jpeg', 0.8);
+      } catch(err){ out = e.target.result; }
+      cb(out);
     };
-    img.onerror = () => { pendingPhotoData = e.target.result; showPhotoPreview(); };
+    img.onerror = () => { cb(e.target.result); };
     img.src = e.target.result;
   };
   reader.readAsDataURL(file);
 }
+
+function onPhotoChosen(){
+  const file = document.getElementById('p_photo').files[0];
+  if(!file) return;
+  resizePhotoFile(file, data => { pendingPhotoData = data; showPhotoPreview(); });
+}
+
+let photoTargetId = null;
+function changePersonPhoto(id){
+  photoTargetId = id;
+  const inp = document.getElementById('p_rowPhoto');
+  inp.value = '';
+  inp.click();
+}
+function onRowPhotoChosen(){
+  const inp = document.getElementById('p_rowPhoto');
+  const file = inp.files[0];
+  const id = photoTargetId;
+  inp.value = '';
+  if(!file || id == null) return;
+  resizePhotoFile(file, data => setPersonPhoto(id, data));
+}
+function setPersonPhoto(id, data){
+  const p = people.find(x => x.id == id);
+  if(!p) return;
+  p.photo = data || null;
+  logActivity(`${household.name} ${data ? 'updated' : 'removed'} ${p.name}'s photo`);
+  render();
+  renderPeopleList();
+}
+function removePersonPhoto(id){ setPersonPhoto(id, null); }
 function showPhotoPreview(){
   document.getElementById('p_avatarPreview').innerHTML = `<img src="${pendingPhotoData}" style="width:100%;height:100%;object-fit:cover;border-radius:50%;">`;
   document.getElementById('p_clearPhoto').style.display = 'inline-block';
@@ -2528,6 +2570,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.4.1', date:'2026-10-15', items:['You can now add, change or remove the photo of someone already in People, using the new Change photo / Remove photo buttons on each row.'] },
   { v:'2.4.0', date:'2026-10-15', items:['Save your own themes: name a custom theme and it shows up under “My themes” in Settings (kept on this device).','Recent activity now sits on the Active / Completed tab row as a small dropdown.','Month, category and sort filters are tucked behind a Filters button that shows how many are on, with a Clear link.','Removed the item count after “Completed”.'] },
   { v:'2.3.0', date:'2026-10-15', items:['Settings now has General, Themes and Advanced tabs, with a Close button that stays at the top.','Themes tab with a customizer: pick light or dark, a background color and an accent color.','Backup, restore, version history and the style guide moved to Advanced.','The logo uses two fixed looks (dark tile on light themes, light tile on dark themes) instead of following every theme.'] },
   { v:'2.2.0', date:'2026-10-15', items:['The app is now called Horizon, with a new logo.','Moved hosting to GitHub Pages.'] },
