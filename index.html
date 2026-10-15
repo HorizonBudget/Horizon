@@ -86,6 +86,21 @@
     font:inherit; font-size:13px;
   }
   .theme-opt.active{border-color:var(--teal); box-shadow:0 0 0 1px var(--teal);}
+  .theme-opt.saved-opt{padding:0 4px 0 0; gap:0; overflow:hidden;}
+  .saved-apply{
+    display:flex; align-items:center; gap:8px; padding:7px 8px 7px 8px; cursor:pointer;
+    background:none; border:none; color:inherit; font:inherit; min-height:34px; max-width:200px;
+  }
+  .saved-apply .saved-name{overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .saved-del{
+    width:28px; height:28px; flex-shrink:0; border-radius:50%; border:none; background:none;
+    color:var(--ink-soft); cursor:pointer; font-size:13px; line-height:1; padding:0;
+  }
+  .saved-del:hover{background:var(--hover); color:var(--coral);}
+  .save-theme-row{display:flex; gap:8px; margin-top:12px; align-items:center;}
+  .save-theme-row input{flex:1; min-width:0;}
+  .save-theme-row .btn{flex-shrink:0; white-space:nowrap;}
+  .theme-msg{min-height:18px; margin:6px 0 0; font-size:12.5px; color:var(--ink-soft);}
   .theme-swatch{width:22px; height:22px; border-radius:50%; border:1px solid rgba(128,128,128,0.4); flex-shrink:0;}
   .setting-label{font-size:13px; font-weight:600; color:var(--ink);}
   *{box-sizing:border-box;}
@@ -474,7 +489,8 @@
   }
 
   /* View tabs */
-  .view-tabs{display:flex; gap:22px; margin-bottom:22px; border-bottom:1px solid var(--line);}
+  .view-tabs{display:flex; align-items:flex-end; gap:22px; margin-bottom:22px; border-bottom:1px solid var(--line); position:relative;}
+  .activity-wrap{margin-left:auto; position:relative; align-self:flex-end; padding-bottom:6px; min-width:0;}
   .view-tab{
     background:none; border:none; padding:0 0 10px; font-size:14.5px; font-weight:600;
     color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;
@@ -620,26 +636,53 @@
     border:1px solid rgba(201,138,43,0.5);
   }
 
-  /* Collapsible activity */
-  .activity-toggle{
-    display:flex; align-items:center; gap:6px; cursor:pointer;
-    background:none; border:none; padding:0; font-size:19px; font-weight:600; color:var(--ink);
-    font-family:'Inter',sans-serif;
+  /* Recent activity dropdown (sits on the tab row) */
+  .activity-toggle, .filters-btn{
+    display:inline-flex; align-items:center; gap:6px; cursor:pointer;
+    background:var(--card); border:1px solid var(--line); border-radius:16px;
+    padding:5px 11px; font-size:12.5px; font-weight:600; color:var(--ink-soft);
+    font-family:'Inter',sans-serif; white-space:nowrap; min-height:30px;
   }
-  .activity-toggle .caret{
-    font-size:12px; color:var(--ink-soft); transition:transform 0.15s ease;
+  .activity-toggle:hover, .filters-btn:hover{color:var(--ink); border-color:var(--ink-soft);}
+  .activity-toggle .caret, .filters-btn .caret{
+    font-size:10px; transition:transform 0.15s ease;
   }
-  .activity-toggle.open .caret{transform:rotate(90deg);}
+  .activity-toggle.open .caret, .filters-btn.open .caret{transform:rotate(180deg);}
+  .activity-toggle.open{color:var(--ink);}
+  .act-count{font-family:'IBM Plex Mono',monospace; font-weight:500; opacity:0.75;}
   .activity-panel{
     display:none;
-    max-height:220px;
+    position:absolute; right:0; top:calc(100% - 2px); z-index:40;
+    width:340px; max-width:calc(100vw - 32px);
+    max-height:260px;
     overflow-y:auto;
     border:1px solid var(--line);
-    border-radius:4px;
+    border-radius:6px;
     background:var(--card);
-    padding:4px 16px;
+    box-shadow:0 8px 24px rgba(0,0,0,0.18);
+    padding:4px 14px;
   }
   .activity-panel.open{display:block;}
+  .activity-panel .activity-row{font-size:13px;}
+  .activity-panel .activity-time{white-space:nowrap; flex-shrink:0;}
+
+  /* Filters */
+  .filters-btn.active{background:var(--teal-light); border-color:var(--teal); color:var(--teal);}
+  .filter-summary{
+    display:flex; align-items:baseline; gap:10px; flex-wrap:wrap;
+    margin:-6px 0 14px; font-size:12.5px; color:var(--ink-soft);
+  }
+  .link-btn{
+    background:none; border:none; padding:2px 0; font:inherit; font-size:12.5px; font-weight:600;
+    color:var(--teal); cursor:pointer; text-decoration:underline;
+  }
+  .filter-panel{
+    display:none; background:var(--card); border:1px solid var(--line); border-radius:6px;
+    padding:14px 14px 2px; margin-bottom:18px;
+  }
+  .filter-panel.open{display:block;}
+  .filter-panel .month-filter{margin-bottom:12px;}
+  .filter-panel .sort-control{margin-bottom:12px;}
 
   /* Style guide (Settings > View style guide) */
   .modal.modal-wide{max-width:780px;}
@@ -756,7 +799,15 @@
   <main>
     <div class="view-tabs">
       <button class="view-tab" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
-      <button class="view-tab" id="tabCompletedBtn" onclick="switchTab('completed')">Completed <span id="completedCount">(0)</span></button>
+      <button class="view-tab" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
+      <div class="activity-wrap" id="activityWrap">
+        <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
+          Recent activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
+        </button>
+        <div class="activity-panel" id="activityPanel" role="region" aria-label="Recent activity">
+          <div class="activity-list" id="activityList"></div>
+        </div>
+      </div>
     </div>
 
     <div class="summary-strip" id="summaryStrip">
@@ -774,28 +825,26 @@
 
     <div class="section-head">
       <div class="section-title" id="sectionTitle">Coming up</div>
-      <div class="section-note" id="filterNote">Showing all months</div>
+      <button type="button" class="filters-btn" id="filtersBtn" onclick="toggleFilters()" aria-expanded="false" aria-controls="filterPanel">
+        <span id="filtersBtnLabel">Filters</span> <span class="caret">▼</span>
+      </button>
     </div>
-    <div class="month-filter" id="monthFilter"></div>
-    <div class="month-filter" id="categoryFilter"></div>
-    <div class="sort-control" id="sortControl" style="display:none;">
-      <span class="sort-label">Sort by</span>
-      <select id="sortModeSelect" onchange="onSortModeChange()">
-        <option value="month">Month</option>
-        <option value="subcategory">Subcategory</option>
-      </select>
+    <div class="filter-summary" id="filterSummary" style="display:none;">
+      <span id="filterNote"></span>
+      <button type="button" class="link-btn" id="filterClear" onclick="clearFilters()">Clear</button>
+    </div>
+    <div class="filter-panel" id="filterPanel">
+      <div class="month-filter" id="monthFilter"></div>
+      <div class="month-filter" id="categoryFilter"></div>
+      <div class="sort-control" id="sortControl" style="display:none;">
+        <span class="sort-label">Sort by</span>
+        <select id="sortModeSelect" onchange="onSortModeChange()">
+          <option value="month">Month</option>
+          <option value="subcategory">Subcategory</option>
+        </select>
+      </div>
     </div>
     <div class="items" id="itemsList"></div>
-
-    <div class="section-head">
-      <button class="activity-toggle" id="activityToggle" onclick="toggleActivity()">
-        <span class="caret">▶</span> Recent activity
-      </button>
-      <div class="section-note" id="activityCount">0 updates</div>
-    </div>
-    <div class="activity-panel" id="activityPanel">
-      <div class="activity-list" id="activityList"></div>
-    </div>
   </main>
 </div>
 
@@ -903,6 +952,10 @@
     <div class="settings-pane" id="settingsPane-themes">
       <div class="setting-label">Presets</div>
       <div class="theme-picker" id="themePicker"></div>
+      <div id="savedThemesSection" style="display:none;">
+        <div class="setting-label" style="margin-top:16px">My themes</div>
+        <div class="theme-picker" id="savedThemes"></div>
+      </div>
       <div class="settings-divider"></div>
       <div class="setting-label">Customize</div>
       <p class="guide-desc">Start from any preset, then change the pieces below. Your changes are saved as “Custom”.</p>
@@ -912,8 +965,13 @@
       <div class="custom-row"><label for="ct_paper">Background color</label><input type="color" id="ct_paper" oninput="onCustomChange('paper')"></div>
       <div class="custom-row"><label for="ct_accent">Accent color</label><input type="color" id="ct_accent" oninput="onCustomChange('accent')"></div>
       <div class="swatch-row" id="accentSwatches"></div>
+      <div class="save-theme-row">
+        <input type="text" id="ct_name" maxlength="24" placeholder="Name this theme" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();saveCurrentTheme();}">
+        <button type="button" class="btn btn-ghost" id="ct_save" onclick="saveCurrentTheme()">Save theme</button>
+      </div>
+      <p class="theme-msg" id="ct_msg" role="status" aria-live="polite"></p>
       <div class="guide-actions"><button class="btn btn-ghost" onclick="setTheme('light')">Reset to Sage</button></div>
-      <p class="guide-desc" style="margin-top:14px">Your theme is saved on this device only. Each phone or computer keeps its own, so family members choose theirs on their own devices.</p>
+      <p class="guide-desc" style="margin-top:14px">Your theme and any themes you save are kept on this device only. Each phone or computer has its own, so family members choose theirs on their own devices.</p>
     </div>
 
     <div class="settings-pane" id="settingsPane-advanced">
@@ -981,7 +1039,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.3.0';
+const APP_VERSION = '2.4.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -1008,11 +1066,40 @@ let activeCategoryFilter = 'All';
 let people = [];
 let pendingPhotoData = null;
 let activityOpen = false;
+let filtersOpen = false;   // collapsed on every page load; remembered only while the page is open
 
-function toggleActivity(){
-  activityOpen = !activityOpen;
+function setActivityOpen(open){
+  activityOpen = !!open;
   document.getElementById('activityPanel').classList.toggle('open', activityOpen);
-  document.getElementById('activityToggle').classList.toggle('open', activityOpen);
+  const btn = document.getElementById('activityToggle');
+  btn.classList.toggle('open', activityOpen);
+  btn.setAttribute('aria-expanded', activityOpen ? 'true' : 'false');
+}
+function toggleActivity(){ setActivityOpen(!activityOpen); }
+document.addEventListener('click', e => {
+  if(!activityOpen) return;
+  const wrap = document.getElementById('activityWrap');
+  if(wrap && !wrap.contains(e.target)) setActivityOpen(false);
+});
+document.addEventListener('keydown', e => {
+  if(e.key === 'Escape' && activityOpen){ setActivityOpen(false); const b = document.getElementById('activityToggle'); if(b) b.focus(); }
+});
+
+function toggleFilters(){
+  filtersOpen = !filtersOpen;
+  applyFiltersOpen();
+}
+function applyFiltersOpen(){
+  document.getElementById('filterPanel').classList.toggle('open', filtersOpen && activeTab === 'active');
+  const btn = document.getElementById('filtersBtn');
+  btn.classList.toggle('open', filtersOpen);
+  btn.setAttribute('aria-expanded', filtersOpen ? 'true' : 'false');
+}
+function clearFilters(){
+  activeMonthFilter = 'All';
+  activeCategoryFilter = 'All';
+  sortMode = 'month';
+  render();
 }
 
 let CATEGORIES = ['Clothing','Education','Electronics','Health','Holidays & Gifts','Home','Kids','Pets','Subscriptions','Travel','Vehicle'];
@@ -1806,6 +1893,59 @@ function themePickerHtml(){
 function renderThemePicker(){
   const el = document.getElementById('themePicker');
   if(el) el.innerHTML = themePickerHtml();
+  renderSavedThemes();
+}
+function newThemeId(){ return 't' + Date.now().toString(36) + Math.random().toString(36).slice(2, 7); }
+function sameThemeColors(a, b){
+  return !!a.dark === !!b.dark && a.paper.toLowerCase() === b.paper.toLowerCase() && a.accent.toLowerCase() === b.accent.toLowerCase();
+}
+function renderSavedThemes(){
+  const sec = document.getElementById('savedThemesSection');
+  const el = document.getElementById('savedThemes');
+  if(!sec || !el) return;
+  sec.style.display = savedThemes.length ? '' : 'none';
+  const cur = currentThemeColors();
+  el.innerHTML = savedThemes.map(t => `<div class="theme-opt saved-opt${sameThemeColors(t, cur) ? ' active' : ''}" data-saved-id="${t.id}">
+    <button type="button" class="saved-apply" onclick="applySavedTheme('${t.id}')" title="Use “${escapeHtml(t.name)}”"><span class="theme-swatch" style="background:linear-gradient(135deg, ${t.paper} 0 45%, ${t.accent} 45% 100%)"></span><span class="saved-name">${escapeHtml(t.name)}</span></button>
+    <button type="button" class="saved-del" onclick="deleteSavedTheme('${t.id}')" aria-label="Delete ${escapeHtml(t.name)}" title="Delete">✕</button></div>`).join('');
+}
+function setThemeMsg(text){
+  const el = document.getElementById('ct_msg');
+  if(el) el.textContent = text || '';
+}
+function saveCurrentTheme(){
+  const input = document.getElementById('ct_name');
+  const name = (input.value || '').trim().slice(0, 24);
+  if(!name){ setThemeMsg('Type a name first.'); input.focus(); return; }
+  const c = currentThemeColors();
+  const key = name.toLowerCase();
+  const existing = savedThemes.findIndex(t => t.name.toLowerCase() === key);
+  if(existing === -1 && savedThemes.length >= MAX_SAVED_THEMES){
+    setThemeMsg(`You can keep up to ${MAX_SAVED_THEMES} themes. Delete one to make room.`);
+    return;
+  }
+  if(existing !== -1) savedThemes.splice(existing, 1);
+  savedThemes.push({ id: newThemeId(), name, dark: !!c.dark, paper: c.paper, accent: c.accent });
+  input.value = '';
+  saveSettings();
+  renderSavedThemes();
+  setThemeMsg(`Saved “${name}”`);
+}
+function applySavedTheme(id){
+  const t = savedThemes.find(x => x.id === id);
+  if(!t) return;
+  customTheme = { dark: !!t.dark, paper: t.paper, accent: t.accent };
+  theme = 'custom';
+  setThemeMsg('');
+  commitTheme();
+}
+function deleteSavedTheme(id){
+  const t = savedThemes.find(x => x.id === id);
+  if(!t) return;
+  savedThemes = savedThemes.filter(x => x.id !== id);
+  saveSettings();
+  renderSavedThemes();
+  setThemeMsg(`Deleted “${t.name}”`);
 }
 function colorSet(hex){
   const [r, g, b] = hexToRgb(hex);
@@ -2210,8 +2350,12 @@ function updateFilterNote(){
   const parts = [];
   if(activeMonthFilter !== 'All') parts.push(activeMonthFilter);
   if(activeCategoryFilter !== 'All') parts.push(activeCategoryFilter);
-  document.getElementById('filterNote').textContent =
-    parts.length ? `Filtered to ${parts.join(' · ')}` : 'Showing everything';
+  const n = parts.length;
+  document.getElementById('filtersBtnLabel').textContent = n ? `Filters · ${n}` : 'Filters';
+  document.getElementById('filtersBtn').classList.toggle('active', n > 0);
+  document.getElementById('filterNote').textContent = n ? `Showing ${parts.join(' · ')}` : '';
+  document.getElementById('filterClear').style.display = n ? '' : 'none';
+  document.getElementById('filterSummary').style.display = n ? '' : 'none';
 }
 
 function buildItemCard(item, opts){
@@ -2332,6 +2476,8 @@ function restoreItem(id){
 
 // ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
 let theme = 'light';
+let savedThemes = [];          // [{id, name, dark, paper, accent}], this device only
+const MAX_SAVED_THEMES = 12;
 
 function loadSettings(){
   try {
@@ -2339,6 +2485,19 @@ function loadSettings(){
     const okHex = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
     if(saved.custom && okHex(saved.custom.paper) && okHex(saved.custom.accent)){
       customTheme = { dark: !!saved.custom.dark, paper: saved.custom.paper, accent: saved.custom.accent };
+    }
+    if(Array.isArray(saved.savedThemes)){
+      const seen = new Set();
+      savedThemes = [];
+      saved.savedThemes.forEach(t => {
+        if(!t || typeof t.name !== 'string' || !okHex(t.paper) || !okHex(t.accent)) return;
+        const name = t.name.trim().slice(0, 24);
+        if(!name || savedThemes.length >= MAX_SAVED_THEMES) return;
+        let id = (typeof t.id === 'string' && /^[a-z0-9]{1,24}$/i.test(t.id)) ? t.id : newThemeId();
+        while(seen.has(id)) id = newThemeId();
+        seen.add(id);
+        savedThemes.push({ id, name, dark: !!t.dark, paper: t.paper, accent: t.accent });
+      });
     }
     if(saved.theme === 'custom' && saved.custom) theme = 'custom';
     else if(THEMES.some(t => t.key === saved.theme)) theme = saved.theme;
@@ -2348,7 +2507,7 @@ function loadSettings(){
   applyTheme();
 }
 function saveSettings(){
-  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme })); } catch(e) {}
+  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme, savedThemes })); } catch(e) {}
 }
 function applyTheme(){
   const root = document.documentElement;
@@ -2369,6 +2528,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.4.0', date:'2026-10-15', items:['Save your own themes: name a custom theme and it shows up under “My themes” in Settings (kept on this device).','Recent activity now sits on the Active / Completed tab row as a small dropdown.','Month, category and sort filters are tucked behind a Filters button that shows how many are on, with a Clear link.','Removed the item count after “Completed”.'] },
   { v:'2.3.0', date:'2026-10-15', items:['Settings now has General, Themes and Advanced tabs, with a Close button that stays at the top.','Themes tab with a customizer: pick light or dark, a background color and an accent color.','Backup, restore, version history and the style guide moved to Advanced.','The logo uses two fixed looks (dark tile on light themes, light tile on dark themes) instead of following every theme.'] },
   { v:'2.2.0', date:'2026-10-15', items:['The app is now called Horizon, with a new logo.','Moved hosting to GitHub Pages.'] },
   { v:'2.1.0', date:'2026-10-14', items:['Phone layout fixes.','Household name, separate from the household code.','Export backup and restore from backup.','More themes: Sand, Ocean, Midnight and Mocha.','Removed the Suggested items button.'] },
@@ -2393,6 +2553,8 @@ function openSettingsModal(tab){
   document.getElementById('appVersion').textContent = 'Horizon · version ' + APP_VERSION;
   renderChangelog();
   syncCustomizer();
+  setThemeMsg('');
+  document.getElementById('ct_name').value = '';
   showSettingsTab(typeof tab === 'string' ? tab : 'general');
   const signedIn = !!household.code;
   document.getElementById('sharingSection').style.display = signedIn ? 'block' : 'none';
@@ -2465,24 +2627,25 @@ function renderCore(){
   document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
   document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
   const completedItems = items.filter(i => i.completed);
-  document.getElementById('completedCount').textContent = `(${completedItems.length})`;
 
   const summaryStrip = document.getElementById('summaryStrip');
-  const monthFilterEl = document.getElementById('monthFilter');
-  const categoryFilterEl = document.getElementById('categoryFilter');
   const sectionTitleEl = document.getElementById('sectionTitle');
   const filterNoteEl = document.getElementById('filterNote');
+  const filtersBtnEl = document.getElementById('filtersBtn');
   const list = document.getElementById('itemsList');
 
   if(activeTab === 'completed'){
     summaryStrip.style.display = 'none';
-    monthFilterEl.style.display = 'none';
-    categoryFilterEl.style.display = 'none';
+    filtersBtnEl.style.display = 'none';
+    document.getElementById('filterPanel').classList.remove('open');
     document.getElementById('sortControl').style.display = 'none';
     sectionTitleEl.textContent = 'Completed';
+    // on this tab the summary line just says how many are checked off
     filterNoteEl.textContent = completedItems.length
       ? `${completedItems.length} item${completedItems.length>1?'s':''} checked off`
       : '';
+    document.getElementById('filterClear').style.display = 'none';
+    document.getElementById('filterSummary').style.display = completedItems.length ? '' : 'none';
 
     list.innerHTML = '';
     if(completedItems.length === 0){
@@ -2497,9 +2660,9 @@ function renderCore(){
   }
 
   summaryStrip.style.display = '';
-  monthFilterEl.style.display = '';
-  categoryFilterEl.style.display = '';
+  filtersBtnEl.style.display = '';
   sectionTitleEl.textContent = 'Coming up';
+  applyFiltersOpen();
 
   renderMonthFilter();
   renderCategoryFilter();
@@ -2559,7 +2722,9 @@ function renderCore(){
 function renderActivity(){
   const actList = document.getElementById('activityList');
   actList.innerHTML = '';
-  document.getElementById('activityCount').textContent = activity.length === 1 ? '1 update' : `${activity.length} updates`;
+  const countEl = document.getElementById('activityCount');
+  countEl.textContent = activity.length;
+  countEl.title = activity.length === 1 ? '1 update' : `${activity.length} updates`;
   if(activity.length === 0){
     actList.innerHTML = '<div class="empty">No activity yet.</div>';
   } else {
