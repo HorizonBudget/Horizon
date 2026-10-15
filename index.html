@@ -169,7 +169,7 @@
     display:block;
     margin-bottom:6px;
   }
-  input[type=text], input[type=number], select{
+  input[type=text], input[type=number], select, textarea{
     width:100%;
     padding:11px 12px;
     border:1px solid var(--line);
@@ -179,7 +179,8 @@
     background:var(--field);
     color:var(--ink);
   }
-  input:focus, select:focus, button:focus-visible{
+  textarea{resize:vertical; line-height:1.4; min-height:70px; display:block;}
+  input:focus, select:focus, textarea:focus, button:focus-visible{
     outline:2px solid var(--teal);
     outline-offset:1px;
   }
@@ -382,7 +383,7 @@
     color:#8A6110;
     opacity:0.75;
   }
-  .card-body{display:flex; align-items:flex-start;}
+  .card-body{display:flex; align-items:flex-start; min-width:0; flex:1 1 auto;}
 
   /* Owner chip */
   .owner-chip{
@@ -441,11 +442,20 @@
   .item-owner{font-size:12px; color:var(--ink-soft); margin-top:4px;}
   .item-note{
     font-size:12.5px; color:var(--ink-soft); margin-top:6px;
-    display:flex; align-items:center; gap:5px;
+    display:flex; align-items:center; gap:5px; min-width:0;
   }
-  .item-note a{color:var(--teal); text-decoration:none; font-weight:500;}
-  .item-note a:hover{text-decoration:underline;}
-  .item-note .note-icon{opacity:0.7;}
+  .item-note .note-icon{opacity:0.7; flex:none;}
+  .item-note-text{align-items:flex-start;}
+  .note-text{min-width:0; white-space:pre-line; overflow-wrap:anywhere;}
+  .link-chip{
+    display:inline-block; max-width:100%; min-width:0; box-sizing:border-box;
+    overflow:hidden; text-overflow:ellipsis; white-space:nowrap; vertical-align:bottom;
+    color:var(--teal); text-decoration:none; font-weight:500;
+    background:var(--tint); border-radius:20px; padding:1px 9px; line-height:1.5;
+  }
+  .link-chip:hover{text-decoration:underline;}
+  .field-error{font-size:12.5px; color:var(--coral); margin-top:6px; line-height:1.5;}
+  .field-error:empty{display:none;}
 
   .item-amount{width:120px; flex-shrink:0; text-align:right; padding-top:16px;}
   .item-amount-value{
@@ -711,7 +721,6 @@
 
   html{-webkit-text-size-adjust:100%;}
   .item-main{overflow-wrap:anywhere;}
-  .item-note a{overflow-wrap:anywhere; word-break:break-all;}
 
   /* ---- Phones / narrow screens ---- */
   @media (max-width:640px){
@@ -906,8 +915,14 @@
     </div>
 
     <div class="gate-row">
-      <label class="field-label">Link or notes (optional)</label>
-      <input type="text" id="f_link" placeholder="e.g. a product link, or a quick note">
+      <label class="field-label" for="f_link">Link (optional)</label>
+      <input type="text" id="f_link" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://…" oninput="document.getElementById('linkError').textContent=''">
+      <p class="field-error" id="linkError" role="alert"></p>
+    </div>
+
+    <div class="gate-row">
+      <label class="field-label" for="f_note">Note (optional)</label>
+      <textarea id="f_note" rows="3" maxlength="500" placeholder="Anything worth remembering"></textarea>
     </div>
 
     <div class="modal-actions">
@@ -1045,7 +1060,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.4.1';
+const APP_VERSION = '2.5.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -2229,7 +2244,9 @@ function openItemModal(prefill){
   monthListExpanded = false;
   populateMonthSelect(prefill ? prefill.month : 'No date yet');
   populateOwnerSelect(prefill ? (prefill.owner||'') : '');
-  document.getElementById('f_link').value = prefill ? (prefill.link||'') : '';
+  document.getElementById('f_link').value = prefill ? itemLink(prefill) : '';
+  document.getElementById('f_note').value = prefill ? itemNote(prefill) : '';
+  document.getElementById('linkError').textContent = '';
   document.getElementById('itemOverlay').style.display = 'flex';
 }
 function closeItemModal(){ document.getElementById('itemOverlay').style.display = 'none'; }
@@ -2242,10 +2259,20 @@ function saveItem(){
   const existing = editingId ? items.find(i => i.id === editingId) : null;
   const saved = existing ? existing.saved : 0;
   const owner = document.getElementById('f_owner').value;
-  const link = document.getElementById('f_link').value.trim();
+  const note = document.getElementById('f_note').value.trim().slice(0, 500);
 
   if(!name || !cost){
     alert('Give the item a name and an estimated cost.');
+    return;
+  }
+
+  const link = normalizeLinkInput(document.getElementById('f_link').value);
+  if(link === null){
+    const err = document.getElementById('linkError');
+    err.textContent = "That doesn't look like a web address. Put plain text in Note.";
+    const inp = document.getElementById('f_link');
+    inp.focus();
+    if(err.scrollIntoView) err.scrollIntoView({ block:'nearest' });
     return;
   }
 
@@ -2284,10 +2311,10 @@ function saveItem(){
   if(editingId && !items.some(i => i.id === editingId)) editingId = null;
   if(editingId){
     const it = items.find(i => i.id === editingId);
-    Object.assign(it,{ name, category, cost, month, saved, owner, link, subcategory });
+    Object.assign(it,{ name, category, cost, month, saved, owner, link, note, subcategory });
     logActivity(`${household.name} updated “${name}”`);
   } else {
-    items.push({ id: Date.now()+Math.random(), name, category, cost, month, saved, owner, link, subcategory, completed:false });
+    items.push({ id: Date.now()+Math.random(), name, category, cost, month, saved, owner, link, note, subcategory, completed:false });
     logActivity(`${household.name} added “${name}” — $${cost}`);
   }
   closeItemModal();
@@ -2310,7 +2337,82 @@ function editItem(id){
 
 
 function isUrl(str){
-  return /^https?:\/\//i.test(str.trim());
+  return /^https?:\/\//i.test(String(str || '').trim());
+}
+
+// Link/note getters. Old items kept either a URL or free text in `link`; text-only values
+// are read as the note (nothing is rewritten until the item is saved again).
+function itemLink(item){
+  const l = (item && typeof item.link === 'string') ? item.link.trim() : '';
+  return l && isUrl(l) ? l : '';
+}
+function itemNote(item){
+  if(!item) return '';
+  const n = typeof item.note === 'string' ? item.note.trim() : '';
+  if(n) return n;
+  const l = typeof item.link === 'string' ? item.link.trim() : '';
+  return l && !isUrl(l) ? l : '';
+}
+
+// Returns '' (nothing typed), a clean http(s) URL, or null when the text is not a web address.
+function normalizeLinkInput(raw){
+  const t = String(raw || '').trim();
+  if(!t) return '';
+  if(/\s/.test(t)) return null;
+  if(isUrl(t)){
+    try{ const u = new URL(t); return (u.protocol === 'http:' || u.protocol === 'https:') && u.hostname ? t : null; }
+    catch(e){ return null; }
+  }
+  if(/^[a-z][a-z0-9+.-]*:/i.test(t) && !/^[^/?#]*\.[^/?#]*:\d+/.test(t)) return null; // other scheme (javascript:, mailto:, ...)
+  if(!t.includes('.') || /^[./]|^\.+$/.test(t)) return null;
+  const cand = 'https://' + t;
+  try{ const u = new URL(cand); return u.hostname && u.hostname.includes('.') ? cand : null; }
+  catch(e){ return null; }
+}
+
+function escAttr(str){
+  return escapeHtml(str).replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+}
+function truncText(str, n){
+  str = String(str);
+  return str.length > n ? str.slice(0, n - 1) + '…' : str;
+}
+function siteName(url){
+  try{
+    const h = new URL(url).hostname.replace(/^www\./i, '');
+    if(h) return h;
+  }catch(e){}
+  return truncText(url.replace(/^https?:\/\//i, ''), 30);
+}
+// Chip for an http(s) URL. Everything is escaped here; non-http(s) input never becomes a link.
+function linkChipHtml(url){
+  if(!isUrl(url)) return escapeHtml(url);
+  return `<a class="link-chip" href="${escAttr(url)}" target="_blank" rel="noopener noreferrer" title="${escAttr(url)}">${escapeHtml(siteName(url))}</a>`;
+}
+// Escapes note text and turns http(s) URLs inside it into chips (escaping happens per piece).
+function linkifyNote(text){
+  const re = /https?:\/\/[^\s<>"'`]+/gi;
+  let out = '', last = 0, m;
+  while((m = re.exec(text)) !== null){
+    let url = m[0], tail = '';
+    for(;;){
+      const c = url.slice(-1);
+      if(/[.,;:!?\]}]/.test(c)){ tail = c + tail; url = url.slice(0, -1); continue; }
+      if(c === ')' && (url.split(')').length > url.split('(').length)){ tail = c + tail; url = url.slice(0, -1); continue; }
+      break;
+    }
+    let ok = false;
+    try{ const u = new URL(url); ok = (u.protocol === 'http:' || u.protocol === 'https:') && !!u.hostname; }catch(e){}
+    out += escapeHtml(text.slice(last, m.index));
+    out += ok ? linkChipHtml(url) + escapeHtml(tail) : escapeHtml(m[0]);
+    last = m.index + m[0].length;
+  }
+  return out + escapeHtml(text.slice(last));
+}
+function itemLinkNoteHtml(item){
+  const l = itemLink(item), n = itemNote(item);
+  return (l ? `<div class="item-note"><span class="note-icon">🔗</span>${linkChipHtml(l)}</div>` : '')
+       + (n ? `<div class="item-note item-note-text"><span class="note-icon">📝</span><span class="note-text">${linkifyNote(n)}</span></div>` : '');
 }
 
 function splitMonth(m){
@@ -2439,7 +2541,7 @@ function buildItemCard(item, opts){
           ${!opts.completedView && item.month === 'No date yet' ? `<span class="tag tag-warn" title="No target month set">No month</span>` : ''}
         </div>
         ${item.owner ? `<div class="owner-chip" style="background:${oc.bg}; color:${oc.fg};">${avatarHtml(item.owner,'sm')}${escapeHtml(item.owner)}</div>` : ''}
-        ${item.link ? `<div class="item-note"><span class="note-icon">${isUrl(item.link) ? '🔗' : '📝'}</span>${isUrl(item.link) ? `<a href="${escapeHtml(item.link)}" target="_blank" rel="noopener noreferrer">${escapeHtml(item.link)}</a>` : escapeHtml(item.link)}</div>` : ''}
+        ${itemLinkNoteHtml(item)}
         <div class="item-actions">
           <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>Edit</button>
           <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="deleteItem(${item.id})"`}>Remove</button>
@@ -2570,6 +2672,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.5.0', date:'2026-10-15', items:['Items now have a separate Link and Note. Links show as a short site name (like amazon.com) instead of the whole address.','Web addresses typed inside a note become tappable links too.','Older items keep working: anything that was plain text in the old link field now shows as a note, and is tidied up the next time you save that item.'] },
   { v:'2.4.1', date:'2026-10-15', items:['You can now add, change or remove the photo of someone already in People, using the new Change photo / Remove photo buttons on each row.'] },
   { v:'2.4.0', date:'2026-10-15', items:['Save your own themes: name a custom theme and it shows up under “My themes” in Settings (kept on this device).','Recent activity now sits on the Active / Completed tab row as a small dropdown.','Month, category and sort filters are tucked behind a Filters button that shows how many are on, with a Clear link.','Removed the item count after “Completed”.'] },
   { v:'2.3.0', date:'2026-10-15', items:['Settings now has General, Themes and Advanced tabs, with a Close button that stays at the top.','Themes tab with a customizer: pick light or dark, a background color and an accent color.','Backup, restore, version history and the style guide moved to Advanced.','The logo uses two fixed looks (dark tile on light themes, light tile on dark themes) instead of following every theme.'] },
@@ -2814,8 +2917,10 @@ function renderStyleGuide(){
       <div class="guide-list" id="guideCardsFull"></div>
       <div class="guide-label">Missing an owner and a month (warning flags appear)</div>
       <div class="guide-list" id="guideCardsMissing"></div>
-      <div class="guide-label">With a note instead of a link</div>
+      <div class="guide-label">With a note (a web address inside a note becomes a link)</div>
       <div class="guide-list" id="guideCardsNote"></div>
+      <div class="guide-label">With both a link and a note</div>
+      <div class="guide-list" id="guideCardsBoth"></div>
       <div class="guide-label">On the Completed tab (the checked box restores it)</div>
       <div class="guide-list" id="guideCardsDone"></div>
     </div>
@@ -2876,9 +2981,10 @@ function renderStyleGuide(){
   const sampleMonth = (i, fallback) => m[i] || fallback;
   const add = (id, item, opts) => document.getElementById(id).appendChild(buildItemCard(item, Object.assign({ preview: true }, opts || {})));
 
-  add('guideCardsFull', { id: 'g1', name: 'Car registration renewal', category: 'Vehicle', subcategory: 'Honda Civic', cost: 150, month: sampleMonth(1, 'No date yet'), owner: 'Dana', link: 'https://example.com/dmv' });
+  add('guideCardsFull', { id: 'g1', name: 'Car registration renewal', category: 'Vehicle', subcategory: 'Honda Civic', cost: 150, month: sampleMonth(1, 'No date yet'), owner: 'Dana', link: 'https://www.amazon.com/Some-Very-Long-Product-Name-Stainless-Steel-Edition/dp/B0123456789?tag=horizon-20&ref=sr_1_3&keywords=washing+machine+front+load' });
   add('guideCardsMissing', { id: 'g2', name: 'New washing machine', category: 'Home', subcategory: '', cost: 700, month: 'No date yet', owner: '', link: '' });
-  add('guideCardsNote', { id: 'g3', name: 'Holiday gifts', category: 'Holidays & Gifts', subcategory: '', cost: 500, month: sampleMonth(2, 'No date yet'), owner: 'Sam', link: 'Ask the grandparents what they want first' });
+  add('guideCardsNote', { id: 'g3', name: 'Holiday gifts', category: 'Holidays & Gifts', subcategory: '', cost: 500, month: sampleMonth(2, 'No date yet'), owner: 'Sam', link: '', note: 'Ask the grandparents what they want first.\nIdeas: https://www.etsy.com/listing/123456/handmade-gift-set, then compare prices.' });
+  add('guideCardsBoth', { id: 'g5', name: 'Family photo session', category: 'Holidays & Gifts', subcategory: '', cost: 300, month: sampleMonth(3, 'No date yet'), owner: 'Alex', link: 'https://example.com/book', note: 'Call to confirm the time first.' });
   add('guideCardsDone', { id: 'g4', name: 'Dental cleaning', category: 'Health', subcategory: '', cost: 150, month: sampleMonth(0, 'No date yet'), owner: 'Sam', link: '' }, { completedView: true });
 }
 
