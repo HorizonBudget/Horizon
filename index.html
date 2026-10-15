@@ -746,6 +746,7 @@
   #confirmOverlay{z-index:90;}
   .modal.modal-confirm{max-width:400px;}
   .modal-confirm .gate-sub{margin-bottom:0; overflow-wrap:anywhere; line-height:1.5;}
+  .confirm-field{width:100%; margin-top:14px; padding:10px 12px; font:inherit; font-size:14px; color:var(--ink); background:var(--field); border:1.5px solid var(--line); border-radius:12px;}
 
   /* Photo crop editor */
   #cropOverlay{z-index:80;}
@@ -1141,6 +1142,7 @@
   <div class="modal modal-confirm">
     <h3 id="confirmTitle">Are you sure?</h3>
     <p class="gate-sub" id="confirmMsg"></p>
+    <input type="text" class="confirm-field" id="confirmField" readonly style="display:none" aria-label="Text to copy">
     <div class="modal-actions">
       <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
       <button type="button" class="btn btn-danger-solid" id="confirmOk">OK</button>
@@ -1181,7 +1183,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.7.0';
+const APP_VERSION = '2.8.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -2335,7 +2337,7 @@ function cropConfirm(){
   if(!crop.open) return;
   let data;
   try { data = cropRender(crop.img, crop.iw, crop.ih, crop.st, CROP_VIEW, CROP_OUT); }
-  catch(err){ alert('Couldn’t use that photo. Try a different one.'); closeCropEditor(true); return; }
+  catch(err){ closeCropEditor(true); askAlert('Couldn’t use that photo. Try a different one.'); return; }
   const cb = crop.cb;
   closeCropEditor(false);
   if(cb) cb(data);
@@ -2348,7 +2350,7 @@ function cropPhotoFile(file, cb, onCancel){
   reader.onload = e => {
     const img = new Image();
     img.onload = () => openCropEditor(img, cb, onCancel);
-    img.onerror = () => { alert('Couldn’t read that image. Try a JPG or PNG.'); if(onCancel) onCancel(); };
+    img.onerror = () => { askAlert('Couldn’t read that image. Try a JPG or PNG.'); if(onCancel) onCancel(); };
     img.src = e.target.result;
   };
   reader.onerror = () => { if(onCancel) onCancel(); };
@@ -2399,7 +2401,7 @@ function clearPhotoChoice(){
 
 function addPerson(){
   const name = document.getElementById('p_name').value.trim();
-  if(!name){ alert('Give this person a name.'); return; }
+  if(!name){ askAlert('Give this person a name.').then(() => { const n = document.getElementById('p_name'); if(n) n.focus(); }); return; }
   people.push({ id: Date.now()+Math.random(), name, photo: pendingPhotoData });
   logActivity(`${household.name} added ${name} to the household`);
   renderPeopleList();
@@ -2546,7 +2548,7 @@ function saveItem(){
   const note = document.getElementById('f_note').value.trim().slice(0, 500);
 
   if(!name || !cost){
-    alert('Give the item a name and an estimated cost.');
+    askAlert('Give the item a name and an estimated cost.');
     return;
   }
 
@@ -2563,7 +2565,7 @@ function saveItem(){
   if(category === 'Other'){
     const newCat = document.getElementById('f_newCategory').value.trim();
     if(!newCat){
-      alert('Type a name for the new category, then hit Add.');
+      askAlert('Type a name for the new category, then hit Add.');
       return;
     }
     if(!CATEGORIES.includes(newCat)) CATEGORIES.push(newCat);
@@ -2639,22 +2641,39 @@ function editItem(id){
 
 // ---- In-app confirm dialog (used instead of window.confirm for removals) ----
 let confirmResolve = null;
+let confirmReturnFocus = null;
+// opts: title, message, confirmLabel, danger (default true), info (OK-only notice, no Cancel),
+// copyText (shows a selectable field with text to copy). Resolves true on OK, false on Cancel/Escape/backdrop.
 function askConfirm(opts){
   opts = opts || {};
   if(confirmResolve){ const r = confirmResolve; confirmResolve = null; r(false); }
-  document.getElementById('confirmTitle').textContent = opts.title || 'Are you sure?';
+  else confirmReturnFocus = document.activeElement;
+  document.getElementById('confirmTitle').textContent = opts.title || (opts.info ? 'Heads up' : 'Are you sure?');
   document.getElementById('confirmMsg').textContent = opts.message || '';
+  const field = document.getElementById('confirmField');
+  field.style.display = opts.copyText ? '' : 'none';
+  field.value = opts.copyText || '';
   const ok = document.getElementById('confirmOk');
   ok.textContent = opts.confirmLabel || 'OK';
-  ok.className = 'btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger-solid');
-  document.getElementById('confirmOverlay').style.display = 'flex';
+  ok.className = 'btn ' + ((opts.info || opts.danger === false) ? 'btn-primary' : 'btn-danger-solid');
   const cancel = document.getElementById('confirmCancel');
-  try { cancel.focus({ preventScroll:true }); } catch(e) {}
+  cancel.style.display = opts.info ? 'none' : '';
+  document.getElementById('confirmOverlay').dataset.mode = opts.info ? 'info' : 'confirm';
+  document.getElementById('confirmOverlay').style.display = 'flex';
+  // focus the safe button: Cancel for questions, OK for notices
+  try { (opts.info ? ok : cancel).focus({ preventScroll:true }); } catch(e) {}
+  if(opts.copyText){ try { field.select(); } catch(e) {} }
   return new Promise(res => { confirmResolve = res; });
+}
+// Simple notice with a single OK button (replaces window.alert). Returns a promise that resolves when dismissed.
+function askAlert(message, title){
+  return askConfirm({ title: title || 'Heads up', message, confirmLabel: 'OK', info: true }).then(() => undefined);
 }
 function settleConfirm(v){
   document.getElementById('confirmOverlay').style.display = 'none';
   const r = confirmResolve; confirmResolve = null;
+  const back = confirmReturnFocus; confirmReturnFocus = null;
+  if(back && back.focus && document.contains(back)){ try { back.focus({ preventScroll:true }); } catch(e) {} }
   if(r) r(v);
 }
 document.getElementById('confirmOk').addEventListener('click', () => settleConfirm(true));
@@ -3023,11 +3042,13 @@ let confirmOnRestore = true;
 function onRestoreCheckboxChange(id, checkboxEl){
   if(confirmOnRestore){
     const it = findLiveItem(id);
-    const ok = confirm(`Move “${it ? it.name : 'this item'}” back to Active?`);
-    if(!ok){
-      checkboxEl.checked = true; // put the checkbox back since the user backed out
-      return;
-    }
+    checkboxEl.checked = true;   // stays ticked until the person says yes
+    askConfirm({
+      title: 'Move back to Active?',
+      message: `Move “${it ? it.name : 'this item'}” back to Active?`,
+      confirmLabel: 'Move back', danger: false
+    }).then(ok => { if(ok) restoreItem(id); });
+    return;
   }
   restoreItem(id);
 }
@@ -3095,6 +3116,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.8.0', date:'2026-10-15', items:['Every pop-up question and notice now appears inside Horizon instead of your browser’s own box, so restoring an item, restoring a backup, leaving a household and form mistakes all look and behave like the rest of the app.'] },
   { v:'2.7.0', date:'2026-10-15', items:['When you add or change someone’s photo in People, you can now drag it into place and zoom in before saving, so their face fits the circle.','The owner’s photo on each item card is now exactly as tall as the month badge above it.','The category label on each card is now the same size as the item name.','The 🔗 link and 📝 note icons on cards now sit in outlined boxes, so they stand out on light themes.','The Remove button is no longer on every card. Open an item with Edit and use “Remove item” there; it asks before removing.','Removed items now wait in Settings → Deleted items for 30 days. You can restore one or delete it for good, or empty them all.'] },
   { v:'2.6.0', date:'2026-10-15', items:['On each item card the owner’s photo now sits under the month and is larger. The name beside it is gone (hover or long-press the photo to see it).'] },
   { v:'2.5.0', date:'2026-10-15', items:['Items now have a separate Link and Note. Links show as a short site name (like amazon.com) instead of the whole address.','Web addresses typed inside a note become tappable links too.','Older items keep working: anything that was plain text in the old link field now shows as a note, and is tidied up the next time you save that item.'] },
@@ -3619,10 +3641,11 @@ function copyHouseholdCode(kind){
   const text = kind === 'link' ? (location.href.split('#')[0] + '#join=' + household.code) : household.code;
   const btn = document.getElementById(kind === 'link' ? 'copyLinkBtn' : 'copyCodeBtn');
   const label = btn.textContent;
+  const showManual = () => { askConfirm({ title: 'Copy this', message: 'Your browser wouldn’t copy it automatically. Select the text below and copy it.', copyText: text, info: true }); };
   const done = () => { btn.textContent = 'Copied'; setTimeout(() => { btn.textContent = label; }, 1500); };
   try {
-    navigator.clipboard.writeText(text).then(done, () => { window.prompt('Copy this:', text); });
-  } catch(e){ window.prompt('Copy this:', text); }
+    navigator.clipboard.writeText(text).then(done, showManual);
+  } catch(e){ showManual(); }
 }
 
 function exportBackup(){
@@ -3649,22 +3672,35 @@ function onRestoreFileChosen(input){
     try {
       const d = JSON.parse(reader.result);
       if(!d || d.app !== 'household-forecast' || !Array.isArray(d.items) || !Array.isArray(d.people)) throw new Error('bad');
-      if(!confirm(`Replace everything on the board with this backup (${d.items.filter(i => !isDeleted(i)).length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`)) return;
-      applyState(stateFromDoc(d));
-      purgeTrash();
-      logActivity(`${household.name} restored the board from a backup`);
-      render();
-      msg.textContent = 'Board restored from backup.';
+      askConfirm({
+        title: 'Restore from backup?',
+        message: `Replace everything on the board with this backup (${d.items.filter(i => !isDeleted(i)).length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`,
+        confirmLabel: 'Replace board', danger: true
+      }).then(ok => {
+        if(!ok) return;
+        applyState(stateFromDoc(d));
+        purgeTrash();
+        logActivity(`${household.name} restored the board from a backup`);
+        render();
+        msg.textContent = 'Board restored from backup.';
+      });
     } catch(e){ msg.textContent = 'That file doesn’t look like a Household Forecast backup.'; }
   };
   reader.readAsText(file);
 }
 
 function leaveHousehold(){
-  if(!confirm('Leave this household on this device? Nothing is deleted. Your family keeps the board and you can come back with the code.')) return;
-  try { localStorage.removeItem('ledgerHousehold'); } catch(e) {}
-  cloudDisconnect();
-  location.reload();
+  return askConfirm({
+    title: 'Leave this household?',
+    message: 'Leave this household on this device? Nothing is deleted. Your family keeps the board and you can come back with the code.',
+    confirmLabel: 'Leave', danger: true
+  }).then(ok => {
+    if(!ok) return false;
+    try { localStorage.removeItem('ledgerHousehold'); } catch(e) {}
+    cloudDisconnect();
+    location.reload();
+    return true;
+  });
 }
 
 // On load: prefill the gate from an invite link or the last household used on this device,
