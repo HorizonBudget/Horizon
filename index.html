@@ -357,7 +357,9 @@
   }
 
   /* Month badge on card */
+  .item-card{--badge-h:42px; --name-size:15.5px;}
   .month-badge{
+    box-sizing:border-box; height:var(--badge-h);
     display:inline-flex;
     flex-direction:column;
     align-items:center;
@@ -369,7 +371,7 @@
     min-width:64px;
   }
   .card-side{display:flex; flex-direction:column; align-items:center; gap:8px; margin-right:14px; flex-shrink:0;}
-  .avatar-lg{width:44px; height:44px; font-size:16px;}
+  .card-side .avatar-lg{width:var(--badge-h); height:var(--badge-h); font-size:calc(var(--badge-h) * 0.36);}
   .month-badge-label{
     font-family:'Fraunces',serif;
     font-weight:600;
@@ -429,7 +431,7 @@
 
   .item-main{min-width:0; padding-right:30px;}
   .item-top{display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:5px;}
-  .item-name{font-size:15.5px; font-weight:600; position:relative; display:inline-block;}
+  .item-name{font-size:var(--name-size, 15.5px); font-weight:600; position:relative; display:inline-block; min-width:0;}
   .item-name::after{
     content:''; position:absolute; left:0; top:50%; height:2px; width:0%;
     background:var(--ink-soft); transition:width 0.6s ease;
@@ -438,14 +440,24 @@
     font-size:10.5px; font-weight:600; text-transform:uppercase; letter-spacing:0.05em;
     padding:2px 7px; border-radius:20px;
   }
-  .tag-cat{background:var(--tint); color:var(--ink-soft);}
+  .tag-cat{
+    background:var(--tint); color:var(--ink-soft);
+    font-size:var(--name-size, 15.5px); line-height:1.25; letter-spacing:0.02em;
+    border-radius:12px; padding:2px 9px; max-width:100%; box-sizing:border-box;
+    overflow-wrap:anywhere;
+  }
   .tag-subcat{background:transparent; color:var(--ink-soft); border:1px solid var(--line);}
   .item-owner{font-size:12px; color:var(--ink-soft); margin-top:4px;}
   .item-note{
     font-size:12.5px; color:var(--ink-soft); margin-top:6px;
     display:flex; align-items:center; gap:5px; min-width:0;
   }
-  .item-note .note-icon{opacity:0.7; flex:none;}
+  .item-note .note-icon{
+    flex:none; display:inline-flex; align-items:center; justify-content:center;
+    width:24px; height:24px; box-sizing:border-box; font-size:13px; line-height:1;
+    border:1.5px solid var(--ink-soft); border-radius:6px; background:var(--field);
+  }
+  .item-note-text .note-icon{margin-top:-1px;}
   .item-note-text{align-items:flex-start;}
   .note-text{min-width:0; white-space:pre-line; overflow-wrap:anywhere;}
   .link-chip{
@@ -547,6 +559,7 @@
   .grid-2{display:grid; grid-template-columns:1fr 1fr; gap:14px;}
   .modal-actions{display:flex; gap:10px; margin-top:22px;}
   .modal-actions .btn{flex:1;}
+  .modal-actions .btn-primary{margin-top:0;}   /* keeps Save level with the buttons beside it */
   .chip-row{display:flex; flex-wrap:wrap; gap:7px; margin-top:6px;}
   .chip{
     font-size:12.5px; padding:6px 12px; border-radius:20px;
@@ -720,6 +733,57 @@
   .guide-actions .btn{flex:0 0 auto;}
   .settings-divider{border-top:1px solid var(--line); margin:18px 0 6px;}
 
+  /* Danger buttons (Remove item, confirm dialog, Delete forever) */
+  .btn-danger{
+    background:transparent; color:var(--coral); border:1px solid var(--coral);
+  }
+  .btn-danger:hover{background:var(--coral-light);}
+  .btn-danger-solid{background:var(--coral); color:var(--on-accent); width:auto;}
+  .btn-danger-solid:hover{opacity:0.9;}
+  .modal-actions .btn-left{flex:0 0 auto; margin-right:auto;}
+
+  /* In-app confirm dialog sits above every other modal */
+  #confirmOverlay{z-index:90;}
+  .modal.modal-confirm{max-width:400px;}
+  .modal-confirm .gate-sub{margin-bottom:0; overflow-wrap:anywhere; line-height:1.5;}
+
+  /* Photo crop editor */
+  #cropOverlay{z-index:80;}
+  .modal.modal-crop{max-width:340px; text-align:center;}
+  .crop-stage{
+    position:relative; width:240px; height:240px; margin:6px auto 16px; border-radius:50%;
+    overflow:hidden; background:var(--tint); touch-action:none; cursor:grab;
+    -webkit-user-select:none; user-select:none;
+    box-shadow:0 0 0 3px var(--card), 0 0 0 4px var(--ink-soft);
+  }
+  .crop-stage.dragging{cursor:grabbing;}
+  .crop-stage img{
+    position:absolute; left:0; top:0; max-width:none; max-height:none;
+    transform-origin:0 0; pointer-events:none; -webkit-user-drag:none; user-select:none;
+  }
+  .crop-zoom{display:flex; align-items:center; gap:10px; margin:0 6px;}
+  .crop-zoom input[type=range]{flex:1; min-width:0; accent-color:var(--teal); padding:0; margin:0; height:28px; touch-action:pan-y;}
+  .crop-zoom span{font-size:18px; line-height:1; color:var(--ink-soft); width:16px;}
+  .crop-hint{font-size:12.5px; color:var(--ink-soft); margin:10px 0 0;}
+
+  /* Deleted items */
+  .trash-row{display:flex; align-items:center; gap:14px; padding:4px 0;}
+  .trash-row-text{flex:1; min-width:0;}
+  .trash-row-title{font-size:14px; font-weight:600; color:var(--ink);}
+  .trash-row .guide-desc{margin:2px 0 0;}
+  .trash-row .btn{flex-shrink:0;}
+  .trash-list{display:flex; flex-direction:column; gap:10px; margin:6px 0 4px;}
+  .trash-item{
+    border:1px solid var(--line); border-radius:4px; background:var(--field);
+    padding:12px 14px; display:flex; flex-direction:column; gap:8px;
+  }
+  .trash-item-top{display:flex; align-items:baseline; justify-content:space-between; gap:12px;}
+  .trash-item-name{font-weight:600; font-size:14.5px; min-width:0; overflow-wrap:anywhere;}
+  .trash-item-cost{font-family:'IBM Plex Mono',monospace; font-weight:600; font-size:14px; flex-shrink:0;}
+  .trash-item-meta{font-size:12.5px; color:var(--ink-soft);}
+  .trash-item-actions{display:flex; flex-wrap:wrap; gap:8px;}
+  .trash-item-actions .btn{padding:8px 14px; font-size:13px; width:auto;}
+
   html{-webkit-text-size-adjust:100%;}
   .item-main{overflow-wrap:anywhere;}
 
@@ -745,10 +809,9 @@
     .card-body{min-width:0;}
     .month-badge{min-width:48px; padding:5px 7px;}
     .card-side{margin-right:10px;}
-    .avatar-lg{width:38px; height:38px; font-size:14px;}
+    .item-card{--badge-h:38px; --name-size:15px;}
     .month-badge-label{font-size:13.5px;}
     .item-main{padding-right:0;}
-    .item-name{font-size:15px;}
     .item-amount{width:auto; text-align:right; padding-top:26px;}
     .item-amount-value{font-size:17px;}
     .complete-check{top:12px; right:12px; width:22px; height:22px;}
@@ -759,6 +822,7 @@
     .overlay{padding:12px; align-items:flex-end;}
     .modal{padding:22px 18px calc(18px + env(safe-area-inset-bottom)); max-height:92vh; max-height:92dvh;}
     .modal-actions{flex-wrap:wrap;}
+    .modal-actions .btn{padding-left:12px; padding-right:12px;}
     .share-box{flex-wrap:wrap;}
     .share-code{flex-basis:100%;}
     .gate-card{padding-left:20px; padding-right:20px;}
@@ -929,6 +993,7 @@
     </div>
 
     <div class="modal-actions">
+      <button type="button" class="btn btn-danger btn-left" id="removeItemBtn" style="display:none" onclick="requestRemoveItem()">Remove item</button>
       <button class="btn btn-ghost" onclick="closeItemModal()">Cancel</button>
       <button class="btn btn-primary" onclick="saveItem()">Save item</button>
     </div>
@@ -955,6 +1020,14 @@
         <input type="checkbox" id="settingsConfirmRestore" onchange="onConfirmRestoreSettingChange()">
         <span>Ask for confirmation before restoring a completed item back to Active</span>
       </label>
+      <div class="settings-divider"></div>
+      <div class="trash-row">
+        <div class="trash-row-text">
+          <div class="trash-row-title" id="trashRowTitle">Deleted items (0)</div>
+          <p class="guide-desc">Removed items wait here for 30 days, then they’re erased for good.</p>
+        </div>
+        <button type="button" class="btn btn-ghost" id="trashOpenBtn" onclick="openTrashModal()">View</button>
+      </div>
       <div class="settings-divider"></div>
       <div id="sharingSection">
         <label class="field-label" for="settingsHhName">Household name <span class="opt">(just for show)</span></label>
@@ -1030,6 +1103,51 @@
   </div>
 </div>
 
+<!-- Deleted items modal -->
+<div class="overlay" id="trashOverlay">
+  <div class="modal">
+    <h3>Deleted items</h3>
+    <p class="gate-sub">Removed items stay here for 30 days, then they’re erased for good. Restoring one puts it back where it was.</p>
+    <div class="trash-list" id="trashList"></div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-danger btn-left" id="trashEmptyBtn" onclick="emptyTrash()">Empty all</button>
+      <button type="button" class="btn btn-ghost" onclick="closeTrashModal()">Done</button>
+    </div>
+  </div>
+</div>
+
+<!-- Photo crop editor -->
+<div class="overlay" id="cropOverlay" role="dialog" aria-modal="true" aria-labelledby="cropTitle">
+  <div class="modal modal-crop">
+    <h3 id="cropTitle">Adjust photo</h3>
+    <p class="gate-sub">Drag to move, pinch or use the slider to zoom.</p>
+    <div class="crop-stage" id="cropStage" tabindex="0" aria-label="Photo position. Use arrow keys to move and plus or minus to zoom.">
+      <img id="cropImg" alt="" draggable="false">
+    </div>
+    <div class="crop-zoom">
+      <span aria-hidden="true">−</span>
+      <input type="range" id="cropZoom" min="1" max="4" step="0.01" value="1" aria-label="Zoom">
+      <span aria-hidden="true">+</span>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="cropCancel">Cancel</button>
+      <button type="button" class="btn btn-primary" id="cropOk">Use photo</button>
+    </div>
+  </div>
+</div>
+
+<!-- In-app confirm dialog -->
+<div class="overlay" id="confirmOverlay" role="alertdialog" aria-modal="true" aria-labelledby="confirmTitle" aria-describedby="confirmMsg">
+  <div class="modal modal-confirm">
+    <h3 id="confirmTitle">Are you sure?</h3>
+    <p class="gate-sub" id="confirmMsg"></p>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-ghost" id="confirmCancel">Cancel</button>
+      <button type="button" class="btn btn-danger-solid" id="confirmOk">OK</button>
+    </div>
+  </div>
+</div>
+
 <!-- People management modal -->
 <div class="overlay" id="peopleOverlay">
   <div class="modal">
@@ -1063,7 +1181,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.6.0';
+const APP_VERSION = '2.7.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -1077,6 +1195,21 @@ const FIREBASE_CONFIG = {
 let household = { code: '', name: '' };   // code = shared key, name = the signed-in person
 let householdName = '';                    // display name for the household, shared and just for show
 let items = [];
+// Removed items stay in `items` with a deletedAt (epoch ms) for 30 days. They live in the same
+// array so the synced fields don't change. Everything that lists, counts or totals items must
+// go through liveItems() so they never show up as real items.
+const TRASH_DAYS = 30, DAY_MS = 86400000;
+function isDeleted(it){ return !!it && Number(it.deletedAt) > 0; }
+function liveItems(){ return items.filter(i => !isDeleted(i)); }
+function findLiveItem(id){ return items.find(i => i.id === id && !isDeleted(i)); }
+function deletedItems(){ return items.filter(isDeleted).sort((a, b) => Number(b.deletedAt) - Number(a.deletedAt)); }
+// Erases items deleted more than 30 days ago. Returns how many were erased.
+function purgeTrash(now){
+  now = now == null ? Date.now() : now;
+  const before = items.length;
+  items = items.filter(i => !(isDeleted(i) && now - Number(i.deletedAt) > TRASH_DAYS * DAY_MS));
+  return before - items.length;
+}
 let activity = [];
 let editingId = null;
 let activeMonthFilter = 'All';
@@ -2053,34 +2186,180 @@ function renderPeopleList(){
   clearPhotoChoice();
 }
 
-// Shrinks an image file to a 160x160 centered-crop JPEG and hands the data URL to cb.
-// Falls back to the original data URL if canvas or image decoding fails.
-function resizePhotoFile(file, cb){
+// ---- Photo crop editor -------------------------------------------------------------------
+// The picked image is shown behind a circular mask. The person drags it into place and zooms;
+// "Use photo" renders exactly the visible square to a 160x160 JPEG (the circle is its inscribed
+// disc), which is what gets stored. The math below is pure so it can be unit-tested.
+const CROP_VIEW = 240, CROP_OUT = 160, CROP_MAX_ZOOM = 4;
+const clampNum = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
+
+// Smallest scale at which the image still covers the whole view (so the circle is never empty).
+function cropMinScale(iw, ih, view){ return view / Math.min(iw, ih); }
+// st = { scale, x, y }: x/y are the image's top-left corner in view pixels (always <= 0).
+function cropClamp(st, iw, ih, view){
+  const min = cropMinScale(iw, ih, view);
+  const scale = clampNum(st.scale, min, min * CROP_MAX_ZOOM);
+  const x = clampNum(st.x, view - iw * scale, 0);
+  const y = clampNum(st.y, view - ih * scale, 0);
+  return { scale, x, y };
+}
+function cropInitial(iw, ih, view){
+  const scale = cropMinScale(iw, ih, view);
+  return { scale, x: (view - iw * scale) / 2, y: (view - ih * scale) / 2 };
+}
+// Changes the scale while keeping the image point under (fx, fy) (view pixels) where it is.
+function cropZoomAt(st, newScale, fx, fy, iw, ih, view){
+  const min = cropMinScale(iw, ih, view);
+  const scale = clampNum(newScale, min, min * CROP_MAX_ZOOM);
+  const ix = (fx - st.x) / st.scale, iy = (fy - st.y) / st.scale;
+  return cropClamp({ scale, x: fx - ix * scale, y: fy - iy * scale }, iw, ih, view);
+}
+// The part of the source image that is visible in the view, in source pixels.
+function cropSourceRect(st, view){
+  return { sx: -st.x / st.scale, sy: -st.y / st.scale, sw: view / st.scale, sh: view / st.scale };
+}
+function cropRender(img, iw, ih, st, view, out){
+  const r = cropSourceRect(cropClamp(st, iw, ih, view), view);
+  const c = document.createElement('canvas');
+  c.width = c.height = out;
+  const ctx = c.getContext('2d');
+  ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out, out);   // transparent PNGs would otherwise turn black in a JPEG
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, out, out);
+  return c.toDataURL('image/jpeg', 0.8);
+}
+
+const crop = { open:false, img:null, iw:0, ih:0, st:null, cb:null, onCancel:null, pointers:new Map(), last:null, wired:false };
+
+function cropApply(){
+  const el = document.getElementById('cropImg');
+  el.style.width = crop.iw + 'px'; el.style.height = crop.ih + 'px';
+  el.style.transform = `translate(${crop.st.x}px, ${crop.st.y}px) scale(${crop.st.scale})`;
+  const z = document.getElementById('cropZoom');
+  z.value = String(crop.st.scale / cropMinScale(crop.iw, crop.ih, CROP_VIEW));
+}
+function cropSet(st){ crop.st = cropClamp(st, crop.iw, crop.ih, CROP_VIEW); cropApply(); }
+function cropZoomBy(factor, fx, fy){
+  cropSet(cropZoomAt(crop.st, crop.st.scale * factor, fx, fy, crop.iw, crop.ih, CROP_VIEW));
+}
+
+function cropWire(){
+  if(crop.wired) return;
+  crop.wired = true;
+  const stage = document.getElementById('cropStage');
+  const pos = e => { const r = stage.getBoundingClientRect(); return { x: (e.clientX - r.left) * CROP_VIEW / r.width, y: (e.clientY - r.top) * CROP_VIEW / r.height }; };
+  const gesture = () => {
+    const pts = [...crop.pointers.values()];
+    if(pts.length === 1) return { cx: pts[0].x, cy: pts[0].y, d: 0 };
+    return { cx: (pts[0].x + pts[1].x) / 2, cy: (pts[0].y + pts[1].y) / 2, d: Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y) };
+  };
+  stage.addEventListener('pointerdown', e => {
+    if(!crop.open) return;
+    if(e.pointerType === 'mouse' && e.button !== 0) return;
+    try { stage.setPointerCapture(e.pointerId); } catch(err) {}
+    crop.pointers.set(e.pointerId, pos(e));
+    crop.last = gesture();
+    stage.classList.add('dragging');
+    e.preventDefault();
+  });
+  stage.addEventListener('pointermove', e => {
+    if(!crop.open || !crop.pointers.has(e.pointerId)) return;
+    crop.pointers.set(e.pointerId, pos(e));
+    const g = gesture(), l = crop.last;
+    crop.last = g;
+    if(!l) return;
+    let st = { scale: crop.st.scale, x: crop.st.x + (g.cx - l.cx), y: crop.st.y + (g.cy - l.cy) };
+    if(crop.pointers.size > 1 && l.d > 0 && g.d > 0){
+      st = cropZoomAt(st, st.scale * g.d / l.d, g.cx, g.cy, crop.iw, crop.ih, CROP_VIEW);
+    }
+    cropSet(st);
+    e.preventDefault();
+  });
+  const up = e => {
+    if(!crop.pointers.has(e.pointerId)) return;
+    crop.pointers.delete(e.pointerId);
+    crop.last = crop.pointers.size ? gesture() : null;
+    if(!crop.pointers.size) stage.classList.remove('dragging');
+  };
+  stage.addEventListener('pointerup', up);
+  stage.addEventListener('pointercancel', up);
+  stage.addEventListener('lostpointercapture', up);
+  stage.addEventListener('wheel', e => {
+    if(!crop.open) return;
+    e.preventDefault();
+    const p = pos(e);
+    cropZoomBy(Math.exp(-e.deltaY * 0.0015), p.x, p.y);
+  }, { passive: false });
+  stage.addEventListener('keydown', e => {
+    if(!crop.open) return;
+    const step = 12, c = CROP_VIEW / 2;
+    const moves = { ArrowLeft:[step,0], ArrowRight:[-step,0], ArrowUp:[0,step], ArrowDown:[0,-step] };
+    if(moves[e.key]){ cropSet({ scale: crop.st.scale, x: crop.st.x + moves[e.key][0], y: crop.st.y + moves[e.key][1] }); e.preventDefault(); }
+    else if(e.key === '+' || e.key === '='){ cropZoomBy(1.1, c, c); e.preventDefault(); }
+    else if(e.key === '-' || e.key === '_'){ cropZoomBy(1 / 1.1, c, c); e.preventDefault(); }
+  });
+  document.getElementById('cropZoom').addEventListener('input', e => {
+    const min = cropMinScale(crop.iw, crop.ih, CROP_VIEW), c = CROP_VIEW / 2;
+    cropSet(cropZoomAt(crop.st, min * parseFloat(e.target.value), c, c, crop.iw, crop.ih, CROP_VIEW));
+  });
+  document.getElementById('cropOk').addEventListener('click', cropConfirm);
+  document.getElementById('cropCancel').addEventListener('click', () => closeCropEditor(true));
+  document.getElementById('cropOverlay').addEventListener('mousedown', e => { if(e.target.id === 'cropOverlay') closeCropEditor(true); });
+  document.addEventListener('keydown', e => { if(e.key === 'Escape' && crop.open) closeCropEditor(true); });
+}
+
+// img: a loaded image (naturalWidth/naturalHeight). cb(dataUrl) runs only if the person confirms.
+function openCropEditor(img, cb, onCancel){
+  cropWire();
+  crop.img = img;
+  crop.iw = img.naturalWidth || img.width;
+  crop.ih = img.naturalHeight || img.height;
+  crop.cb = cb; crop.onCancel = onCancel || null;
+  crop.pointers.clear(); crop.last = null;
+  crop.st = cropInitial(crop.iw, crop.ih, CROP_VIEW);
+  document.getElementById('cropImg').src = img.src;
+  crop.open = true;
+  cropApply();
+  document.getElementById('cropOverlay').style.display = 'flex';
+  try { document.getElementById('cropStage').focus({ preventScroll:true }); } catch(e) {}
+}
+function closeCropEditor(cancelled){
+  const onCancel = crop.onCancel;
+  crop.open = false; crop.cb = null; crop.onCancel = null; crop.img = null; crop.pointers.clear();
+  document.getElementById('cropStage').classList.remove('dragging');
+  document.getElementById('cropOverlay').style.display = 'none';
+  document.getElementById('cropImg').removeAttribute('src');
+  if(cancelled && onCancel) onCancel();
+}
+function cropConfirm(){
+  if(!crop.open) return;
+  let data;
+  try { data = cropRender(crop.img, crop.iw, crop.ih, crop.st, CROP_VIEW, CROP_OUT); }
+  catch(err){ alert('Couldn’t use that photo. Try a different one.'); closeCropEditor(true); return; }
+  const cb = crop.cb;
+  closeCropEditor(false);
+  if(cb) cb(data);
+}
+
+// Reads a picked image file and opens the crop editor. cb(dataUrl) runs only when the person
+// presses "Use photo"; onCancel runs when they back out or the file can't be read as an image.
+function cropPhotoFile(file, cb, onCancel){
   const reader = new FileReader();
   reader.onload = e => {
-    // shrink to a small square so photos stay tiny in the shared database
     const img = new Image();
-    img.onload = () => {
-      let out;
-      try {
-        const S = 160, c = document.createElement('canvas');
-        c.width = c.height = S;
-        const side = Math.min(img.width, img.height);
-        c.getContext('2d').drawImage(img, (img.width-side)/2, (img.height-side)/2, side, side, 0, 0, S, S);
-        out = c.toDataURL('image/jpeg', 0.8);
-      } catch(err){ out = e.target.result; }
-      cb(out);
-    };
-    img.onerror = () => { cb(e.target.result); };
+    img.onload = () => openCropEditor(img, cb, onCancel);
+    img.onerror = () => { alert('Couldn’t read that image. Try a JPG or PNG.'); if(onCancel) onCancel(); };
     img.src = e.target.result;
   };
+  reader.onerror = () => { if(onCancel) onCancel(); };
   reader.readAsDataURL(file);
 }
 
 function onPhotoChosen(){
-  const file = document.getElementById('p_photo').files[0];
+  const inp = document.getElementById('p_photo');
+  const file = inp.files[0];
   if(!file) return;
-  resizePhotoFile(file, data => { pendingPhotoData = data; showPhotoPreview(); });
+  cropPhotoFile(file, data => { pendingPhotoData = data; showPhotoPreview(); inp.value = ''; }, () => { inp.value = ''; });
 }
 
 let photoTargetId = null;
@@ -2096,7 +2375,7 @@ function onRowPhotoChosen(){
   const id = photoTargetId;
   inp.value = '';
   if(!file || id == null) return;
-  resizePhotoFile(file, data => setPersonPhoto(id, data));
+  cropPhotoFile(file, data => setPersonPhoto(id, data));
 }
 function setPersonPhoto(id, data){
   const p = people.find(x => x.id == id);
@@ -2209,6 +2488,7 @@ async function enterApp(){
     logActivity(`${name} joined the household`);
   }
   try { localStorage.setItem('ledgerHousehold', JSON.stringify({ code, name })); } catch(e) {}
+  purgeTrash();   // anything deleted over 30 days ago goes now; the render below syncs it
   updateHouseholdTitle();
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';
@@ -2250,6 +2530,7 @@ function openItemModal(prefill){
   document.getElementById('f_link').value = prefill ? itemLink(prefill) : '';
   document.getElementById('f_note').value = prefill ? itemNote(prefill) : '';
   document.getElementById('linkError').textContent = '';
+  document.getElementById('removeItemBtn').style.display = editingId ? '' : 'none';
   document.getElementById('itemOverlay').style.display = 'flex';
 }
 function closeItemModal(){ document.getElementById('itemOverlay').style.display = 'none'; }
@@ -2259,7 +2540,7 @@ function saveItem(){
   let category = document.getElementById('f_category').value;
   const cost = parseFloat(document.getElementById('f_cost').value) || 0;
   const month = document.getElementById('f_month').value || 'No date yet';
-  const existing = editingId ? items.find(i => i.id === editingId) : null;
+  const existing = editingId ? findLiveItem(editingId) : null;
   const saved = existing ? existing.saved : 0;
   const owner = document.getElementById('f_owner').value;
   const note = document.getElementById('f_note').value.trim().slice(0, 500);
@@ -2311,9 +2592,9 @@ function saveItem(){
   }
 
   // someone else may have removed this item while the edit window was open
-  if(editingId && !items.some(i => i.id === editingId)) editingId = null;
+  if(editingId && !findLiveItem(editingId)) editingId = null;
   if(editingId){
-    const it = items.find(i => i.id === editingId);
+    const it = findLiveItem(editingId);
     Object.assign(it,{ name, category, cost, month, saved, owner, link, note, subcategory });
     logActivity(`${household.name} updated “${name}”`);
   } else {
@@ -2324,17 +2605,155 @@ function saveItem(){
   render();
 }
 
+// Soft delete: the item stays in the array, marked with when it was removed.
 function deleteItem(id){
-  const it = items.find(i => i.id === id);
-  items = items.filter(i => i.id !== id);
+  const it = findLiveItem(id);
+  if(!it) return;
+  it.deletedAt = Date.now();
   logActivity(`${household.name} removed “${it.name}”`);
   render();
 }
 
+// "Remove item" button inside the edit window: ask first, then remove and close.
+function requestRemoveItem(){
+  const it = editingId ? findLiveItem(editingId) : null;
+  if(!it) return Promise.resolve(false);
+  const id = it.id;
+  return askConfirm({
+    title: 'Remove item?',
+    message: `Remove “${it.name}”? You can restore it from Settings → Deleted items for ${TRASH_DAYS} days.`,
+    confirmLabel: 'Remove', danger: true
+  }).then(ok => {
+    if(!ok) return false;
+    closeItemModal();
+    deleteItem(id);
+    return true;
+  });
+}
+
 function editItem(id){
-  const it = items.find(i => i.id === id);
+  const it = findLiveItem(id);
+  if(!it) return;
   openItemModal(it);
 }
+
+// ---- In-app confirm dialog (used instead of window.confirm for removals) ----
+let confirmResolve = null;
+function askConfirm(opts){
+  opts = opts || {};
+  if(confirmResolve){ const r = confirmResolve; confirmResolve = null; r(false); }
+  document.getElementById('confirmTitle').textContent = opts.title || 'Are you sure?';
+  document.getElementById('confirmMsg').textContent = opts.message || '';
+  const ok = document.getElementById('confirmOk');
+  ok.textContent = opts.confirmLabel || 'OK';
+  ok.className = 'btn ' + (opts.danger === false ? 'btn-primary' : 'btn-danger-solid');
+  document.getElementById('confirmOverlay').style.display = 'flex';
+  const cancel = document.getElementById('confirmCancel');
+  try { cancel.focus({ preventScroll:true }); } catch(e) {}
+  return new Promise(res => { confirmResolve = res; });
+}
+function settleConfirm(v){
+  document.getElementById('confirmOverlay').style.display = 'none';
+  const r = confirmResolve; confirmResolve = null;
+  if(r) r(v);
+}
+document.getElementById('confirmOk').addEventListener('click', () => settleConfirm(true));
+document.getElementById('confirmCancel').addEventListener('click', () => settleConfirm(false));
+document.getElementById('confirmOverlay').addEventListener('mousedown', e => { if(e.target.id === 'confirmOverlay') settleConfirm(false); });
+document.addEventListener('keydown', e => { if(e.key === 'Escape' && confirmResolve){ e.stopPropagation(); settleConfirm(false); } }, true);
+
+// ---- Deleted items (Settings → Deleted items) ----
+function daysAgoText(ms, now){
+  const d = Math.floor((now - ms) / DAY_MS);
+  return d <= 0 ? 'today' : d === 1 ? '1 day ago' : d + ' days ago';
+}
+function daysLeftText(ms, now){
+  const left = Math.max(0, Math.ceil((ms + TRASH_DAYS * DAY_MS - now) / DAY_MS));
+  return left === 1 ? '1 day left' : left + ' days left';
+}
+function renderTrashList(){
+  const dels = deletedItems(), now = Date.now();
+  const list = document.getElementById('trashList');
+  if(!dels.length){
+    list.innerHTML = '<div class="empty">Nothing deleted. Items you remove will wait here for 30 days.</div>';
+  } else {
+    list.innerHTML = dels.map(it => `
+      <div class="trash-item" data-trash-id="${escAttr(it.id)}">
+        <div class="trash-item-top">
+          <span class="trash-item-name">${escapeHtml(it.name)}</span>
+          <span class="trash-item-cost">$${(Number(it.cost) || 0).toLocaleString()}</span>
+        </div>
+        <div class="trash-item-meta">Deleted ${daysAgoText(Number(it.deletedAt), now)} · ${daysLeftText(Number(it.deletedAt), now)}</div>
+        <div class="trash-item-actions">
+          <button type="button" class="btn btn-ghost" data-act="restore">Restore</button>
+          <button type="button" class="btn btn-danger" data-act="forever">Delete forever</button>
+        </div>
+      </div>`).join('');
+    list.querySelectorAll('.trash-item').forEach((row, i) => {
+      const id = dels[i].id;
+      row.querySelector('[data-act="restore"]').onclick = () => restoreDeletedItem(id);
+      row.querySelector('[data-act="forever"]').onclick = () => deleteItemForever(id);
+    });
+  }
+  document.getElementById('trashEmptyBtn').style.display = dels.length ? '' : 'none';
+}
+// keeps the Settings row count and an open Deleted items window in step with the data
+function refreshTrashUi(){
+  const n = items.filter(isDeleted).length;
+  const t = document.getElementById('trashRowTitle');
+  if(t) t.textContent = `Deleted items (${n})`;
+  const o = document.getElementById('trashOverlay');
+  if(o && o.style.display === 'flex') renderTrashList();
+}
+function openTrashModal(){
+  closeSettingsModal();
+  renderTrashList();
+  document.getElementById('trashOverlay').style.display = 'flex';
+}
+function closeTrashModal(){
+  document.getElementById('trashOverlay').style.display = 'none';
+  openSettingsModal('general');
+}
+function restoreDeletedItem(id){
+  const it = items.find(i => i.id === id && isDeleted(i));
+  if(!it) return;
+  delete it.deletedAt;   // completed state is left as it was
+  logActivity(`${household.name} restored “${it.name}” from Deleted items`);
+  render();
+}
+function deleteItemForever(id){
+  const it = items.find(i => i.id === id && isDeleted(i));
+  if(!it) return Promise.resolve(false);
+  return askConfirm({
+    title: 'Delete forever?',
+    message: `Delete “${it.name}” forever? This can’t be undone.`,
+    confirmLabel: 'Delete forever', danger: true
+  }).then(ok => {
+    if(!ok) return false;
+    const before = items.length;
+    items = items.filter(i => !(i.id === id && isDeleted(i)));
+    if(items.length !== before) logActivity(`${household.name} deleted “${it.name}” forever`);
+    render();
+    return true;
+  });
+}
+function emptyTrash(){
+  const n = items.filter(isDeleted).length;
+  if(!n) return Promise.resolve(false);
+  return askConfirm({
+    title: 'Empty Deleted items?',
+    message: `Delete ${n === 1 ? 'the 1 item' : 'all ' + n + ' items'} in Deleted items forever? This can’t be undone.`,
+    confirmLabel: 'Empty all', danger: true
+  }).then(ok => {
+    if(!ok) return false;
+    items = items.filter(i => !isDeleted(i));
+    logActivity(`${household.name} emptied Deleted items (${n})`);
+    render();
+    return true;
+  });
+}
+// once an hour (and on load / when a sync arrives) erase anything deleted over 30 days ago
+setInterval(() => { if(purgeTrash()) render(); }, 60 * 60 * 1000);
 
 
 
@@ -2434,7 +2853,7 @@ function monthSortKey(m){
 function renderMonthFilter(){
   const wrap = document.getElementById('monthFilter');
   wrap.innerHTML = '';
-  const months = [...new Set(items.map(i => i.month))].sort((a,b) => monthSortKey(a) - monthSortKey(b));
+  const months = [...new Set(liveItems().map(i => i.month))].sort((a,b) => monthSortKey(a) - monthSortKey(b));
 
   if(!months.includes(activeMonthFilter) && activeMonthFilter !== 'All'){
     activeMonthFilter = 'All';
@@ -2442,12 +2861,12 @@ function renderMonthFilter(){
 
   const allPill = document.createElement('div');
   allPill.className = 'month-pill' + (activeMonthFilter === 'All' ? ' active' : '');
-  allPill.innerHTML = `All months <span class="count">${items.length}</span>`;
+  allPill.innerHTML = `All months <span class="count">${liveItems().length}</span>`;
   allPill.onclick = () => { activeMonthFilter = 'All'; render(); };
   wrap.appendChild(allPill);
 
   months.forEach(m => {
-    const count = items.filter(i => i.month === m).length;
+    const count = liveItems().filter(i => i.month === m).length;
     const mc = monthColor(m);
     const isActive = activeMonthFilter === m;
     const pill = document.createElement('div');
@@ -2466,7 +2885,7 @@ function renderMonthFilter(){
 function renderCategoryFilter(){
   const wrap = document.getElementById('categoryFilter');
   wrap.innerHTML = '';
-  const cats = [...new Set(items.map(i => i.category))].sort((a,b) => a.localeCompare(b));
+  const cats = [...new Set(liveItems().map(i => i.category))].sort((a,b) => a.localeCompare(b));
 
   if(!cats.includes(activeCategoryFilter) && activeCategoryFilter !== 'All'){
     activeCategoryFilter = 'All';
@@ -2474,12 +2893,12 @@ function renderCategoryFilter(){
 
   const allPill = document.createElement('div');
   allPill.className = 'month-pill' + (activeCategoryFilter === 'All' ? ' active' : '');
-  allPill.innerHTML = `All categories <span class="count">${items.length}</span>`;
+  allPill.innerHTML = `All categories <span class="count">${liveItems().length}</span>`;
   allPill.onclick = () => { activeCategoryFilter = 'All'; render(); };
   wrap.appendChild(allPill);
 
   cats.forEach(c => {
-    const count = items.filter(i => i.category === c).length;
+    const count = liveItems().filter(i => i.category === c).length;
     const cc = categoryColor(c);
     const isActive = activeCategoryFilter === c;
     const pill = document.createElement('div');
@@ -2549,7 +2968,6 @@ function buildItemCard(item, opts){
         ${itemLinkNoteHtml(item)}
         <div class="item-actions">
           <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>Edit</button>
-          <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="deleteItem(${item.id})"`}>Remove</button>
         </div>
       </div>
     </div>
@@ -2592,7 +3010,7 @@ function completeItem(id){
 }
 
 function finishCompleting(id){
-  const it = items.find(i => i.id === id);
+  const it = findLiveItem(id);
   if(it){
     it.completed = true;
     logActivity(`${household.name} marked “${it.name}” as complete`);
@@ -2604,7 +3022,7 @@ let confirmOnRestore = true;
 
 function onRestoreCheckboxChange(id, checkboxEl){
   if(confirmOnRestore){
-    const it = items.find(i => i.id === id);
+    const it = findLiveItem(id);
     const ok = confirm(`Move “${it ? it.name : 'this item'}” back to Active?`);
     if(!ok){
       checkboxEl.checked = true; // put the checkbox back since the user backed out
@@ -2615,7 +3033,7 @@ function onRestoreCheckboxChange(id, checkboxEl){
 }
 
 function restoreItem(id){
-  const it = items.find(i => i.id === id);
+  const it = findLiveItem(id);
   if(it){
     it.completed = false;
     logActivity(`${household.name} restored “${it.name}” to active`);
@@ -2677,6 +3095,7 @@ function applyTheme(){
 }
 
 const CHANGELOG = [
+  { v:'2.7.0', date:'2026-10-15', items:['When you add or change someone’s photo in People, you can now drag it into place and zoom in before saving, so their face fits the circle.','The owner’s photo on each item card is now exactly as tall as the month badge above it.','The category label on each card is now the same size as the item name.','The 🔗 link and 📝 note icons on cards now sit in outlined boxes, so they stand out on light themes.','The Remove button is no longer on every card. Open an item with Edit and use “Remove item” there; it asks before removing.','Removed items now wait in Settings → Deleted items for 30 days. You can restore one or delete it for good, or empty them all.'] },
   { v:'2.6.0', date:'2026-10-15', items:['On each item card the owner’s photo now sits under the month and is larger. The name beside it is gone (hover or long-press the photo to see it).'] },
   { v:'2.5.0', date:'2026-10-15', items:['Items now have a separate Link and Note. Links show as a short site name (like amazon.com) instead of the whole address.','Web addresses typed inside a note become tappable links too.','Older items keep working: anything that was plain text in the old link field now shows as a note, and is tidied up the next time you save that item.'] },
   { v:'2.4.1', date:'2026-10-15', items:['You can now add, change or remove the photo of someone already in People, using the new Change photo / Remove photo buttons on each row.'] },
@@ -2717,6 +3136,7 @@ function openSettingsModal(tab){
     ? 'Changes save automatically and show up on everyone’s devices within a second or two.'
     : 'Sharing isn’t switched on yet, so this board only lives on this device and is lost when you close the page. See the setup guide to turn it on.';
   document.getElementById('settingsConfirmRestore').checked = confirmOnRestore;
+  refreshTrashUi();
   renderThemePicker();
   document.getElementById('settingsOverlay').style.display = 'flex';
 }
@@ -2776,9 +3196,14 @@ function render(){
 }
 
 function renderCore(){
+  renderBoard();
+  refreshTrashUi();
+}
+
+function renderBoard(){
   document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
   document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
-  const completedItems = items.filter(i => i.completed);
+  const completedItems = liveItems().filter(i => i.completed);
 
   const summaryStrip = document.getElementById('summaryStrip');
   const sectionTitleEl = document.getElementById('sectionTitle');
@@ -2821,7 +3246,7 @@ function renderCore(){
   updateFilterNote();
 
   list.innerHTML = '';
-  const activeItems = items.filter(i => !i.completed);
+  const activeItems = liveItems().filter(i => !i.completed);
   let visible = activeMonthFilter === 'All' ? activeItems : activeItems.filter(i => i.month === activeMonthFilter);
   if(activeCategoryFilter !== 'All') visible = visible.filter(i => i.category === activeCategoryFilter);
 
@@ -3136,6 +3561,7 @@ function cloudApplyRemote(data){
   clearTimeout(cloud.timer); cloud.timer = null;
   applyState(remote);
   cloud.lastJson = stableJson(snapshotState());
+  if(purgeTrash()){ render(); return; }   // expired deleted items are erased and the change syncs back
   renderCore();
   setCloudStatus('ok');
 }
@@ -3209,7 +3635,8 @@ function exportBackup(){
     a.download = `household-forecast-backup-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    msg.textContent = `Backup saved (${items.length} item${items.length === 1 ? '' : 's'}, ${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
+    const n = liveItems().length;
+    msg.textContent = `Backup saved (${n} item${n === 1 ? '' : 's'}, ${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
   } catch(e){ msg.textContent = 'Couldn’t create the backup file on this device.'; }
 }
 function onRestoreFileChosen(input){
@@ -3222,8 +3649,9 @@ function onRestoreFileChosen(input){
     try {
       const d = JSON.parse(reader.result);
       if(!d || d.app !== 'household-forecast' || !Array.isArray(d.items) || !Array.isArray(d.people)) throw new Error('bad');
-      if(!confirm(`Replace everything on the board with this backup (${d.items.length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`)) return;
+      if(!confirm(`Replace everything on the board with this backup (${d.items.filter(i => !isDeleted(i)).length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`)) return;
       applyState(stateFromDoc(d));
+      purgeTrash();
       logActivity(`${household.name} restored the board from a backup`);
       render();
       msg.textContent = 'Board restored from backup.';
