@@ -2,13 +2,18 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Ledger — Household Forecast</title>
+<title>Horizon</title>
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 32 32%22%3E%3Crect width=%2232%22 height=%2232%22 rx=%227%22 fill=%22%231F2A24%22/%3E%3Cg stroke=%22%23E0A94A%22 stroke-width=%221.6%22 stroke-linecap=%22round%22%3E%3Cpath d=%22M16 8.6v-2.2M22.7 13.3l1.5-1.5M9.3 13.3l-1.5-1.5%22/%3E%3C/g%3E%3Cpath d=%22M9 20a7 7 0 0 1 14 0z%22 fill=%22%23E0A94A%22/%3E%3Cpath d=%22M5.5 20h21%22 stroke=%22%23EEF1ED%22 stroke-width=%222%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M11 23.6h10%22 stroke=%22%23EEF1ED%22 stroke-opacity=%22.55%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E%3Cpath d=%22M13.6 26.7h4.8%22 stroke=%22%23EEF1ED%22 stroke-opacity=%22.3%22 stroke-width=%221.7%22 stroke-linecap=%22round%22/%3E%3C/svg%3E">
+<link rel="apple-touch-icon" href="data:image/png;base64,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">
+<meta name="apple-mobile-web-app-title" content="Horizon">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,600;9..144,700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500&display=swap" rel="stylesheet">
 <style>
   :root{
     color-scheme:light;
+    --on-accent:#fff;
+    --logo-tile:#1F2A24; --logo-line:#EEF1ED; --logo-sun:#E0A94A;
     --paper:#EEF1ED;
     --card:#F8FAF7;
     --field:#FFFFFF;
@@ -27,7 +32,7 @@
     --coral-light: rgba(193,82,75,0.14);
   }
   :root[data-theme="dark"]{
-    color-scheme:dark;
+    color-scheme:dark; --on-accent:#131719;
     --paper:#131719;
     --card:#1B2123;
     --field:#242B2D;
@@ -61,14 +66,14 @@
     --teal-light: rgba(47,110,158,0.14); --mustard-light: rgba(201,138,43,0.16); --coral-light: rgba(193,82,75,0.14);
   }
   :root[data-theme="midnight"]{
-    color-scheme:dark;
+    color-scheme:dark; --on-accent:#0E1320;
     --paper:#0E1320; --card:#161C2E; --field:#1E2640; --ink:#E4E9F5; --ink-soft:#98A3BE;
     --line: rgba(228,233,245,0.15); --tint: rgba(228,233,245,0.09); --hover: rgba(228,233,245,0.07); --overlay: rgba(0,0,0,0.65);
     --warn-fg:#F0C877; --mustard:#E0A94A; --coral:#E8847C; --teal:#7BA7E8;
     --teal-light: rgba(123,167,232,0.2); --mustard-light: rgba(224,169,74,0.2); --coral-light: rgba(232,132,124,0.2);
   }
   :root[data-theme="mocha"]{
-    color-scheme:dark;
+    color-scheme:dark; --on-accent:#1A1512;
     --paper:#1A1512; --card:#231C18; --field:#2D2420; --ink:#F0E8E0; --ink-soft:#AE9E92;
     --line: rgba(240,232,224,0.15); --tint: rgba(240,232,224,0.09); --hover: rgba(240,232,224,0.07); --overlay: rgba(0,0,0,0.65);
     --warn-fg:#F0C877; --mustard:#E0A94A; --coral:#E8847C; --teal:#E0A070;
@@ -192,6 +197,29 @@
     background:none; border:none; padding:6px 0 0; cursor:pointer;
     font:inherit; font-size:12.5px; color:var(--teal); text-decoration:underline;
   }
+  .settings-modal{max-width:520px; padding-top:0;}
+  .settings-sticky{position:sticky; top:0; z-index:3; background:var(--card); margin:0 -30px; padding:14px 30px 0; border-bottom:1px solid var(--line);}
+  .settings-head{display:flex; align-items:center; gap:14px;}
+  .settings-head h3{margin:0;}
+  .settings-close{padding:8px 12px; font-size:13px; white-space:nowrap;}
+  .settings-tabs{display:flex; gap:22px; margin-top:12px;}
+  .settings-tab{background:none; border:none; padding:0 0 10px; font:inherit; font-size:14px; font-weight:600; color:var(--ink-soft); cursor:pointer; border-bottom:2px solid transparent; margin-bottom:-1px;}
+  .settings-tab:hover{color:var(--ink);}
+  .settings-tab.active{color:var(--ink); border-bottom-color:var(--teal);}
+  .settings-pane{display:none; padding-top:16px;}
+  .settings-pane.active{display:block;}
+  .custom-row{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:8px 0; font-size:14px;}
+  .custom-row input[type=color]{width:52px; height:34px; padding:2px; flex:none; cursor:pointer; border-radius:6px;}
+  .seg{display:inline-flex; border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .seg button{background:var(--field); color:var(--ink); border:none; padding:7px 16px; font:inherit; font-size:13px; cursor:pointer;}
+  .seg button.active{background:var(--teal); color:var(--on-accent);}
+  .swatch-row{display:flex; flex-wrap:wrap; gap:8px; margin:2px 0 6px;}
+  .swatch{width:28px; height:28px; border-radius:50%; border:2px solid var(--line); cursor:pointer; padding:0;}
+  .swatch.active{border-color:var(--ink); box-shadow:0 0 0 2px var(--card), 0 0 0 4px var(--ink);}
+  .changelog details{border-top:1px solid var(--line); padding:8px 0;}
+  .changelog summary{cursor:pointer; font-weight:600; font-size:14px;}
+  .changelog summary .cl-date{font-weight:400; color:var(--ink-soft); font-size:12.5px; margin-left:6px;}
+  .changelog ul{margin:8px 0 4px; padding-left:20px; font-size:13px; line-height:1.5; color:var(--ink-soft);}
   .app-version{font-size:12px; color:var(--ink-soft); margin:16px 0 0; text-align:center;}
   .opt{font-weight:400; color:var(--ink-soft);}
   .gate-error{font-size:12.5px; color:var(--coral); margin-top:12px; line-height:1.5; min-height:0;}
@@ -224,6 +252,8 @@
     gap:14px;
   }
   .brand{display:flex; align-items:center; gap:12px;}
+  .brand-logo{width:38px; height:38px; flex-shrink:0; display:block;}
+  .gate-logo{width:52px; height:52px; display:block; margin-bottom:14px;}
   .brand-mark{
     width:30px;height:30px;background:var(--ink);border-radius:3px;
     display:flex;align-items:center;justify-content:center;
@@ -240,10 +270,10 @@
   .btn-ghost:hover{background:var(--hover);}
   .btn-add{
     background:var(--teal);
-    color:#fff;
+    color:var(--on-accent);
   }
   .btn-add:hover{opacity:0.9;}
-  :root[data-theme="dark"] .btn-add, :root[data-theme="midnight"] .btn-add, :root[data-theme="mocha"] .btn-add{color:var(--paper);}
+
 
   main{
     max-width:980px;
@@ -422,10 +452,10 @@
   .complete-check:hover{border-color:var(--teal);}
   .complete-check:checked{background:var(--teal); border-color:var(--teal);}
   .complete-check:checked::after{
-    content:'✓'; color:#fff; font-size:13px; font-weight:700; line-height:1;
+    content:'✓'; color:var(--on-accent); font-size:13px; font-weight:700; line-height:1;
   }
   .complete-check.restore-check{border-color:var(--teal); background:var(--teal);}
-  .complete-check.restore-check::after{content:'✓'; color:#fff; font-size:13px; font-weight:700;}
+  .complete-check.restore-check::after{content:'✓'; color:var(--on-accent); font-size:13px; font-weight:700;}
 
   /* Complete animation: strike-through -> pop -> collapse */
   .item-card{
@@ -672,15 +702,18 @@
     .share-box{flex-wrap:wrap;}
     .share-code{flex-basis:100%;}
     .gate-card{padding-left:20px; padding-right:20px;}
+    .settings-sticky{margin:0 -18px; padding:12px 18px 0;}
   }
 </style>
 </head>
 <body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><symbol id="horizonLogo" viewBox="0 0 32 32"><rect width="32" height="32" rx="7" style="fill:var(--logo-tile)"/><g style="stroke:var(--logo-sun)" stroke-width="1.6" stroke-linecap="round" fill="none"><path d="M16 8.6v-2.2M22.7 13.3l1.5-1.5M9.3 13.3l-1.5-1.5"/></g><path d="M9 20a7 7 0 0 1 14 0z" style="fill:var(--logo-sun)"/><path d="M5.5 20h21" style="stroke:var(--logo-line)" stroke-width="2" stroke-linecap="round"/><path d="M11 23.6h10" style="stroke:var(--logo-line)" stroke-opacity=".55" stroke-width="1.7" stroke-linecap="round"/><path d="M13.6 26.7h4.8" style="stroke:var(--logo-line)" stroke-opacity=".3" stroke-width="1.7" stroke-linecap="round"/></symbol></svg>
 
 <!-- GATE -->
 <div id="gate">
   <div class="gate-card">
-    <div class="gate-eyebrow">Household Forecast</div>
+    <svg class="gate-logo" role="img" aria-label="Horizon"><use href="#horizonLogo"/></svg>
+    <div class="gate-eyebrow">Horizon · Household Forecast</div>
     <h1 class="gate-title display">What's coming up<br>that isn't budgeted yet.</h1>
     <p class="gate-sub">A shared list for future expenses — the ones EveryDollar doesn't see yet because they're not this month's problem. Enter your household code to open your shared board.</p>
 
@@ -707,7 +740,7 @@
 <div id="app">
   <header class="top">
     <div class="brand">
-      <div class="brand-mark display">L</div>
+      <svg class="brand-logo" role="img" aria-label="Horizon"><use href="#horizonLogo"/></svg>
       <div>
         <div class="brand-name" id="hhTitle">Household board</div>
         <div class="brand-code"><span id="hhCodeLabel">Code: —</span> · <span class="sync-pill" id="syncPill"></span></div>
@@ -832,46 +865,74 @@
 
 <!-- Settings modal -->
 <div class="overlay" id="settingsOverlay">
-  <div class="modal">
-    <h3>Settings</h3>
-    <p class="gate-sub">A couple of small preferences for how the board looks and behaves.</p>
-    <div class="setting-label">Theme</div>
-    <div class="theme-picker" id="themePicker"></div>
-    <label class="setting-row">
-      <input type="checkbox" id="settingsConfirmRestore" onchange="onConfirmRestoreSettingChange()">
-      <span>Ask for confirmation before restoring a completed item back to Active</span>
-    </label>
-    <div class="settings-divider"></div>
-    <div id="sharingSection">
-      <label class="field-label" for="settingsHhName">Household name <span class="opt">(just for show)</span></label>
-      <input type="text" id="settingsHhName" maxlength="40" placeholder="e.g. The Smiths" oninput="onHouseholdNameInput()">
-      <p class="guide-desc" style="margin-top:14px"><strong>Share with family.</strong> Anyone who enters this household code sees and edits the same board, on any phone or computer.</p>
-      <div class="share-box">
-        <div class="share-code" id="shareCode">—</div>
-        <button class="btn btn-ghost" id="copyCodeBtn" onclick="copyHouseholdCode('code')">Copy code</button>
-        <button class="btn btn-ghost" id="copyLinkBtn" onclick="copyHouseholdCode('link')">Copy invite link</button>
+  <div class="modal settings-modal">
+    <div class="settings-sticky">
+      <div class="settings-head">
+        <button class="btn btn-ghost settings-close" onclick="closeSettingsModal()">← Close</button>
+        <h3>Settings</h3>
       </div>
-      <p class="guide-desc" id="syncDetail"></p>
+      <div class="settings-tabs" role="tablist">
+        <button class="settings-tab active" id="settingsTab-general" role="tab" onclick="showSettingsTab('general')">General</button>
+        <button class="settings-tab" id="settingsTab-themes" role="tab" onclick="showSettingsTab('themes')">Themes</button>
+        <button class="settings-tab" id="settingsTab-advanced" role="tab" onclick="showSettingsTab('advanced')">Advanced</button>
+      </div>
+    </div>
+
+    <div class="settings-pane active" id="settingsPane-general">
+      <label class="setting-row">
+        <input type="checkbox" id="settingsConfirmRestore" onchange="onConfirmRestoreSettingChange()">
+        <span>Ask for confirmation before restoring a completed item back to Active</span>
+      </label>
+      <div class="settings-divider"></div>
+      <div id="sharingSection">
+        <label class="field-label" for="settingsHhName">Household name <span class="opt">(just for show)</span></label>
+        <input type="text" id="settingsHhName" maxlength="40" placeholder="e.g. The Smiths" oninput="onHouseholdNameInput()">
+        <p class="guide-desc" style="margin-top:14px"><strong>Share with family.</strong> Anyone who enters this household code sees and edits the same board, on any phone or computer.</p>
+        <div class="share-box">
+          <div class="share-code" id="shareCode">—</div>
+          <button class="btn btn-ghost" id="copyCodeBtn" onclick="copyHouseholdCode('code')">Copy code</button>
+          <button class="btn btn-ghost" id="copyLinkBtn" onclick="copyHouseholdCode('link')">Copy invite link</button>
+        </div>
+        <p class="guide-desc" id="syncDetail"></p>
+        <div class="guide-actions">
+          <button class="btn btn-ghost" onclick="leaveHousehold()">Leave this household on this device</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="settings-pane" id="settingsPane-themes">
+      <div class="setting-label">Presets</div>
+      <div class="theme-picker" id="themePicker"></div>
+      <div class="settings-divider"></div>
+      <div class="setting-label">Customize</div>
+      <p class="guide-desc">Start from any preset, then change the pieces below. Your changes are saved as “Custom”.</p>
+      <div class="custom-row"><span>Mode</span>
+        <div class="seg"><button id="ct_light" onclick="setCustomMode(false)">Light</button><button id="ct_dark" onclick="setCustomMode(true)">Dark</button></div>
+      </div>
+      <div class="custom-row"><label for="ct_paper">Background color</label><input type="color" id="ct_paper" oninput="onCustomChange('paper')"></div>
+      <div class="custom-row"><label for="ct_accent">Accent color</label><input type="color" id="ct_accent" oninput="onCustomChange('accent')"></div>
+      <div class="swatch-row" id="accentSwatches"></div>
+      <div class="guide-actions"><button class="btn btn-ghost" onclick="setTheme('light')">Reset to Sage</button></div>
+      <p class="guide-desc" style="margin-top:14px">Your theme is saved on this device only. Each phone or computer keeps its own, so family members choose theirs on their own devices.</p>
+    </div>
+
+    <div class="settings-pane" id="settingsPane-advanced">
+      <p class="guide-desc"><strong>Backup.</strong> Save a copy of everything on the board to a file you can keep, or restore the board from one.</p>
       <div class="guide-actions">
-        <button class="btn btn-ghost" onclick="leaveHousehold()">Leave this household on this device</button>
+        <button class="btn btn-ghost" onclick="exportBackup()">Export backup</button>
+        <button class="btn btn-ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup…</button>
+        <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestoreFileChosen(this)">
       </div>
-    </div>
-    <div class="settings-divider"></div>
-    <p class="guide-desc"><strong>Backup.</strong> Save a copy of everything on the board to a file you can keep, or restore the board from one.</p>
-    <div class="guide-actions">
-      <button class="btn btn-ghost" onclick="exportBackup()">Export backup</button>
-      <button class="btn btn-ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup…</button>
-      <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestoreFileChosen(this)">
-    </div>
-    <p class="guide-desc" id="backupMsg"></p>
-    <div class="settings-divider"></div>
-    <p class="guide-desc">Not sure what something looks like? The style guide shows every card, tag, color and flag with sample data, so you don't have to add test items.</p>
-    <div class="guide-actions">
-      <button class="btn btn-ghost" onclick="openStyleGuide()">View style guide</button>
-    </div>
-    <p class="app-version" id="appVersion"></p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost" onclick="closeSettingsModal()">Done</button>
+      <p class="guide-desc" id="backupMsg"></p>
+      <div class="settings-divider"></div>
+      <p class="guide-desc"><strong>Version history.</strong> What changed in each version.</p>
+      <div class="changelog" id="changelogList"></div>
+      <div class="settings-divider"></div>
+      <p class="guide-desc">Not sure what something looks like? The style guide shows every card, tag, color and flag with sample data, so you don't have to add test items.</p>
+      <div class="guide-actions">
+        <button class="btn btn-ghost" onclick="openStyleGuide()">View style guide</button>
+      </div>
+      <p class="app-version" id="appVersion"></p>
     </div>
   </div>
 </div>
@@ -920,7 +981,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.1.0';
+const APP_VERSION = '2.3.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -1696,9 +1757,50 @@ const THEMES = [
   { key:'midnight', label:'Midnight', dark:true,  paper:'#0E1320', card:'#161C2E', accent:'#7BA7E8' },
   { key:'mocha',    label:'Mocha',    dark:true,  paper:'#1A1512', card:'#231C18', accent:'#E0A070' }
 ];
-function isDarkTheme(){ const t = THEMES.find(x => x.key === theme); return !!(t && t.dark); }
+let customTheme = { dark:false, paper:'#EEF1ED', accent:'#3F6D64' };
+const ACCENT_SWATCHES = ['#3F6D64','#2F6E9E','#A85A3A','#7C6FB5','#B5556F','#5F8F3E','#C98A2B','#4A6FA5'];
+const DEFAULT_PAPER = { light:'#EEF1ED', dark:'#131719' };
+function currentThemeColors(){
+  if(theme === 'custom') return customTheme;
+  const t = THEMES.find(x => x.key === theme) || THEMES[0];
+  return { dark: t.dark, paper: t.paper, accent: t.accent };
+}
+function isDarkTheme(){
+  if(theme === 'custom') return !!customTheme.dark;
+  const t = THEMES.find(x => x.key === theme); return !!(t && t.dark);
+}
+function relLuminance(hex){
+  const [r, g, b] = hexToRgb(hex).map(v => { v /= 255; return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); });
+  return 0.2126 * r + 0.7152 * g + 0.0722 * b;
+}
+function customVars(c){
+  const dark = c.dark, paper = c.paper, accent = c.accent;
+  const ink = dark ? mixHex(paper, '#ffffff', 0.9) : mixHex(paper, '#000000', 0.88);
+  const [r, g, b] = hexToRgb(ink), [ar, ag, ab] = hexToRgb(accent);
+  return {
+    '--paper': paper,
+    '--card': dark ? mixHex(paper, '#ffffff', 0.05) : mixHex(paper, '#ffffff', 0.55),
+    '--field': dark ? mixHex(paper, '#ffffff', 0.1) : '#FFFFFF',
+    '--ink': ink,
+    '--ink-soft': mixHex(ink, paper, 0.4),
+    '--line': `rgba(${r},${g},${b},${dark ? 0.15 : 0.13})`,
+    '--tint': `rgba(${r},${g},${b},${dark ? 0.09 : 0.07})`,
+    '--hover': `rgba(${r},${g},${b},${dark ? 0.07 : 0.05})`,
+    '--overlay': dark ? 'rgba(0,0,0,0.65)' : `rgba(${r},${g},${b},0.4)`,
+    '--warn-fg': dark ? '#F0C877' : '#7A5A17',
+    '--mustard': dark ? '#E0A94A' : '#C98A2B',
+    '--coral': dark ? '#E8847C' : '#C1524B',
+    '--teal': accent,
+    '--teal-light': `rgba(${ar},${ag},${ab},${dark ? 0.2 : 0.14})`,
+    '--mustard-light': dark ? 'rgba(224,169,74,0.2)' : 'rgba(201,138,43,0.16)',
+    '--coral-light': dark ? 'rgba(232,132,124,0.2)' : 'rgba(193,82,75,0.14)',
+    '--on-accent': relLuminance(accent) > 0.4 ? '#14181A' : '#FFFFFF'
+  };
+}
+const CUSTOM_VAR_KEYS = Object.keys(customVars({ dark:false, paper:'#EEF1ED', accent:'#3F6D64' }));
 function themePickerHtml(){
-  return THEMES.map(t => `<button type="button" class="theme-opt${t.key === theme ? ' active' : ''}" onclick="setTheme('${t.key}')">
+  const all = THEMES.concat(theme === 'custom' ? [{ key:'custom', label:'Custom', paper: customTheme.paper, accent: customTheme.accent }] : []);
+  return all.map(t => `<button type="button" class="theme-opt${t.key === theme ? ' active' : ''}" onclick="setTheme('${t.key}')">
     <span class="theme-swatch" style="background:linear-gradient(135deg, ${t.paper} 0 45%, ${t.accent} 45% 100%)"></span>${t.label}</button>`).join('');
 }
 function renderThemePicker(){
@@ -1852,7 +1954,7 @@ const SUGGESTIONS = [
 
 function updateHouseholdTitle(){
   document.getElementById('hhTitle').textContent = householdName || 'Our household';
-  document.title = (householdName ? householdName + ' · ' : '') + 'Household Forecast';
+  document.title = (householdName ? householdName + ' · ' : '') + 'Horizon';
 }
 function onHouseholdNameInput(){
   householdName = document.getElementById('settingsHhName').value.trim();
@@ -2234,21 +2336,64 @@ let theme = 'light';
 function loadSettings(){
   try {
     const saved = JSON.parse(localStorage.getItem('ledgerSettings') || '{}');
-    if(THEMES.some(t => t.key === saved.theme)) theme = saved.theme;
+    const okHex = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
+    if(saved.custom && okHex(saved.custom.paper) && okHex(saved.custom.accent)){
+      customTheme = { dark: !!saved.custom.dark, paper: saved.custom.paper, accent: saved.custom.accent };
+    }
+    if(saved.theme === 'custom' && saved.custom) theme = 'custom';
+    else if(THEMES.some(t => t.key === saved.theme)) theme = saved.theme;
     else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
     if(typeof saved.confirmOnRestore === 'boolean') confirmOnRestore = saved.confirmOnRestore;
   } catch(e) { /* storage unavailable: fall back to defaults */ }
   applyTheme();
 }
 function saveSettings(){
-  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore })); } catch(e) {}
+  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme })); } catch(e) {}
 }
 function applyTheme(){
-  document.documentElement.setAttribute('data-theme', theme);
+  const root = document.documentElement;
+  root.setAttribute('data-theme', theme);
+  CUSTOM_VAR_KEYS.forEach(k => root.style.removeProperty(k));
+  if(theme === 'custom'){
+    const v = customVars(customTheme);
+    Object.keys(v).forEach(k => root.style.setProperty(k, v[k]));
+    root.style.colorScheme = customTheme.dark ? 'dark' : 'light';
+  } else {
+    root.style.removeProperty('color-scheme');
+  }
+  // the logo has two fixed looks: dark tile on light themes, light tile on dark themes
+  const dark = isDarkTheme();
+  root.style.setProperty('--logo-tile', dark ? '#EEF1ED' : '#1F2A24');
+  root.style.setProperty('--logo-line', dark ? '#1F2A24' : '#EEF1ED');
+  root.style.setProperty('--logo-sun', dark ? '#C98A2B' : '#E0A94A');
 }
 
-function openSettingsModal(){
-  document.getElementById('appVersion').textContent = 'Household Forecast · version ' + APP_VERSION;
+const CHANGELOG = [
+  { v:'2.3.0', date:'2026-10-15', items:['Settings now has General, Themes and Advanced tabs, with a Close button that stays at the top.','Themes tab with a customizer: pick light or dark, a background color and an accent color.','Backup, restore, version history and the style guide moved to Advanced.','The logo uses two fixed looks (dark tile on light themes, light tile on dark themes) instead of following every theme.'] },
+  { v:'2.2.0', date:'2026-10-15', items:['The app is now called Horizon, with a new logo.','Moved hosting to GitHub Pages.'] },
+  { v:'2.1.0', date:'2026-10-14', items:['Phone layout fixes.','Household name, separate from the household code.','Export backup and restore from backup.','More themes: Sand, Ocean, Midnight and Mocha.','Removed the Suggested items button.'] },
+  { v:'2.0.0', date:'2026-10-13', items:['Shared board across phones and computers, using a household code.','Invite link, remembered sign-in, real activity times.'] },
+  { v:'1.1.0', date:'2026-10-13', items:['Bigger suggestion engine, dark mode and a style guide.'] },
+  { v:'1.0.0', date:'2026-10-12', items:['First working prototype.'] }
+];
+function renderChangelog(){
+  document.getElementById('changelogList').innerHTML = CHANGELOG.map((c, i) =>
+    `<details${i === 0 ? ' open' : ''}><summary>${c.v}${i === 0 ? ' (current)' : ''}<span class="cl-date">${c.date}</span></summary><ul>${c.items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul></details>`).join('');
+}
+function showSettingsTab(name){
+  ['general', 'themes', 'advanced'].forEach(n => {
+    document.getElementById('settingsTab-' + n).classList.toggle('active', n === name);
+    document.getElementById('settingsPane-' + n).classList.toggle('active', n === name);
+  });
+  const box = document.querySelector('#settingsOverlay .modal');
+  if(box) box.scrollTop = 0;
+}
+
+function openSettingsModal(tab){
+  document.getElementById('appVersion').textContent = 'Horizon · version ' + APP_VERSION;
+  renderChangelog();
+  syncCustomizer();
+  showSettingsTab(typeof tab === 'string' ? tab : 'general');
   const signedIn = !!household.code;
   document.getElementById('sharingSection').style.display = signedIn ? 'block' : 'none';
   document.getElementById('shareCode').textContent = household.code || '—';
@@ -2270,9 +2415,41 @@ function onConfirmRestoreSettingChange(){
 }
 function setTheme(t){
   theme = t;
+  commitTheme();
+}
+function onCustomChange(which){
+  const c = Object.assign({}, currentThemeColors());
+  if(which === 'paper') c.paper = document.getElementById('ct_paper').value;
+  if(which === 'accent') c.accent = document.getElementById('ct_accent').value;
+  customTheme = c; theme = 'custom';
+  commitTheme();
+}
+function setCustomMode(dark){
+  const base = currentThemeColors();
+  customTheme = { dark, paper: dark === base.dark ? base.paper : (dark ? DEFAULT_PAPER.dark : DEFAULT_PAPER.light), accent: base.accent };
+  theme = 'custom';
+  commitTheme();
+}
+function setCustomAccent(hex){
+  const base = currentThemeColors();
+  customTheme = { dark: base.dark, paper: base.paper, accent: hex };
+  theme = 'custom';
+  commitTheme();
+}
+function syncCustomizer(){
+  const c = currentThemeColors();
+  const set = (id, v) => { const el = document.getElementById(id); if(el && el.value !== v) el.value = v; };
+  set('ct_paper', c.paper); set('ct_accent', c.accent);
+  document.getElementById('ct_light').classList.toggle('active', !c.dark);
+  document.getElementById('ct_dark').classList.toggle('active', !!c.dark);
+  document.getElementById('accentSwatches').innerHTML = ACCENT_SWATCHES.map(h =>
+    `<button type="button" class="swatch${h.toLowerCase() === c.accent.toLowerCase() ? ' active' : ''}" style="background:${h}" title="${h}" aria-label="Accent ${h}" onclick="setCustomAccent('${h}')"></button>`).join('');
+}
+function commitTheme(){
   applyTheme();
   saveSettings();
   renderThemePicker();
+  syncCustomizer();
   // colors that are computed in JS (pills, badges, chips) need a redraw
   if(document.getElementById('app').style.display === 'block') render();
   if(document.getElementById('guideOverlay').style.display === 'flex') renderStyleGuide();
@@ -2346,7 +2523,7 @@ function renderCore(){
   }
 
   if(activeItems.length === 0){
-    list.innerHTML = '<div class="empty">Nothing on the board yet. Add an item, or tap “Suggested items” up top to seed your list.</div>';
+    list.innerHTML = '<div class="empty">Nothing on the board yet. Tap “+ Add future item” to add the first thing you’ll need to buy.</div>';
   } else if(visible.length === 0){
     list.innerHTML = '<div class="empty">Nothing matches this filter yet.</div>';
   } else {
@@ -2409,7 +2586,7 @@ function openStyleGuide(){
 }
 function closeStyleGuide(){
   document.getElementById('guideOverlay').style.display = 'none';
-  openSettingsModal();
+  openSettingsModal('advanced');
 }
 
 function renderStyleGuide(){
