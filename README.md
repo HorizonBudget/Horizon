@@ -1,8 +1,15 @@
 # Horizon
 
+## What this is
+
 A shared "future expenses" planner for a household. It sits alongside EveryDollar: add the big things you know
 are coming, see what they add up to by month, and tick them off as you go. Everyone in the household sees the
 same board on their own phone or computer, with no accounts (a household code is the key).
+
+What it does today: items grouped by month with totals, search and filters, repeating items, a "what did you actually
+pay" step when you tick something off, Undo, deleted items kept for 30 days, profiles with photos, backup and restore,
+install as an app (works offline), and per-device looks: themes (including seasonal ones like Halloween and Christmas),
+saved custom themes and background patterns (stripes, dots, grid or emoji).
 
 Live at https://horizonbudget.github.io/Horizon/ (GitHub Pages, serves this repo as it is, no build step).
 
@@ -35,9 +42,11 @@ Load order, and what each file owns:
 5. `crop.js` photo crop editor. `items.js` sign-in, add/edit/save/remove item. `dialogs.js` the in-app confirm dialog.
 6. `trash.js` deleted items. `item-helpers.js` links and notes, month sorting, money, repeat rules.
 7. `toast.js`, `search.js`, `month-groups.js`, `backup-reminder.js`, `cards.js` (item cards, completing, restoring).
-8. `settings.js`, `update-notice.js`, `changelog.js`, `settings-modal.js`, `sticky-headers.js`.
+8. `settings.js`, `update-notice.js`, `changelog.js` (the version history list), `settings-modal.js`,
+   `sticky-headers.js` (headers that tuck away as you scroll).
 9. `render.js` draws the board. `style-guide.js`. `cloud.js` Firebase sync. `household.js` codes, backup, leaving.
-10. `pwa.js` install prompt and service worker registration. `main.js` start-up (runs last).
+10. `pwa.js` install prompt and service worker registration. `scroll-lock.js` stops the page behind an open dialog
+    from scrolling. `main.js` start-up (runs last).
 
 ## Things to know before changing data
 
@@ -47,17 +56,18 @@ Load order, and what each file owns:
   this device's localStorage.
 - Removed items stay in `items` with a `deletedAt` for 30 days.
 - Owners on items are stored by name; people have stable ids. Renaming a person rewrites item owners.
-- Themes and most view settings are per device (localStorage).
+- Themes, saved themes, background patterns and most view settings are per device (localStorage).
 
 ## Testing
 
 ```
 cd tests
 npm install            # once: installs jsdom
-node run-all.js        # every suite, several at once; exit code 1 if any fails
+node run-all.js        # all 21 suites, several at once; exit code 1 if any fails
 node run-all.js undo   # only suites whose file name contains "undo"
 python3 browser-smoke.py     # real Chromium: files load, offline reload works (needs Playwright)
 python3 overflow-audit.py    # sideways-scroll audit at phone sizes (needs Playwright)
+python3 sticky-audit.py      # real Chromium: scrolling headers and the no-scroll-behind-dialogs lock (slow)
 ```
 
 `tests/lib/build-app.js` stitches `index.html` + `styles.css` + `js/*.js` into one page for the jsdom suites, so they
@@ -73,8 +83,9 @@ lines and ends with `N passed, M failed`.
      "Horizon just got a little brighter!" message.
 2. Run `python3 tools/release.py X.Y.Z`. It updates `APP_VERSION`, the `?v=` on every file in `index.html`, `SW_VERSION`
    and the offline file list in `sw.js`. (After adding or removing a script file, run `python3 tools/release.py` with no
-   version to refresh the lists.)
-3. Run the tests (and `overflow-audit.py` if anything visual changed).
+   version to refresh the lists; `--check` changes nothing and fails if anything is out of step, and
+   `tests/layout-test.js` runs it.)
+3. Run the tests (and the Playwright scripts if anything visual changed).
 4. Commit and push to `main`. GitHub Pages publishes it in about a minute. Household data is untouched.
 5. Add the release to the "Household Forecast: Version History" doc.
 
