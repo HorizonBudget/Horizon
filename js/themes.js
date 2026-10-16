@@ -38,9 +38,13 @@ const PATTERN_SIZES = ['small', 'medium', 'large'];
 const PATTERN_STRENGTHS = ['subtle', 'medium', 'bold'];
 // pixel size of one repeat; emoji tiles are drawn at twice this (two rows, staggered)
 const PATTERN_PX = { geo: { small:12, medium:20, large:34 }, emoji: { small:44, medium:68, large:104 } };
-// layer opacity. Capped so soft text sitting directly on the page (not on a card) still passes AA; tests check this.
-const PATTERN_OPACITY = { geo: { subtle:0.05, medium:0.09, bold:0.12 }, emoji: { subtle:0.07, medium:0.12, bold:0.16 } };
-const PATTERN_MAX_OPACITY = 0.16;   // the strongest any pattern can be; soft text and accents are checked against a page tinted this much
+// layer opacity. Geometric patterns are drawn in the ink color; emoji keep their own colors, so they can go higher.
+// Soft and accent text never sits on the bare pattern: the few bits of text that sit directly on the page (empty
+// message, Collapse all) get a paper backing whenever a pattern is on (styles.css, seasonal-patterns). Tests check both.
+const PATTERN_OPACITY = { geo: { subtle:0.08, medium:0.13, bold:0.18 }, emoji: { subtle:0.14, medium:0.22, bold:0.30 } };
+const PATTERN_MAX_OPACITY = 0.30;   // the strongest any pattern can be (headings in the ink color are checked against this)
+// extra safety margin for soft text: it stays AA even on a page tinted this much with ink (the old cap; keeps colors stable)
+const PATTERN_SOFT_TEXT_TINT = 0.16;
 const EMOJI_PRESETS = ['🎃', '👻', '🍂', '🦃', '🎄', '🎅', '❄️', '💗', '🌷', '☀️', '🎆', '⭐', '🐾'];
 const DEFAULT_EMOJI = '⭐';
 function defaultPattern(){ return { type:'none', size:'medium', strength:'medium', emoji:DEFAULT_EMOJI, auto:false }; }
@@ -132,7 +136,7 @@ function contrastRatio(h1, h2){
 }
 // soft text (dates, hints) must stay readable on every surface it can sit on, including tinted ones
 function softInkFor(ink, paper, card, field, tintAlpha){
-  const surfaces = [paper, card, field, mixHex(paper, ink, tintAlpha), mixHex(card, ink, tintAlpha), mixHex(paper, ink, PATTERN_MAX_OPACITY)];
+  const surfaces = [paper, card, field, mixHex(paper, ink, tintAlpha), mixHex(card, ink, tintAlpha), mixHex(paper, ink, PATTERN_SOFT_TEXT_TINT)];
   for(let amt = 0.4; amt > 0; amt -= 0.05){
     const c = mixHex(ink, paper, amt);
     if(surfaces.every(s => contrastRatio(c, s) >= 4.8)) return c;

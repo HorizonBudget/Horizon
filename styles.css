@@ -1065,12 +1065,12 @@
   }
   html[data-pat="dots"] body::before, html[data-pat="dots"] .pat-layer{
     background-image:
-      radial-gradient(circle at 25% 25%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.1), transparent calc(var(--pat-size) * 0.12)),
-      radial-gradient(circle at 75% 75%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.1), transparent calc(var(--pat-size) * 0.12));
+      radial-gradient(circle at 25% 25%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.12), transparent calc(var(--pat-size) * 0.14)),
+      radial-gradient(circle at 75% 75%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.12), transparent calc(var(--pat-size) * 0.14));
     background-size:var(--pat-size) var(--pat-size);
   }
   html[data-pat="grid"] body::before, html[data-pat="grid"] .pat-layer{
-    background-image:linear-gradient(var(--ink) 1px, transparent 1px), linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+    background-image:linear-gradient(var(--ink) 1.5px, transparent 1.5px), linear-gradient(90deg, var(--ink) 1.5px, transparent 1.5px);
     background-size:var(--pat-size) var(--pat-size);
   }
   html[data-pat="emoji"] body::before, html[data-pat="emoji"] .pat-layer{
@@ -1079,6 +1079,10 @@
     background-repeat:repeat;
   }
   @media print{ html[data-pat] body::before{display:none;} }
+  /* The few bits of soft / accent text that sit straight on the page get a paper backing while a pattern is on, so a
+     bold pattern never sits under them (headings in the ink color are strong enough on their own; tests check this). */
+  html[data-pat] .empty{background:var(--paper);}
+  html[data-pat] .section-head .link-btn{background:var(--paper); border-radius:6px; padding-left:6px; padding-right:6px;}
 
 /* ==== SECTION: sticky-scroll (sticky headers, scroll lock) - add new rules below this line ==== */
 
