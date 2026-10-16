@@ -1090,6 +1090,18 @@
   .overlay{overscroll-behavior:contain;}
   .modal{overscroll-behavior:contain;}
 
+  /* Active / Completed bar over a background pattern (3.1.x). A solid paper fill showed as a blank, pattern-free strip,
+     so while a pattern is on the bar is frosted glass instead: mostly paper, slightly see-through, with the page behind
+     it blurred. The pattern shows through softly; cards scrolling underneath turn into a faint blur. Only the board bar
+     needs this: the page header and the compact bar are card-colored toolbars with a border, not a gap in the page.
+     No pattern = the plain paper fill above, unchanged. Old browsers without color-mix/backdrop-filter keep the solid fill. */
+  @supports ((backdrop-filter:blur(1px)) or (-webkit-backdrop-filter:blur(1px))) and (background:color-mix(in srgb, red 50%, transparent)){
+    html[data-pat]:not([data-pat="none"]) .board-sticky{
+      background:color-mix(in srgb, var(--paper) 70%, transparent);
+      -webkit-backdrop-filter:blur(4px); backdrop-filter:blur(4px);
+    }
+  }
+
 /* ==== SECTION: version-history (Settings version list) - add new rules below this line ==== */
   .changelog #changelogOlder[hidden]{display:none;}
   .cl-toggle{
