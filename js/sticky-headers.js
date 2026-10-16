@@ -1,49 +1,79 @@
-// ---- Sticky headers that collapse while you scroll (2.11.0) --------------------------------
-// One small pure function decides when a header should be compact. It is given the previous state and
-// the current scroll position and returns the new state, so the rules can be tested without a browser.
-//   state = { collapsed, ref }   ref = the scroll position the next movement is measured from
-// Rules: close to the top it is always expanded. Scrolling DOWN by `down` px past the lowest point
-// reached since it was last expanded collapses it (only below `minY`). Once collapsed, scrolling back UP
-// by `up` px from the lowest point reached expands it again. Anything smaller (finger jitter, tiny
-// reversals) changes nothing. `max` is how far the area can scroll; the position is clamped to
-// 0..max so iOS rubber-banding past either end is never mistaken for a scroll up.
-const BAR_RULES = { top: 4, minY: 48, down: 24, up: 14 };
-const PAGE_BAR_RULES = { top: 4, minY: 72, down: 24, up: 14 };
-function scrollBarStep(state, y, max, rules){
+// ---- Sticky headers that collapse while you scroll (2.11.0, calmer since) -------------------
+// One small pure function decides when a header should be compact. It is given the previous state, the
+// current scroll position and the time, and returns the new state, so the rules can be tested without a browser.
+//   state = { collapsed, ref, at }   ref = the scroll position the next movement is measured from
+//                                    at  = when the state last changed (ms), for the cooldown
+// Rules: close to the top it is always expanded (immediately, whatever the cooldown). Scrolling DOWN by `down` px
+// past the lowest point reached since it was last expanded collapses it (only below `minY`). Once collapsed,
+// scrolling back UP by `up` px from the lowest point reached expands it again. Anything smaller (finger jitter,
+// tiny reversals) changes nothing. After every change the header holds still for `cooldown` ms, so its own
+// slide animation (and the little scroll wobble that can come with it) can never trigger the next change.
+// A change that is held back is reported as `wait` (ms left); the caller looks again when it is over, so a
+// stale state is never left behind. `max` is how far the area can scroll; both the position and the reference
+// point are clamped to 0..max so iOS rubber-banding past either end, or the iPhone URL bar sliding away at the
+// bottom of the page (which shortens the scroll range and makes the browser nudge the position up), is never
+// mistaken for the person scrolling up. `now` omitted = no cooldown (used by the pure tests).
+const BAR_RULES = { top: 4, minY: 64, down: 36, up: 20, cooldown: 300 };
+const PAGE_BAR_RULES = { top: 4, minY: 96, down: 36, up: 20, cooldown: 300 };
+function scrollBarStep(state, y, max, rules, now){
   const r = Object.assign({}, BAR_RULES, rules || {});
   y = Number(y) || 0;
-  if(max != null && isFinite(max)) y = Math.min(y, Math.max(0, max));
+  if(max != null && isFinite(max)){ max = Math.max(0, max); y = Math.min(y, max); } else max = null;
   y = Math.max(0, y);
   const s = state || { collapsed: false, ref: 0 };
-  if(y <= r.top) return { collapsed: false, ref: y };
+  const t = (typeof now === 'number' && isFinite(now)) ? now : null;
+  const at = (typeof s.at === 'number' && isFinite(s.at)) ? s.at : null;
+  if(y <= r.top) return { collapsed: false, ref: y, at: (s.collapsed && t != null) ? t : at };
+  // an area that can barely scroll (the page just got short) never keeps a compact header: there is nothing to make room for
+  if(max != null && max <= r.minY) return { collapsed: false, ref: y, at: (s.collapsed && t != null) ? t : at };
+  let ref = isFinite(s.ref) ? s.ref : y;
+  if(max != null) ref = Math.min(ref, max);
+  let want = !!s.collapsed;
   if(!s.collapsed){
-    const ref = Math.min(s.ref, y);
-    if(y > r.minY && y - ref >= r.down) return { collapsed: true, ref: y };
-    return { collapsed: false, ref };
+    ref = Math.min(ref, y);
+    if(y > r.minY && y - ref >= r.down) want = true;
+  } else {
+    ref = Math.max(ref, y);
+    if(ref - y >= r.up) want = false;
   }
-  const ref = Math.max(s.ref, y);
-  if(ref - y >= r.up) return { collapsed: false, ref: y };
-  return { collapsed: true, ref };
+  if(want === !!s.collapsed) return { collapsed: want, ref, at };
+  if(t != null && at != null && r.cooldown > 0){
+    const since = t - at;
+    if(since >= 0 && since < r.cooldown) return { collapsed: !!s.collapsed, ref, at, wait: Math.ceil(r.cooldown - since) };
+  }
+  return { collapsed: want, ref: y, at: t != null ? t : at };
 }
 
 // Listens to scrolling on `target` (a scrolling element or the window), at most once per animation frame.
-// apply(collapsed) runs only when the state really changes. Returns { reset, state }.
+// apply(collapsed) runs only when the state really changes. When a change is held back by the cooldown, a
+// timer looks again once it is over (the scroll may well have stopped by then). Returns { reset, state }.
 function bindScrollBar(opts){
-  let st = { collapsed: false, ref: 0 }, queued = false;
+  let st = { collapsed: false, ref: 0, at: null }, queued = false, timer = null;
   const raf = window.requestAnimationFrame ? f => window.requestAnimationFrame(f) : f => setTimeout(f, 16);
+  const clock = opts.now || (() => (window.performance && performance.now) ? performance.now() : Date.now());
   const read = () => {
     queued = false;
+    if(timer){ clearTimeout(timer); timer = null; }
     const y = opts.getY();
-    const next = scrollBarStep(st, y, opts.getMax(), opts.rules);
+    const next = scrollBarStep(st, y, opts.getMax(), opts.rules, clock());
     const changed = next.collapsed !== st.collapsed;
     st = next;
     if(opts.onScroll) opts.onScroll(y);
     if(changed) opts.apply(next.collapsed);
+    if(next.wait > 0) timer = setTimeout(read, next.wait + 20);
   };
   opts.target.addEventListener('scroll', () => { if(!queued){ queued = true; raf(read); } }, { passive: true });
   return {
     state: () => st,
-    reset: () => { st = { collapsed: false, ref: 0 }; if(opts.onScroll) opts.onScroll(0); opts.apply(false); }
+    // The content changed size under the person's finger (a tab switch, a search, folding months): the browser may nudge
+    // the scroll position to keep things in place. That is not a scroll, so measure from where things ended up.
+    rebase: () => { if(!timer) st = Object.assign({}, st, { ref: Math.max(0, Number(opts.getY()) || 0) }); },
+    reset: () => {
+      if(timer){ clearTimeout(timer); timer = null; }
+      st = { collapsed: false, ref: 0, at: null };
+      if(opts.onScroll) opts.onScroll(0);
+      opts.apply(false);
+    }
   };
 }
 
@@ -144,7 +174,7 @@ function initPageHeader(){
   if(!header || !compact) return;
   let collapsed = false;
   const setBarVar = () => root.style.setProperty('--page-bar-h', (collapsed ? compact.offsetHeight : header.offsetHeight) + 'px');
-  bindScrollBar({
+  const ctl = bindScrollBar({
     target: window,
     getY: () => window.pageYOffset || root.scrollTop || 0,
     getMax: () => root.scrollHeight - window.innerHeight,
@@ -154,9 +184,10 @@ function initPageHeader(){
   });
   setBarVar();
   const main = document.querySelector('#app main'), stuck = document.getElementById('boardSticky');
+  if(main && window.ResizeObserver) new ResizeObserver(() => ctl.rebase()).observe(main);
   if(main) keepFocusClear(main, el => (stuck && stuck.contains(el)) ? null : header.offsetHeight + (stuck ? stuck.offsetHeight : 0) + 8, gap => window.scrollBy(0, gap));
   window.addEventListener('resize', setBarVar);
   window.addEventListener('orientationchange', setBarVar);
-  if(window.ResizeObserver) new ResizeObserver(setBarVar).observe(header);
+  if(window.ResizeObserver){ const ro = new ResizeObserver(setBarVar); ro.observe(header); ro.observe(compact); }
   window.refreshPageBar = setBarVar;   // used when a ResizeObserver isn't there
 }

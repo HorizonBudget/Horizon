@@ -42,6 +42,7 @@ const APP_FILES = [
   'js/cloud.js',
   'js/household.js',
   'js/pwa.js',
+  'js/scroll-lock.js',
   'js/main.js',
 ];
 // APP_FILES:END

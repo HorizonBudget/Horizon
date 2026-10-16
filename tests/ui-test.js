@@ -163,31 +163,72 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
   const run=(ys,max,start,r)=>{ let s=start||{collapsed:false,ref:0}; const out=[]; for(const y of ys){ s=step(s,y,max,r); out.push(s.collapsed); } return {s,out}; };
   ok(step(null,0,1000).collapsed===false,'null/initial state is expanded');
   ok(run([10,20,30,40],5000).out.every(c=>!c),'small scroll down near the top does not collapse');
-  ok(run([20,60],5000).out.join()==='false,true','scroll down past the threshold (60px) collapses');
+  ok(run([20,100],5000).out.join()==='false,true','scroll down past the threshold (36px of travel, below 64px) collapses');
+  ok(run([20,50],5000).out.join()==='false,false','30px of travel is not enough: stays expanded');
+  ok(run([86],5000,{collapsed:false,ref:50}).out.join()==='true','exactly 36px of travel from the lowest point (and past 64px) collapses');
+  ok(run([85],5000,{collapsed:false,ref:50}).out.join()==='false','35px of travel does not');
   ok(run([100,300,1200],5000).out.join()==='true,true,true','a long scroll down stays collapsed');
-  ok(run([60,200,195,190,191,196,199,200],5000).out.slice(2).every(c=>c),'small up-jitter (under 14px) does not expand');
-  { const r=run([60,200,187],5000); ok(r.out[2]===true,'13px up is still collapsed (hysteresis)'); }
-  { const r=run([60,200,185],5000); ok(r.out[2]===false,'15px up expands again'); }
-  { const r=run([60,200,186],5000); ok(r.out[2]===false,'exactly 14px up expands'); }
-  { const r=run([60,200,170,100],5000); ok(r.out.slice(2).every(c=>!c),'a real scroll up stays expanded all the way'); }
-  { const r=run([60,200,185,200,207],5000); ok(r.out.join()==='true,true,false,false,false','after expanding, scrolling 22px back down does not instantly collapse again'); }
-  { const r=run([60,200,185,200,209],5000); ok(r.out[4]===true,'... but 24px down from the lowest point collapses'); }
-  { const r=run([60,300,500,490,520,507],5000); ok(r.out.join()==='true,true,true,true,true,true','hysteresis follows the furthest point reached (500, then 520): 507 is only 13 up from the 520 peak, so it stays collapsed'); }
-  { const r=run([60,300,500,490,520,506],5000); ok(r.out[5]===false,'506 is 14 up from the 520 peak: expands'); }
+  ok(run([100,200,195,190,191,196,199,200],5000).out.slice(2).every(c=>c),'small up-jitter (under 20px) does not expand');
+  { const r=run([100,200,181],5000); ok(r.out[2]===true,'19px up is still collapsed (hysteresis)'); }
+  { const r=run([100,200,179],5000); ok(r.out[2]===false,'21px up expands again'); }
+  { const r=run([100,200,180],5000); ok(r.out[2]===false,'exactly 20px up expands'); }
+  { const r=run([100,200,170,100],5000); ok(r.out.slice(2).every(c=>!c),'a real scroll up stays expanded all the way'); }
+  { const r=run([100,200,179,200,213],5000); ok(r.out.join()==='true,true,false,false,false','after expanding, scrolling 34px back down does not instantly collapse again'); }
+  { const r=run([100,200,179,200,215],5000); ok(r.out[4]===true,'... but 36px down from the lowest point collapses'); }
+  { const r=run([100,300,500,490,520,501],5000); ok(r.out.join()==='true,true,true,true,true,true','hysteresis follows the furthest point reached (500, then 520): 501 is only 19 up from the 520 peak, so it stays collapsed'); }
+  { const r=run([100,300,500,490,520,500],5000); ok(r.out[5]===false,'500 is 20 up from the 520 peak: expands'); }
   ok(run([300,5,0],5000,{collapsed:true,ref:300}).out.slice(1).every(c=>!c),'scrolling back to the top expands it and it stays expanded');
   ok(step({collapsed:true,ref:900},4,5000).collapsed===false&&step({collapsed:true,ref:900},0,5000).collapsed===false,'at y<=4 it is always expanded, even from a collapsed state');
   ok(step({collapsed:true,ref:900},-40,5000).collapsed===false,'negative y (iOS rubber-band at the top) counts as the top: expanded');
   { const r=run([1000,1030,1060,1000,1020],1000,{collapsed:true,ref:1000}); ok(r.out.every(c=>c),'rubber-band past the bottom (y>max) is clamped and never expands'); }
-  { const alt=[]; for(let i=0;i<200;i++) alt.push(i%2?300:313); const a=run(alt,5000,{collapsed:true,ref:313}); ok(a.out.every(c=>c),'collapsed: 200 alternations of 13px never flicker'); const b=run([60,300].concat(alt.map((y,i)=>i%2?287:300)),5000); ok(b.out.slice(2).every(c=>b.out[1]===c),'expanded/collapsed: 200 alternations of 13px never flicker'); }
-  { const e=run([0,5,0,5,10,0,3,20,30,40,47],5000); ok(e.out.every(c=>!c),'no collapse below minY even with 40px of travel'); }
+  { const alt=[]; for(let i=0;i<200;i++) alt.push(i%2?300:319); const a=run(alt,5000,{collapsed:true,ref:319}); ok(a.out.every(c=>c),'collapsed: 200 alternations of 19px never flicker'); const b=run([100,300].concat(alt.map((y,i)=>i%2?281:300)),5000); ok(b.out.slice(2).every(c=>b.out[1]===c),'expanded/collapsed: 200 alternations of 19px never flicker'); }
+  { const e=run([0,5,0,5,10,0,3,20,30,40,50,60,64],5000); ok(e.out.every(c=>!c),'no collapse at or above minY (64px) even with 60px of travel'); }
   ok(step({collapsed:false,ref:0},100,40).collapsed===false,'tiny scroll areas (max<=minY) never collapse');
   { const r=run([60,150],5000,null,{minY:10,down:100,up:5}); ok(r.out.join()==='false,true','custom rules are honored'); }
+  ok(w.eval('BAR_RULES.down')===36&&w.eval('BAR_RULES.up')===20&&w.eval('BAR_RULES.cooldown')===300&&w.eval('PAGE_BAR_RULES.cooldown')===300&&w.eval('PAGE_BAR_RULES.minY')>w.eval('BAR_RULES.minY'),'calmer thresholds: 36px down, 20px up, 300ms cooldown (board header needs a little more room than dialogs)');
   { const before=JSON.stringify({collapsed:true,ref:50}); const s0={collapsed:true,ref:50}; step(s0,500,5000); ok(JSON.stringify(s0)===before,'step() does not mutate the state it is given'); }
-  // random walk: a collapse never happens without >=24px net travel down, an expand never without >=14px up
+
+  // ---- cooldown: after every change the header holds still for 300ms; a held-back change is reported as `wait` ----
+  { const T=(s,y,t,max,r)=>step2(s,y,t,max,r); const step2=(s,y,t,max,r)=>w.scrollBarStep(s,y,max==null?5000:max,r,t);
+    let s=T(null,20,1000);    ok(!s.collapsed&&s.at==null,'cooldown: no change yet, no timestamp');
+    s=T(s,300,1000);          ok(s.collapsed&&s.at===1000,'cooldown: first collapse is applied at once and stamped');
+    let h=T(s,270,1100);      ok(h.collapsed&&h.wait>=1&&h.wait<=200,'cooldown: 30px up 100ms later would expand it, but it is held back ('+h.wait+'ms to go)');
+    ok(h.at===1000,'cooldown: a held-back change does not restart the cooldown');
+    let h2=T(h,270,1150);     ok(h2.collapsed&&h2.wait===150,'cooldown: wait counts down to the end of the 300ms (150 left at +150ms)');
+    let e=T(h2,270,1300);     ok(!e.collapsed&&e.at===1300&&!e.wait,'cooldown: at +300ms the held-back expand is applied');
+    // trailing re-check: nothing scrolled in between, same position, later time
+    let late=T(h,270,1400);   ok(!late.collapsed,'cooldown: a later look at the same position applies the held-back change (a stale state is never left behind)');
+    // the user went back down during the cooldown: the held-back expand is forgotten, no flip at all
+    let back=T(T(s,270,1100),330,1200); ok(back.collapsed&&!back.wait,'cooldown: scrolling back down during the cooldown cancels the pending expand');
+    // expand then immediately collapse again is also held back
+    let ex=T(null,20,0); ex=T(ex,300,0); ex=T(ex,270,300); ok(!ex.collapsed&&ex.at===300,'cooldown: sequence collapse(0ms) -> expand(300ms)');
+    let again=T(ex,340,400); ok(!again.collapsed&&again.wait>0&&again.wait<=200,'cooldown: collapsing straight after expanding is held back too');
+    ok(T(again,340,700).collapsed,'cooldown: ... and applied once it is over');
+    // very top: immediate, whatever the cooldown
+    const top=T({collapsed:true,ref:300,at:1000},0,1050); ok(!top.collapsed&&top.at===1050&&!top.wait,'cooldown: reaching the very top expands at once, inside the cooldown');
+    ok(!T({collapsed:true,ref:300,at:1000},4,1010).collapsed,'cooldown: y<=4 counts as the top');
+    // page shrank to a few pixels of scroll: compact header makes no sense, immediate
+    ok(!T({collapsed:true,ref:900,at:1000},50,1010,60).collapsed,'cooldown: a page that can hardly scroll (max<=minY) gets the full header back at once');
+    // no clock given: old behaviour, no cooldown at all
+    ok(!w.scrollBarStep({collapsed:true,ref:300,at:1000},270,5000).collapsed,'without a clock there is no cooldown (pure rules only)');
+    // a clock that went backwards must not freeze the header
+    ok(!T({collapsed:true,ref:300,at:5000},270,100).collapsed,'a clock that went backwards (page restored from cache) does not freeze the header');
+    // 3 seconds of wiggling (45px every 40ms): changes are at least 300ms apart
+    let st=null, last=-1e9, bad=0, flips=0; for(let t=0,i=0;t<3000;t+=40,i++){ const y=i%2?300:345; const n=T(st,y,t); if(st&&n.collapsed!==st.collapsed){ flips++; if(t-last<300) bad++; last=t; } else if(!st&&n.collapsed){ flips++; last=t; } st=n; }
+    ok(bad===0&&flips<=11,'cooldown: a 3s wiggle flips at most once per 300ms ('+flips+' changes, '+bad+' too close)');
+  }
+  // the iPhone URL bar sliding away at the bottom shortens the scroll range and the browser nudges the position up:
+  // that is not the person scrolling up
+  { let s={collapsed:true,ref:1000}; s=w.scrollBarStep(s,920,920); ok(s.collapsed,'URL bar hides at the bottom (range 1000 -> 920, position nudged 80px up): still collapsed');
+    s=w.scrollBarStep(s,1000,1000); ok(s.collapsed,'... and when it comes back (position follows) nothing changes');
+    s=w.scrollBarStep({collapsed:true,ref:5000},500,500); ok(s.collapsed&&s.ref===500,'a page that gets much shorter (clamped to its new end) stays compact, measured from the new end');
+    s=w.scrollBarStep(s,470,500); ok(!s.collapsed,'... and 30px of real scrolling up from there still expands it');
+    ok(!w.scrollBarStep({collapsed:true,ref:900},50,60).collapsed,'a clamped position inside a nearly unscrollable page: full header'); }
+  // random walk: a collapse never happens without >=36px net travel down, an expand never without >=20px up
   { let s={collapsed:false,ref:0}, y=0, seed=7, viol=0; const rnd=()=>{ seed=(seed*16807)%2147483647; return seed/2147483647; };
     let lowSinceExpand=0, highSinceCollapse=0;
     for(let i=0;i<20000;i++){ y=Math.max(0,Math.min(3000,y+(rnd()-0.5)*40)); const n=step(s,y,3000);
-      if(!s.collapsed&&n.collapsed){ lowSinceExpand=Math.min(lowSinceExpand,y); if(y<=48) viol++; }
+      if(!s.collapsed&&n.collapsed){ lowSinceExpand=Math.min(lowSinceExpand,y); if(y<=64) viol++; }
       if(s.collapsed&&!n.collapsed&&y>4){ /* expanded by an upward move */ }
       s=n; }
     ok(viol===0,'random walk (20k steps): never collapses at or above minY'); }
@@ -202,9 +243,12 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
   await scrollTo(30); ok(!bar.classList.contains('is-collapsed'),'wiring: 30px down: still expanded');
   await scrollTo(120); ok(bar.classList.contains('is-collapsed'),'wiring: scroll down collapses the dialog header');
   await scrollTo(112); ok(bar.classList.contains('is-collapsed'),'wiring: 8px back up: stays collapsed');
-  await scrollTo(104); ok(!bar.classList.contains('is-collapsed'),'wiring: 16px back up: header returns');
-  await scrollTo(300); await scrollTo(2); ok(!bar.classList.contains('is-collapsed'),'wiring: back at the top: expanded');
-  await scrollTo(400); ok(bar.classList.contains('is-collapsed'),'collapsed again before closing');
+  await scrollTo(104); ok(bar.classList.contains('is-collapsed'),'wiring: only 16px back up (needs 20): still collapsed');
+  await scrollTo(100); ok(bar.classList.contains('is-collapsed'),'wiring: 20px back up, but only ~120ms after collapsing: held back by the cooldown');
+  await sleep(340); ok(!bar.classList.contains('is-collapsed'),'wiring: ... and applied by the trailing re-check once the cooldown is over, with no further scrolling');
+  await scrollTo(300); await sleep(340); ok(bar.classList.contains('is-collapsed'),'wiring: a long scroll down collapses again');
+  await scrollTo(2); ok(!bar.classList.contains('is-collapsed'),'wiring: back at the top: expanded at once (the cooldown never delays the top)');
+  await scrollTo(400); await sleep(340); ok(bar.classList.contains('is-collapsed'),'collapsed again before closing');
   w.closeSettingsModal(); top=0; await sleep(20); w.openSettingsModal('general'); await sleep(20);
   ok(!bar.classList.contains('is-collapsed')&&top===0,'re-opening a dialog always resets to the full header at the top');
   await scrollTo(400); ok(bar.classList.contains('is-collapsed'),'collapsed once more');
@@ -227,7 +271,8 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
   ok(!root.classList.contains('page-collapsed'),'page starts with the full header');
   await pscroll(200); ok(root.classList.contains('page-collapsed')&&root.classList.contains('is-scrolled'),'page: scroll down collapses the header');
   await pscroll(194); ok(root.classList.contains('page-collapsed'),'page: tiny scroll up keeps it compact');
-  await pscroll(180); ok(!root.classList.contains('page-collapsed'),'page: slight scroll up (20px) brings the full header back');
+  await pscroll(180); ok(root.classList.contains('page-collapsed'),'page: 20px up straight after collapsing is held back by the cooldown');
+  await sleep(340); ok(!root.classList.contains('page-collapsed'),'page: ... then the trailing re-check brings the full header back (20px up)');
   await pscroll(0); ok(!root.classList.contains('page-collapsed')&&!root.classList.contains('is-scrolled'),'page: top is always the full header');
   ok(/^\d+px$/.test(root.style.getPropertyValue('--page-bar-h')),'--page-bar-h is kept in sync for the sticky tabs row');
   // names and avatar mirrored into the compact bar

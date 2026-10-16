@@ -243,7 +243,7 @@
   #app{display:none; min-height:100vh; min-height:100dvh;}
   header.top{
     position:sticky; top:0; z-index:42;
-    transition:transform .24s cubic-bezier(.2,.7,.2,1), visibility 0s;
+    transition:transform .3s cubic-bezier(.25,.6,.3,1), visibility 0s;
     background:var(--card);
     border-bottom:1px solid var(--line);
     padding:20px 32px;
@@ -258,7 +258,7 @@
      compact bar slides in. A small scroll up swaps them back. */
   html.page-collapsed header.top{
     transform:translateY(-100%); visibility:hidden; box-shadow:none;
-    transition:transform .24s cubic-bezier(.2,.7,.2,1), visibility 0s linear .24s;
+    transition:transform .3s cubic-bezier(.25,.6,.3,1), visibility 0s linear .3s;
   }
   html.is-scrolled header.top{box-shadow:0 8px 16px -14px rgba(0,0,0,.4);}
   .top-compact{
@@ -267,9 +267,9 @@
     padding:6px 16px; padding-top:max(6px, env(safe-area-inset-top));
     background:var(--card); border-bottom:1px solid var(--line); box-shadow:0 8px 16px -14px rgba(0,0,0,.45);
     transform:translateY(-100%); visibility:hidden;
-    transition:transform .24s cubic-bezier(.2,.7,.2,1), visibility 0s linear .24s;
+    transition:transform .3s cubic-bezier(.25,.6,.3,1), visibility 0s linear .3s;
   }
-  html.page-collapsed .top-compact{transform:none; visibility:visible; transition:transform .24s cubic-bezier(.2,.7,.2,1), visibility 0s;}
+  html.page-collapsed .top-compact{transform:none; visibility:visible; transition:transform .3s cubic-bezier(.25,.6,.3,1), visibility 0s;}
   .tc-logo{width:28px; height:28px; flex:none; display:block;}
   .tc-name{flex:1; min-width:0; font-size:15px; font-weight:600; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; margin-left:2px;}
   .tc-btn{flex:none; width:40px; height:40px; padding:0; display:inline-flex; align-items:center; justify-content:center; font-size:17px; line-height:1;}
@@ -531,7 +531,7 @@
   /* Active / Completed row (and the search box under it) stays under the header while you scroll */
   .board-sticky{
     position:sticky; top:var(--page-bar-h, 0px); z-index:30; margin-bottom:22px; padding-top:8px; background:var(--paper);
-    transition:top .24s cubic-bezier(.2,.7,.2,1);
+    transition:top .3s cubic-bezier(.25,.6,.3,1);
   }
   .view-tabs{display:flex; align-items:flex-end; gap:22px; border-bottom:1px solid var(--line); position:relative;}
   .activity-wrap{position:relative; align-self:flex-end; padding-bottom:6px; min-width:0;}
@@ -598,14 +598,14 @@
   .modal-close{padding:8px 12px; font-size:13px; white-space:nowrap; flex:none; min-height:36px;}
   .modal-bar-extra{
     position:relative; z-index:1; pointer-events:auto; background:var(--card);
-    padding:0 var(--modal-px); transition:transform .22s ease, opacity .18s ease, visibility 0s;
+    padding:0 var(--modal-px); transition:transform .3s ease, opacity .24s ease, visibility 0s;
   }
   .modal-bar-extra .gate-sub{margin:0; padding:0 0 12px; font-size:13.5px; line-height:1.45;}
   .modal-bar-extra{border-bottom:1px solid var(--line);}
   .modal-bar:not(.has-extra) .modal-bar-row{border-bottom:1px solid var(--line);}   /* the divider sits under whatever part is showing */
   .modal-bar.is-collapsed .modal-bar-extra{
     transform:translateY(-100%); opacity:0; visibility:hidden; pointer-events:none;
-    transition:transform .22s ease, opacity .18s ease, visibility 0s linear .22s;
+    transition:transform .3s ease, opacity .24s ease, visibility 0s linear .3s;
   }
   .modal-bar.is-collapsed .modal-bar-row{border-bottom:0; box-shadow:0 1px 0 var(--line), 0 8px 14px -12px rgba(0,0,0,.35);}
   @media (prefers-reduced-motion: reduce){
@@ -1077,6 +1077,14 @@
   @media print{ html[data-pat] body::before{display:none;} }
 
 /* ==== SECTION: sticky-scroll (sticky headers, scroll lock) - add new rules below this line ==== */
+
+  /* ---- Scroll lock: the board behind an open dialog must not scroll (js/scroll-lock.js) ----
+     overflow:hidden goes on <html> only. On <body> it would turn the body into a scroll container and the sticky
+     headers would stop sticking; position:fixed on the body would lose the scroll position. */
+  html.dialog-open{overflow:hidden; overscroll-behavior:none;}
+  html.dialog-open.had-scrollbar{scrollbar-gutter:stable;}   /* a desktop page keeps its scrollbar gutter, so nothing jumps sideways */
+  .overlay{overscroll-behavior:contain;}
+  .modal{overscroll-behavior:contain;}
 
 /* ==== SECTION: version-history (Settings version list) - add new rules below this line ==== */
   .changelog #changelogOlder[hidden]{display:none;}
