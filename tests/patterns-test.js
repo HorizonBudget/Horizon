@@ -64,14 +64,23 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
     ok(root.style.colorScheme === (t.dark ? 'dark' : 'light'), t.key + ': color-scheme ' + (t.dark ? 'dark' : 'light'));
     const P = parse(v('--paper')), C = parse(v('--card')), F = parse(v('--field'));
     const ink = parse(v('--ink'));
-    const patPaper = over(v('--ink'), P, maxOpacity);              // strongest pattern pixel an ink-colored emoji / stripe can make
+    // Worst pixel the pattern can put behind text. Geometric patterns are drawn in the ink color; emoji keep their own
+    // colors, so for those the worst case is a pure black (light theme) or pure white (dark theme) pixel. Using that
+    // extreme for every pattern is stricter than reality, so passing here means the real pattern passes too.
+    const worst = t.dark ? '#ffffff' : '#000000';
+    const patAt = o => over(worst, P, o);
+    const patPaper = patAt(maxOpacity);
+    // soft text keeps its old safety margin: AA even on a page tinted with ink at PATTERN_SOFT_TEXT_TINT
+    const softTint = over(v('--ink'), P, ev('PATTERN_SOFT_TEXT_TINT'));
     const T = t.key;
-    for(const [n, bg] of [['paper', P], ['card', C], ['field', F], ['paper+pattern', patPaper], ['card+tint', over(v('--tint'), C)], ['paper+tint', over(v('--tint'), P)], ['card+hover', over(v('--hover'), C)]]){
+    for(const [n, bg] of [['paper', P], ['card', C], ['field', F], ['paper+soft-text tint', softTint], ['card+tint', over(v('--tint'), C)], ['paper+tint', over(v('--tint'), P)], ['card+hover', over(v('--hover'), C)]]){
       check(T, 'ink on ' + n, v('--ink'), bg);
       check(T, 'soft ink on ' + n, v('--ink-soft'), bg);
     }
+    // headings in the ink color sit straight on the pattern, at its very strongest
+    check(T, 'ink on paper+strongest pattern', v('--ink'), patPaper);
     // accent as text (links, active tab, chip hover) on every surface it appears on
-    for(const [n, bg] of [['paper', P], ['card', C], ['field', F], ['paper+pattern', patPaper], ['card+accent tint', over(v('--teal-light'), C)], ['card+hover', over(v('--hover'), C)]]) check(T, 'accent text on ' + n, v('--teal'), bg);
+    for(const [n, bg] of [['paper', P], ['card', C], ['field', F], ['paper+soft-text tint', softTint], ['card+accent tint', over(v('--teal-light'), C)], ['card+hover', over(v('--hover'), C)]]) check(T, 'accent text on ' + n, v('--teal'), bg);
     // accent buttons (.seg.active, add button, ...): text on accent, and hover (opacity .9 over the page)
     check(T, 'on-accent text on accent button', v('--on-accent'), v('--teal'));
     for(const [n, back] of [['card', C], ['paper', P]]){
@@ -94,15 +103,18 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
     sets.forEach(s => { check(T, 'tag ' + s.solid + ' on card', s.fg, over(s.bg, C)); check(T, 'tag ' + s.solid + ' on paper', s.fg, over(s.bg, P)); });
     const neutral = JSON.parse(ev('JSON.stringify(neutralSet())'));
     check(T, 'neutral tag on card', neutral.fg, over(neutral.bg, C));
-    // the pattern at every strength can never push text below AA (geometric and emoji, blended toward ink)
+    // the pattern at every strength: headings (ink) stay AA on the worst pattern pixel. Soft / accent text that sits on
+    // the page (empty message, Collapse all) is given a paper backing while a pattern is on (checked against the CSS
+    // below), so it reads on plain paper, which is checked above.
     for(const type of ['geo', 'emoji']) for(const s of ['subtle', 'medium', 'bold']){
       const o = ev(`PATTERN_OPACITY.${type}.${s}`);
-      const bg = over(v('--ink'), P, o);
-      check(T, `soft ink on page with ${type}/${s} pattern`, v('--ink-soft'), bg);
-      check(T, `accent text on page with ${type}/${s} pattern`, v('--teal'), bg);
+      check(T, `ink on page with ${type}/${s} pattern`, v('--ink'), patAt(o));
     }
   }
   ok(contrastFails.length === 0, `WCAG AA (4.5:1) holds for all ${contrastChecks} text/button/state checks across the ${seasonal.length} seasonal themes` + (contrastFails.length ? '\n   ' + contrastFails.slice(0, 25).join('\n   ') : ''));
+  const cssFlat = css.replace(/\s+/g, ' ');
+  ok(/html\[data-pat\] \.empty\{background:var\(--paper\);\}/.test(cssFlat) && /html\[data-pat\] \.section-head \.link-btn\{background:var\(--paper\)/.test(cssFlat), 'soft / accent text that sits on the page (empty message, Collapse all) gets a paper backing while a pattern is on');
+  ok(ev('PATTERN_SOFT_TEXT_TINT') >= 0.16, 'soft text keeps at least its old safety margin (AA on a page tinted 16% with ink)');
   ok(ev('PATTERN_MAX_OPACITY') >= Math.max(...['geo', 'emoji'].flatMap(g => ['subtle', 'medium', 'bold'].map(s => ev(`PATTERN_OPACITY.${g}.${s}`)))), 'PATTERN_MAX_OPACITY covers every strength (so the contrast checks above are the worst case)');
   // the contrast fix in customVars also helps Custom themes: soft text on a custom theme passes too
   w.setCustomAccent('#3F6D64');
@@ -154,7 +166,7 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
   ok(ev('bgPattern.type') === 'none' && !root.hasAttribute('data-pat'), 'start: no pattern');
   w.setTheme('halloween');
   ok(ev('bgPattern.type') === 'emoji' && ev('bgPattern.emoji') === '🎃' && root.getAttribute('data-pat') === 'emoji', 'Halloween brings 🎃');
-  ok(cssvar('--pat-size') === '68px' && cssvar('--pat-opacity') === '0.12', 'default size/strength applied (' + cssvar('--pat-size') + ', ' + cssvar('--pat-opacity') + ')');
+  ok(cssvar('--pat-size') === '68px' && cssvar('--pat-opacity') === String(ev('PATTERN_OPACITY.emoji.medium')), 'default size/strength applied (' + cssvar('--pat-size') + ', ' + cssvar('--pat-opacity') + ')');
   w.setTheme('christmas');
   ok(ev('bgPattern.emoji') === '🎄', 'Christmas brings 🎄');
   w.setTheme('light');
