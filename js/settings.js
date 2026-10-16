@@ -1,6 +1,6 @@
 // ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
 let theme = 'light';
-let savedThemes = [];          // [{id, name, dark, paper, accent, pattern?}], this device only
+let savedThemes = [];          // [{id, name, dark, paper, accent, danger?, pattern?}], this device only
 let bgPattern = defaultPattern();   // {type, size, strength, emoji, auto}; auto = it came with a seasonal theme and was not changed. This device only.
 const MAX_SAVED_THEMES = 12;
 
@@ -10,6 +10,7 @@ function loadSettings(){
     const okHex = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
     if(saved.custom && okHex(saved.custom.paper) && okHex(saved.custom.accent)){
       customTheme = { dark: !!saved.custom.dark, paper: saved.custom.paper, accent: saved.custom.accent };
+      if(okHex(saved.custom.danger)) customTheme.danger = saved.custom.danger;
     }
     if(Array.isArray(saved.savedThemes)){
       const seen = new Set();
@@ -22,6 +23,7 @@ function loadSettings(){
         while(seen.has(id)) id = newThemeId();
         seen.add(id);
         const entry = { id, name, dark: !!t.dark, paper: t.paper, accent: t.accent };
+        if(okHex(t.danger)) entry.danger = t.danger;
         const pat = cleanPattern(t.pattern);
         if(pat){ delete pat.auto; entry.pattern = pat; }
         savedThemes.push(entry);

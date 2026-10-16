@@ -14,10 +14,11 @@ const THEMES = [
 ];
 // Seasonal themes: same three base colors as every other theme (the rest is derived by customVars), plus a default
 // background pattern that is applied when the theme is picked. Nothing here is special-cased anywhere else.
+// Optional `danger`: a theme whose accent is itself red sets its own delete/over color so the two stay apart.
 const SEASONAL_THEMES = [
   { key:'halloween', label:'Halloween',     emoji:'🎃', dark:true,  paper:'#1B1026', accent:'#F5922F', pattern:{ type:'emoji', emoji:'🎃', size:'medium', strength:'medium' } },
   { key:'autumn',    label:'Autumn',        emoji:'🍂', dark:false, paper:'#F5EADB', accent:'#853F14', pattern:{ type:'emoji', emoji:'🍂', size:'medium', strength:'medium' } },
-  { key:'christmas', label:'Christmas',     emoji:'🎄', dark:true,  paper:'#0C2016', accent:'#FF8F86', pattern:{ type:'emoji', emoji:'🎄', size:'medium', strength:'medium' } },
+  { key:'christmas', label:'Christmas',     emoji:'🎄', dark:false, paper:'#FBF7F4', accent:'#A50F2A', danger:'#A33A00', pattern:{ type:'emoji', emoji:'🎅', size:'medium', strength:'medium' } },
   { key:'winter',    label:'Winter',        emoji:'❄️', dark:false, paper:'#E6EEF7', accent:'#444C99', pattern:{ type:'emoji', emoji:'❄️', size:'medium', strength:'medium' } },
   { key:'valentine', label:'Valentine’s',   emoji:'💗', dark:false, paper:'#FBE9EE', accent:'#9E1E51', pattern:{ type:'emoji', emoji:'💗', size:'medium', strength:'medium' } },
   { key:'spring',    label:'Spring',        emoji:'🌷', dark:false, paper:'#EAF4DF', accent:'#336019', pattern:{ type:'emoji', emoji:'🌷', size:'medium', strength:'medium' } },
@@ -40,7 +41,7 @@ const PATTERN_PX = { geo: { small:12, medium:20, large:34 }, emoji: { small:44, 
 // layer opacity. Capped so soft text sitting directly on the page (not on a card) still passes AA; tests check this.
 const PATTERN_OPACITY = { geo: { subtle:0.05, medium:0.09, bold:0.12 }, emoji: { subtle:0.07, medium:0.12, bold:0.16 } };
 const PATTERN_MAX_OPACITY = 0.16;   // the strongest any pattern can be; soft text and accents are checked against a page tinted this much
-const EMOJI_PRESETS = ['🎃', '👻', '🍂', '🦃', '🎄', '❄️', '💗', '🌷', '☀️', '🎆', '⭐', '🐾'];
+const EMOJI_PRESETS = ['🎃', '👻', '🍂', '🦃', '🎄', '🎅', '❄️', '💗', '🌷', '☀️', '🎆', '⭐', '🐾'];
 const DEFAULT_EMOJI = '⭐';
 function defaultPattern(){ return { type:'none', size:'medium', strength:'medium', emoji:DEFAULT_EMOJI, auto:false }; }
 
@@ -113,9 +114,9 @@ let customTheme = { dark:false, paper:'#EEF1ED', accent:'#3F6D64' };
 const ACCENT_SWATCHES = ['#3F6D64','#2F6E9E','#A85A3A','#7C6FB5','#B5556F','#5F8F3E','#C98A2B','#4A6FA5'];
 const DEFAULT_PAPER = { light:'#EEF1ED', dark:'#131719' };
 function currentThemeColors(){
-  if(theme === 'custom') return customTheme;
+  if(theme === 'custom') return customTheme;   // may carry an optional danger color (from a saved seasonal theme)
   const t = findTheme(theme) || THEMES[0];
-  return { dark: t.dark, paper: t.paper, accent: t.accent };
+  return t.danger ? { dark: t.dark, paper: t.paper, accent: t.accent, danger: t.danger } : { dark: t.dark, paper: t.paper, accent: t.accent };
 }
 function isDarkTheme(){
   if(theme === 'custom') return !!customTheme.dark;
@@ -153,7 +154,8 @@ function customVars(c){
   const [r, g, b] = hexToRgb(ink), [ar, ag, ab] = hexToRgb(accent);
   const card = dark ? mixHex(paper, '#ffffff', 0.05) : mixHex(paper, '#ffffff', 0.55);
   const field = dark ? mixHex(paper, '#ffffff', 0.1) : '#FFFFFF';
-  const coral = dark ? '#F4A098' : '#9E352F';
+  const coral = /^#[0-9a-fA-F]{6}$/.test(c.danger || '') ? c.danger : (dark ? '#F4A098' : '#9E352F');
+  const [cr, cg, cb] = hexToRgb(coral);
   return {
     '--paper': paper,
     '--card': card,
@@ -170,7 +172,7 @@ function customVars(c){
     '--teal': accent,
     '--teal-light': `rgba(${ar},${ag},${ab},${dark ? 0.2 : 0.14})`,
     '--mustard-light': dark ? 'rgba(224,169,74,0.2)' : 'rgba(201,138,43,0.16)',
-    '--coral-light': dark ? 'rgba(244,160,152,0.2)' : 'rgba(158,53,47,0.14)',
+    '--coral-light': `rgba(${cr},${cg},${cb},${dark ? 0.2 : 0.14})`,
     '--on-accent': onAccentFor(accent, coral)
   };
 }
@@ -228,7 +230,9 @@ function saveCurrentTheme(){
     return;
   }
   if(existing !== -1) savedThemes.splice(existing, 1);
-  savedThemes.push({ id: newThemeId(), name, dark: !!c.dark, paper: c.paper, accent: c.accent, pattern: savablePattern() });
+  const entry = { id: newThemeId(), name, dark: !!c.dark, paper: c.paper, accent: c.accent, pattern: savablePattern() };
+  if(c.danger) entry.danger = c.danger;
+  savedThemes.push(entry);
   input.value = '';
   saveSettings();
   renderSavedThemes();
@@ -238,6 +242,7 @@ function applySavedTheme(id){
   const t = savedThemes.find(x => x.id === id);
   if(!t) return;
   customTheme = { dark: !!t.dark, paper: t.paper, accent: t.accent };
+  if(t.danger) customTheme.danger = t.danger;
   theme = 'custom';
   // a saved theme remembers its pattern; older ones saved without one leave the current pattern alone
   if(t.pattern) bgPattern = Object.assign({}, t.pattern, { auto:false });

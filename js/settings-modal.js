@@ -53,6 +53,7 @@ function resetTheme(){
 }
 function onCustomChange(which){
   const c = Object.assign({}, currentThemeColors());
+  delete c.danger;   // editing the colors by hand goes back to the standard delete/over red
   if(which === 'paper') c.paper = document.getElementById('ct_paper').value;
   if(which === 'accent') c.accent = document.getElementById('ct_accent').value;
   customTheme = c; theme = 'custom';
