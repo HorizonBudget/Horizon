@@ -25,6 +25,7 @@ const {sleep,ok,boot,setItems,finish}=require('./lib/h.js');
   ok(heads().every(h=>h.getAttribute('aria-expanded')==='true' && $(h.getAttribute('aria-controls'))),'all expanded by default, aria-controls targets exist');
   ok(d.querySelector('#itemsList h3.month-group-head > button')!==null,'header is a button inside a heading');
   ok(!!$('collapseAllBtn') && $('collapseAllBtn').textContent==='Collapse all','Collapse all control shown with 2+ groups');
+  ok($('collapseAllBtn').closest('.head-tools')===$('filtersBtn').closest('.head-tools') && !!$('filtersBtn').closest('.head-tools') && $('sectionTitle').parentNode===$('filtersBtn').closest('.head-tools').parentNode && !$('itemsList').contains($('collapseAllBtn')),'Collapse all shares the heading row (same tools wrapper) with Filters, not inside the list');
   ok(cards().length===7,'7 cards shown ('+cards().length+')');
   // filters
   w.eval(`activeCategoryFilter='Vehicle';render()`);

@@ -25,6 +25,7 @@ function renderBoard(){
   const filterNoteEl = document.getElementById('filterNote');
   const filtersBtnEl = document.getElementById('filtersBtn');
   const list = document.getElementById('itemsList');
+  document.getElementById('monthToolsSlot').innerHTML = '';   // Collapse all is added below only when there are month groups
 
   if(activeTab === 'completed'){
     summaryStrip.style.display = 'none';
@@ -101,11 +102,10 @@ function renderBoard(){
     shownGroupMonths = groups.map(g => g.month);
     if(groups.length >= 2){
       const allCollapsed = groups.every(g => collapsedMonths.has(g.month));
-      const tools = document.createElement('div');
-      tools.className = 'month-tools';
+      // lives in the heading row beside Filters (not in the list), so it takes no row of its own
+      const tools = document.getElementById('monthToolsSlot');
       tools.innerHTML = `<button type="button" class="link-btn" id="collapseAllBtn">${allCollapsed ? 'Expand all' : 'Collapse all'}</button>`;
       tools.firstChild.addEventListener('click', () => setAllMonthsCollapsed(!allCollapsed));
-      list.appendChild(tools);
     }
     groups.forEach((g, i) => list.appendChild(buildMonthGroup(g, i)));
   }

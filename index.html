@@ -134,9 +134,12 @@
 
     <div class="section-head">
       <div class="section-title" id="sectionTitle">Coming up</div>
-      <button type="button" class="filters-btn" id="filtersBtn" onclick="toggleFilters()" aria-expanded="false" aria-controls="filterPanel">
-        <span id="filtersBtnLabel">Filters</span> <span class="caret">▼</span>
-      </button>
+      <div class="head-tools">
+        <span class="month-tools" id="monthToolsSlot"></span>
+        <button type="button" class="filters-btn" id="filtersBtn" onclick="toggleFilters()" aria-expanded="false" aria-controls="filterPanel">
+          <span id="filtersBtnLabel">Filters</span> <span class="caret">▼</span>
+        </button>
+      </div>
     </div>
     <div class="filter-summary" id="filterSummary" style="display:none;">
       <span id="filterNote"></span>
