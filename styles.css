@@ -1020,5 +1020,20 @@
 /* ==== SECTION: sticky-scroll (sticky headers, scroll lock) - add new rules below this line ==== */
 
 /* ==== SECTION: version-history (Settings version list) - add new rules below this line ==== */
+  .changelog #changelogOlder[hidden]{display:none;}
+  .cl-toggle{
+    display:flex; align-items:center; justify-content:center; gap:8px;
+    box-sizing:border-box; width:100%; max-width:100%; min-height:44px; margin-top:6px; padding:10px 14px;
+    background:transparent; color:var(--ink); border:1px solid var(--line); border-radius:3px;
+    font-family:'Inter',sans-serif; font-size:14px; font-weight:600; cursor:pointer;
+  }
+  .cl-toggle[hidden]{display:none;}
+  .cl-toggle:hover{background:var(--hover);}
+  .cl-toggle-chev{
+    width:7px; height:7px; flex-shrink:0; margin-top:-3px;
+    border-right:2px solid currentColor; border-bottom:2px solid currentColor;
+    transform:rotate(45deg); transition:transform 0.15s ease;
+  }
+  .cl-toggle[aria-expanded="true"] .cl-toggle-chev{transform:rotate(225deg); margin-top:3px;}
 
 /* ==== END OF FILE ==== */

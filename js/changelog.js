@@ -17,7 +17,31 @@ const CHANGELOG = [
   { v:'1.1.0', date:'2026-10-13', items:['Bigger suggestion engine, dark mode and a style guide.'] },
   { v:'1.0.0', date:'2026-10-12', items:['First working prototype.'] }
 ];
+function changelogEntryHtml(c, i){
+  return `<details${i === 0 ? ' open' : ''}><summary>${c.v}${i === 0 ? ' (current)' : ''}<span class="cl-date">${c.date}</span></summary><ul>${c.items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul></details>`;
+}
+// Settings -> Advanced shows only the newest version; the older ones sit behind a "Show all versions" button.
+// Called every time Settings opens, so it always starts collapsed.
 function renderChangelog(){
-  document.getElementById('changelogList').innerHTML = CHANGELOG.map((c, i) =>
-    `<details${i === 0 ? ' open' : ''}><summary>${c.v}${i === 0 ? ' (current)' : ''}<span class="cl-date">${c.date}</span></summary><ul>${c.items.map(t => `<li>${escapeHtml(t)}</li>`).join('')}</ul></details>`).join('');
+  const list = document.getElementById('changelogList');
+  const btn = document.getElementById('changelogToggle');
+  const older = CHANGELOG.slice(1);
+  list.innerHTML = CHANGELOG.slice(0, 1).map((c, i) => changelogEntryHtml(c, i)).join('')
+    + (older.length ? `<div id="changelogOlder" hidden>${older.map((c, i) => changelogEntryHtml(c, i + 1)).join('')}</div>` : '');
+  if(!btn) return;
+  btn.hidden = !older.length;
+  setOlderVersionsOpen(false);
+}
+function setOlderVersionsOpen(open){
+  const btn = document.getElementById('changelogToggle');
+  const older = document.getElementById('changelogOlder');
+  if(older) older.hidden = !open;
+  if(btn){
+    btn.setAttribute('aria-expanded', open ? 'true' : 'false');
+    btn.querySelector('.cl-toggle-label').textContent = open ? 'Hide older versions' : 'Show all versions';
+  }
+}
+function toggleOlderVersions(){
+  const older = document.getElementById('changelogOlder');
+  if(older) setOlderVersionsOpen(older.hidden);
 }
