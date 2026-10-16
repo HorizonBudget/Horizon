@@ -814,7 +814,7 @@
     font-size:13px; color:var(--ink); min-height:40px; line-height:1.5;
   }
   .guide-actions{display:flex; gap:8px; margin-top:14px; flex-wrap:wrap;}
-  .guide-actions .btn{flex:0 0 auto;}
+  .guide-actions .btn{flex:0 0 auto; max-width:100%;}
   .settings-divider{border-top:1px solid var(--line); margin:18px 0 6px;}
 
   /* Danger buttons (Remove item, confirm dialog, Delete forever) */
@@ -869,7 +869,12 @@
   .trash-item-actions{display:flex; flex-wrap:wrap; gap:8px;}
   .trash-item-actions .btn{padding:8px 14px; font-size:13px; width:auto;}
 
-  html{-webkit-text-size-adjust:100%;}
+  html{-webkit-text-size-adjust:100%; touch-action:manipulation;}
+  /* 2.12.0: belt and braces against sideways panning on iPhone. 'clip' (unlike 'hidden') keeps sticky headers working. */
+  @supports (overflow:clip){ html, body{overflow-x:clip;} }
+  /* any touch screen, including a phone turned sideways, gets 16px fields so iOS never zooms in on tap */
+  @media (pointer:coarse){ input, select, textarea{font-size:16px !important;} }
+  #confirmMsg{white-space:pre-line;}
   .item-main{overflow-wrap:anywhere;}
 
   /* ---- 2.9.0: search, month groups, repeat, paid, backup banner, undo toast ---- */
@@ -1015,6 +1020,17 @@
     .share-code{flex-basis:100%;}
     .gate-card{padding-left:20px; padding-right:20px;}
   }
+
+  /* ---- 2.12.0: very narrow phones (iPhone SE / mini and smaller) must never overflow ---- */
+  @media (max-width:360px){
+    .top-actions{flex-wrap:wrap;}
+    .top-actions .profile-btn{max-width:104px;}
+    .top-actions .btn-add{min-width:0; padding-left:8px; padding-right:8px;}
+    .add-long, .act-recent{display:none;}
+    .view-tabs{gap:12px;}
+    .search-btn{margin-right:-6px;}
+    .activity-toggle{padding:5px 9px; gap:4px; font-size:12px;}
+  }
 </style>
 </head>
 <body>
@@ -1069,7 +1085,7 @@
     <div class="top-actions">
       <button class="btn btn-ghost profile-btn" id="profileBtn" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatar"></span><span class="profile-btn-name" id="profileBtnName"></span></button>
       <button class="btn btn-ghost" onclick="openSettingsModal()" title="Settings">⚙</button>
-      <button class="btn btn-add" onclick="openItemModal()">+ Add future item</button>
+      <button class="btn btn-add" onclick="openItemModal()">+ Add<span class="add-long"> future</span> item</button>
     </div>
   </header>
 
@@ -1103,7 +1119,7 @@
       </button>
       <div class="activity-wrap" id="activityWrap">
         <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
-          Recent activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
+          <span class="act-recent">Recent </span>activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
         </button>
         <div class="activity-panel" id="activityPanel" role="region" aria-label="Recent activity">
           <div class="activity-list" id="activityList"></div>
@@ -1497,7 +1513,7 @@
 //  Leave apiKey empty and the app still works, but only on this device (nothing is shared or saved).
 // ============================================================
 // App version. Bump this on every release and add a line to the Version History doc.
-const APP_VERSION = '2.11.0';
+const APP_VERSION = '2.12.0';
 
 const FIREBASE_CONFIG = {
   apiKey: "AIzaSyD12l-eTSxP9bJTJ8ro575WZpV0OC0nd8s",
@@ -3148,6 +3164,7 @@ async function enterApp(resume){
   setCloudStatus(cloud.mode === 'cloud' ? 'ok' : 'local');
   render();
   maybeShowInstallHint();
+  checkWhatsNew(!!resume);
 }
 
 function logActivity(text){
@@ -4181,7 +4198,38 @@ function applyTheme(){
   } catch(e) {}
 }
 
+// ---- Update notice (2.12.0) ----
+// Each CHANGELOG entry may carry `ui`: short lines about things people will SEE or do differently.
+// Entries without `ui` are background work. After an update the app shows a small "updated" toast;
+// if any release since the last one this device saw has `ui`, it shows those lines in a notice instead.
+function versionParts(v){ return String(v || '0').split('.').map(n => parseInt(n, 10) || 0); }
+function versionCmp(a, b){
+  const x = versionParts(a), y = versionParts(b);
+  for(let i = 0; i < 3; i++){ const d = (x[i] || 0) - (y[i] || 0); if(d) return d; }
+  return 0;
+}
+function whatsNewSince(lastSeen){
+  return CHANGELOG.filter(c => versionCmp(c.v, lastSeen) > 0 && versionCmp(c.v, APP_VERSION) <= 0);
+}
+function checkWhatsNew(resumed){
+  let seen = null;
+  try { seen = localStorage.getItem('horizonSeenVersion'); } catch(e) {}
+  // first time on this device: nothing to announce. A device that was already signed in before this
+  // feature existed counts as coming from 2.11.0.
+  if(!seen){
+    if(resumed) seen = '2.11.0';
+    else { try { localStorage.setItem('horizonSeenVersion', APP_VERSION); } catch(e) {} return; }
+  }
+  if(versionCmp(seen, APP_VERSION) >= 0) return;
+  try { localStorage.setItem('horizonSeenVersion', APP_VERSION); } catch(e) {}
+  const lines = [];
+  whatsNewSince(seen).forEach(c => (c.ui || []).forEach(t => lines.push(t)));
+  if(!lines.length){ showToast('Horizon just got a little brighter!'); return; }
+  askConfirm({ title: 'Horizon just got a little brighter!', message: lines.map(t => '• ' + t).join('\n'), confirmLabel: 'Got it', info: true });
+}
+
 const CHANGELOG = [
+  { v:'2.12.0', date:'2026-10-15', ui:['Horizon now tells you when it has been updated, and only explains the update when something looks or works differently.','Tapping a field on an iPhone turned sideways no longer zooms the screen in or lets it slide sideways.'], items:['Horizon now tells you when it has been updated. If an update changes what you see or do, a short note explains it; if it is only behind-the-scenes work, you just get a small “Horizon just got a little brighter!” message.','Fixed the screen sliding sideways on iPhone: form fields now stay at a size that stops the phone zooming in (including when the phone is turned sideways), and the page can no longer be dragged left or right.'] },
   { v:'2.11.0', date:'2026-10-15', items:['Category and subcategory names now show exactly the way you typed them, instead of in all capital letters.','The Month buttons are gone from Filters, because the month groups on the board already do that job. Filters now has Category and Sort by.','The first box at the top of the board now says “Items on Horizon” instead of “Items on the radar”.','The style guide button moved from Settings → Advanced to Settings → Themes, below your saved themes.','Every pop-up and page that opens over the board (adding or editing an item, your profile, managing profiles, deleted items, the style guide, the photo editor and the question boxes) now has the same top bar with its title and a Close button that stays in view while you scroll.','Fixed: when you scrolled down in Settings, especially in Advanced, text showed through in a gap above the Settings header. The header now sits flush at the top.','While you scroll down inside a pop-up, its header shrinks to just the title and the Close button. Scroll back up a little and the full header, with its description or tabs, comes back.','The header at the top of the board does the same: scroll down and it shrinks to a slim bar with the logo, household name, your profile, Settings and Add item, then the full header comes back when you scroll up a little. The Active / Completed row stays in view under it.'] },
   { v:'2.10.0', date:'2026-10-15', items:['Horizon can now be installed like an app. On Android or a computer, tap Install when Horizon offers it; on iPhone or iPad, tap Share, then Add to Home Screen. Settings → General has an Install app row that explains it. Once installed it opens even without a connection, and you always get the newest version when you’re online.','The “+ Person” button is now a profile button with your photo (or initials) and first name. It opens your profile page, where you can change or remove your photo, change your name and see who else is in the household.','Signing in with your name now finds your profile, or creates it if you’re new, so there is no separate step to add yourself.','Changing your name also updates your name on all of your items (active, completed and deleted ones), and it follows you on your other devices. An Undo message appears after you rename.','You can change your own name and photo, and other people’s profiles are read-only. You can still give anyone an item.'] },
   { v:'2.9.0', date:'2026-10-15', items:['The Active list is now grouped by month. Tap a month to fold it up or open it again; each month shows how many items it has and what they add up to. “Collapse all / Expand all” does every month at once, and Horizon remembers your choice on this device.','When you check an item off, Horizon now asks what you actually paid (optional). Completed items show “Paid $X” and how far under or over the forecast you came out. You can also add or fix the amount later when you edit a completed item.','New search button on the Active / Completed row. Type to find items by name, category, subcategory, owner, note or link; the month totals follow your search.','Items can now repeat: weekly, monthly, yearly, or every few weeks, months or years. Checking one off adds the next one automatically, and repeating items show a 🔁 badge.','After you complete, remove or restore an item, or save changes to one, a small Undo message appears for a few seconds.','Horizon reminds you to back up if it has been 30 days, with a “Back up now” button or “Remind me in 7 days”. Settings → Advanced shows when you last backed up.'] },
