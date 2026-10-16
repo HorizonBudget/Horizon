@@ -1,0 +1,7 @@
+{
+  "name": "horizon-tests",
+  "private": true,
+  "description": "Automated checks for Horizon. Run: cd tests && npm install && node run-all.js",
+  "scripts": { "test": "node run-all.js" },
+  "devDependencies": { "jsdom": "^29.0.0" }
+}
