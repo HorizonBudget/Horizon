@@ -1017,6 +1017,65 @@
 
 /* ==== SECTION: seasonal-patterns (themes, background patterns) - add new rules below this line ==== */
 
+  /* Seasonal theme chips and the pattern controls (Settings > Themes) */
+  .theme-emoji{font-size:15px; line-height:1;}
+  .pat-types{display:flex; flex-wrap:wrap; gap:8px; margin:8px 0 4px;}
+  .pat-types .theme-opt{padding:7px 14px; min-height:36px;}
+  .pat-row{display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:6px 12px; padding:8px 0 2px; font-size:14px;}
+  .pat-row .seg{max-width:100%;}
+  .pat-row .seg button{padding:7px 13px; min-height:34px;}
+  .pat-row-label{display:block; font-size:13px; font-weight:600; color:var(--ink); margin:12px 0 6px;}
+  .emoji-presets{display:flex; flex-wrap:wrap; gap:6px;}
+  .emoji-opt{
+    width:40px; height:40px; padding:0; cursor:pointer; font-size:22px; line-height:1; color:var(--ink);
+    border:1.5px solid var(--line); border-radius:10px; background:var(--field);
+  }
+  .emoji-opt.active{border-color:var(--teal); box-shadow:0 0 0 1px var(--teal);}
+  .pat-emoji-input{width:100%; max-width:260px;}
+  .pat-preview{
+    position:relative; height:84px; margin-top:14px; overflow:hidden;
+    display:flex; align-items:center; justify-content:center;
+    border:1px solid var(--line); border-radius:10px; background:var(--paper);
+  }
+  .pat-sample{
+    position:relative; padding:8px 20px; font-size:13px; color:var(--ink);
+    background:var(--card); border:1px solid var(--line); border-radius:8px;
+  }
+
+  /* Background pattern: one fixed layer BEHIND the page (never attachment:fixed, which iPhone ignores). It takes no
+     clicks, scrolls with nothing, and is tinted from the theme's ink color at low opacity. js/settings.js sets
+     html[data-pat], --pat-size, --pat-opacity and (emoji) --pat-image. .pat-layer is the same drawing inside the preview. */
+  html[data-pat] body::before{
+    content:""; position:fixed; top:0; right:0; bottom:0; left:0; z-index:-1;
+    pointer-events:none; opacity:var(--pat-opacity, 0.1);
+    -webkit-transform:translateZ(0); transform:translateZ(0);
+  }
+  .pat-layer{position:absolute; top:0; right:0; bottom:0; left:0; pointer-events:none; opacity:var(--pat-opacity, 0.1);}
+  html[data-pat="stripes"] body::before, html[data-pat="stripes"] .pat-layer{
+    background-image:linear-gradient(90deg, var(--ink) 50%, transparent 50%);
+    background-size:var(--pat-size) 100%;
+  }
+  html[data-pat="diagonal"] body::before, html[data-pat="diagonal"] .pat-layer{
+    background-image:linear-gradient(135deg, var(--ink) 25%, transparent 25%, transparent 50%, var(--ink) 50%, var(--ink) 75%, transparent 75%);
+    background-size:var(--pat-size) var(--pat-size);
+  }
+  html[data-pat="dots"] body::before, html[data-pat="dots"] .pat-layer{
+    background-image:
+      radial-gradient(circle at 25% 25%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.1), transparent calc(var(--pat-size) * 0.12)),
+      radial-gradient(circle at 75% 75%, var(--ink) 0, var(--ink) calc(var(--pat-size) * 0.1), transparent calc(var(--pat-size) * 0.12));
+    background-size:var(--pat-size) var(--pat-size);
+  }
+  html[data-pat="grid"] body::before, html[data-pat="grid"] .pat-layer{
+    background-image:linear-gradient(var(--ink) 1px, transparent 1px), linear-gradient(90deg, var(--ink) 1px, transparent 1px);
+    background-size:var(--pat-size) var(--pat-size);
+  }
+  html[data-pat="emoji"] body::before, html[data-pat="emoji"] .pat-layer{
+    background-image:var(--pat-image);
+    background-size:calc(var(--pat-size) * 2) calc(var(--pat-size) * 2);
+    background-repeat:repeat;
+  }
+  @media print{ html[data-pat] body::before{display:none;} }
+
 /* ==== SECTION: sticky-scroll (sticky headers, scroll lock) - add new rules below this line ==== */
 
 /* ==== SECTION: version-history (Settings version list) - add new rules below this line ==== */

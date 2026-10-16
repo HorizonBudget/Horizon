@@ -303,10 +303,38 @@
     <div class="settings-pane" id="settingsPane-themes">
       <div class="setting-label">Presets</div>
       <div class="theme-picker" id="themePicker"></div>
+      <div class="setting-label" style="margin-top:16px">Seasonal</div>
+      <div class="theme-picker" id="seasonalPicker"></div>
       <div id="savedThemesSection" style="display:none;">
         <div class="setting-label" style="margin-top:16px">My themes</div>
         <div class="theme-picker" id="savedThemes"></div>
       </div>
+      <div class="settings-divider"></div>
+      <div class="setting-label">Background pattern</div>
+      <p class="guide-desc">A faint pattern behind the page. Cards and text stay solid. Seasonal themes pick one for you; change or remove it any time.</p>
+      <div class="pat-types" id="patTypes" role="group" aria-label="Pattern type">
+        <button type="button" class="theme-opt" data-pat-type="none" onclick="setPatternType('none')">None</button>
+        <button type="button" class="theme-opt" data-pat-type="stripes" onclick="setPatternType('stripes')">Stripes</button>
+        <button type="button" class="theme-opt" data-pat-type="diagonal" onclick="setPatternType('diagonal')">Diagonal stripes</button>
+        <button type="button" class="theme-opt" data-pat-type="dots" onclick="setPatternType('dots')">Dots</button>
+        <button type="button" class="theme-opt" data-pat-type="grid" onclick="setPatternType('grid')">Grid</button>
+        <button type="button" class="theme-opt" data-pat-type="emoji" onclick="setPatternType('emoji')">Emoji</button>
+      </div>
+      <div id="patOptions">
+        <div class="pat-row"><span>Size</span>
+          <div class="seg" id="patSize" role="group" aria-label="Pattern size"><button type="button" data-pat-size="small" onclick="setPatternSize('small')">Small</button><button type="button" data-pat-size="medium" onclick="setPatternSize('medium')">Medium</button><button type="button" data-pat-size="large" onclick="setPatternSize('large')">Large</button></div>
+        </div>
+        <div class="pat-row"><span>Strength</span>
+          <div class="seg" id="patStrength" role="group" aria-label="Pattern strength"><button type="button" data-pat-strength="subtle" onclick="setPatternStrength('subtle')">Subtle</button><button type="button" data-pat-strength="medium" onclick="setPatternStrength('medium')">Medium</button><button type="button" data-pat-strength="bold" onclick="setPatternStrength('bold')">Bold</button></div>
+        </div>
+        <div id="patEmojiBox">
+          <div class="pat-row-label">Pick an emoji</div>
+          <div class="emoji-presets" id="patEmojiPresets"></div>
+          <label class="pat-row-label" for="pat_emoji">Custom emoji <span class="opt">(1 to 3)</span></label>
+          <input type="text" id="pat_emoji" class="pat-emoji-input" autocomplete="off" autocapitalize="off" spellcheck="false" maxlength="40" placeholder="Type or paste emoji" oninput="onCustomEmojiInput()">
+        </div>
+      </div>
+      <div class="pat-preview" aria-hidden="true"><div class="pat-layer"></div><div class="pat-sample">Preview</div></div>
       <div class="settings-divider"></div>
       <div class="setting-label">Customize</div>
       <p class="guide-desc">Start from any preset, then change the pieces below. Your changes are saved as “Custom”.</p>
@@ -321,8 +349,8 @@
         <button type="button" class="btn btn-ghost" id="ct_save" onclick="saveCurrentTheme()">Save theme</button>
       </div>
       <p class="theme-msg" id="ct_msg" role="status" aria-live="polite"></p>
-      <div class="guide-actions"><button class="btn btn-ghost" onclick="setTheme('light')">Reset to Sage</button></div>
-      <p class="guide-desc" style="margin-top:14px">Your theme and any themes you save are kept on this device only. Each phone or computer has its own, so family members choose theirs on their own devices.</p>
+      <div class="guide-actions"><button class="btn btn-ghost" onclick="resetTheme()">Reset to Sage</button></div>
+      <p class="guide-desc" style="margin-top:14px">Your theme, its pattern and any themes you save are kept on this device only. Each phone or computer has its own, so family members choose theirs on their own devices.</p>
       <div class="settings-divider"></div>
       <p class="guide-desc">Not sure what something looks like? The style guide shows every card, tag, color and flag with sample data, so you don't have to add test items.</p>
       <div class="guide-actions">
