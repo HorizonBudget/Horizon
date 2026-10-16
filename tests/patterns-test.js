@@ -35,7 +35,7 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
   ok(seasonal.every(t => /^#[0-9a-fA-F]{6}$/.test(t.paper) && /^#[0-9a-fA-F]{6}$/.test(t.accent) && typeof t.dark === 'boolean' && t.label && t.emoji), 'each has paper, accent, dark, label, emoji');
   ok(seasonal.every(t => t.pattern && t.pattern.type === 'emoji' && ['small', 'medium', 'large'].includes(t.pattern.size) && ['subtle', 'medium', 'bold'].includes(t.pattern.strength) && w.sanitizeEmoji(t.pattern.emoji) === t.pattern.emoji), 'each has a valid default pattern');
   const defaults = Object.fromEntries(seasonal.map(t => [t.key, t.pattern.emoji]));
-  ok(defaults.halloween === '🎃' && defaults.christmas === '🎄' && defaults.valentine === '💗' && defaults.winter === '❄️' && defaults.spring === '🌷' && defaults.summer === '☀️' && defaults.autumn === '🍂', 'sensible default emoji (Halloween 🎃, Christmas 🎄, Valentine’s 💗 ...)');
+  ok(defaults.halloween === '🎃' && defaults.christmas === '🎅' && defaults.valentine === '💗' && defaults.winter === '❄️' && defaults.spring === '🌷' && defaults.summer === '☀️' && defaults.autumn === '🍂', 'sensible default emoji (Halloween 🎃, Christmas 🎅, Valentine’s 💗 ...)');
   ok(seasonal.some(t => t.dark) && seasonal.some(t => !t.dark), 'the set has both light and dark themes');
   ok(ev('THEMES.length') === 6, 'the six existing presets are untouched');
 
@@ -103,6 +103,9 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
     }
   }
   ok(contrastFails.length === 0, `WCAG AA (4.5:1) holds for all ${contrastChecks} text/button/state checks across the ${seasonal.length} seasonal themes` + (contrastFails.length ? '\n   ' + contrastFails.slice(0, 25).join('\n   ') : ''));
+  // Christmas is red and white: its own danger red must stay clearly apart from its red accent
+  w.setTheme('christmas');
+  ok(!w.isDarkTheme() && cssvar('--coral').toLowerCase() !== cssvar('--teal').toLowerCase() && cssvar('--coral').toUpperCase() === '#A33A00', 'Christmas is light with its own danger color (' + cssvar('--coral') + ' vs accent ' + cssvar('--teal') + ')');
   ok(ev('PATTERN_MAX_OPACITY') >= Math.max(...['geo', 'emoji'].flatMap(g => ['subtle', 'medium', 'bold'].map(s => ev(`PATTERN_OPACITY.${g}.${s}`)))), 'PATTERN_MAX_OPACITY covers every strength (so the contrast checks above are the worst case)');
   // the contrast fix in customVars also helps Custom themes: soft text on a custom theme passes too
   w.setCustomAccent('#3F6D64');
@@ -156,7 +159,7 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
   ok(ev('bgPattern.type') === 'emoji' && ev('bgPattern.emoji') === '🎃' && root.getAttribute('data-pat') === 'emoji', 'Halloween brings 🎃');
   ok(cssvar('--pat-size') === '68px' && cssvar('--pat-opacity') === '0.12', 'default size/strength applied (' + cssvar('--pat-size') + ', ' + cssvar('--pat-opacity') + ')');
   w.setTheme('christmas');
-  ok(ev('bgPattern.emoji') === '🎄', 'Christmas brings 🎄');
+  ok(ev('bgPattern.emoji') === '🎅', 'Christmas brings 🎅');
   w.setTheme('light');
   ok(ev('bgPattern.type') === 'none' && !root.hasAttribute('data-pat') && cssvar('--pat-image') === '', 'leaving a seasonal theme for Sage takes its untouched pattern away');
   // a pattern the person chose themselves is kept
@@ -258,11 +261,11 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
   ws.setTheme('christmas'); ws.setPatternSize('small');
   ws.document.getElementById('ct_name').value = 'My Xmas'; ws.saveCurrentTheme();
   let sv = lsSettings(ws).savedThemes;
-  ok(sv.length === 1 && sv[0].pattern && sv[0].pattern.type === 'emoji' && sv[0].pattern.emoji === '🎄' && sv[0].pattern.size === 'small' && sv[0].paper === '#0C2016', 'saved theme stores colors and pattern: ' + JSON.stringify(sv[0].pattern));
+  ok(sv.length === 1 && sv[0].pattern && sv[0].pattern.type === 'emoji' && sv[0].pattern.emoji === '🎅' && sv[0].pattern.size === 'small' && sv[0].paper === '#FBF7F4' && sv[0].danger === '#A33A00', 'saved theme stores colors and pattern: ' + JSON.stringify(sv[0].pattern));
   ok(!('auto' in sv[0].pattern), 'saved pattern has no theme flag');
   ws.resetTheme();
   ws.document.querySelector('#savedThemes .saved-apply').click();
-  ok(ws.eval('theme') === 'custom' && ws.eval('bgPattern.emoji') === '🎄' && ws.eval('bgPattern.size') === 'small' && ws.eval('bgPattern.auto') === false && ws.document.documentElement.getAttribute('data-pat') === 'emoji', 'applying it brings the colors and the pattern back');
+  ok(ws.eval('theme') === 'custom' && ws.eval('bgPattern.emoji') === '🎅' && ws.eval('bgPattern.size') === 'small' && ws.eval('bgPattern.auto') === false && ws.document.documentElement.getAttribute('data-pat') === 'emoji', 'applying it brings the colors and the pattern back');
   ok(ws.document.querySelector('#savedThemes .saved-opt.active') !== null, 'saved theme shows as the active one');
   ws.setPatternType('grid');
   ok(ws.document.querySelector('#savedThemes .saved-opt.active') === null, 'changing the pattern un-highlights the saved theme (the pattern is part of it)');
@@ -271,7 +274,7 @@ const ratio = (a, b) => { const x = lum(Array.isArray(a) ? a : parse(a)), y = lu
   ws.document.querySelector('#savedThemes [data-saved-id]:nth-child(2) .saved-apply').click();
   ok(ws.eval('bgPattern.type') === 'none', 'a theme saved with "no pattern" removes the pattern when applied');
   const ws2 = boot({ ls: { ledgerSettings: ws.localStorage.getItem('ledgerSettings') } });
-  ok(ws2.eval('savedThemes.length') === 2 && ws2.eval('savedThemes[0].pattern.emoji') === '🎄', 'saved themes keep their patterns after a reload');
+  ok(ws2.eval('savedThemes.length') === 2 && ws2.eval('savedThemes[0].pattern.emoji') === '🎅', 'saved themes keep their patterns after a reload');
   const wsh = boot({ ls: { ledgerSettings: JSON.stringify({ savedThemes: [{ id: 'z', name: 'Hostile', paper: '#111111', accent: '#222222', pattern: { type: 'emoji', emoji: '"><script>🎃', size: 'x', strength: 'y' } }] }) } });
   ok(wsh.eval('savedThemes[0].pattern.emoji') === '🎃' && wsh.eval('savedThemes[0].pattern.size') === 'medium', 'a hostile saved pattern is cleaned on load');
 
