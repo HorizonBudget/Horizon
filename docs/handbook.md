@@ -18,9 +18,10 @@ A shared "future expenses" planner for a household. Add the big things coming up
 | --- | --- |
 | `CLAUDE.md` | David's working rules for Claude Code; imports this handbook. |
 | `docs/handbook.md` | This file. `docs/SETUP-CLAUDE-CODE.md` is David's one-time setup guide. |
-| `.claude/skills/` | `/start`, `/preview`, `/release` shortcuts. `.claude/agents/test-runner.md` is the test agent. `.claude/settings.json` pre-approves safe commands. |
+| `.claude/skills/` | `/start`, `/preview`, `/release` shortcuts. `.claude/agents/` holds the test agent, four area helpers and a reviewer (section 8). `.claude/settings.json` pre-approves safe commands. |
+| `docs/agent-rules.md` | Rules every helper agent reads first (never-touch files, hard rules, how to report). |
 | `index.html` | Markup only: sign-in screen, board, every dialog, and the `<script>` list. |
-| `styles.css` | All CSS. Has section markers like `/* ==== SECTION: seasonal-patterns ==== */`, `sticky-scroll`, `version-history`, `END OF FILE`. Add new CSS inside the right section so parallel agents do not collide. |
+| `styles.css` | All CSS. Has section markers like `/* ==== SECTION: seasonal-patterns ==== */`, `sticky-scroll`, `version-history`, `items-board`, `household-sync`, `dialogs`, `END OF FILE`. Add new CSS inside the right section so parallel agents do not collide. |
 | `js/*.js` | Classic (non-module) scripts sharing ONE global scope. Handlers like `onclick="..."` in `index.html` call global functions by name. |
 | `sw.js` | Service worker. Network-first for the page, cache-first for versioned app files (`?v=`). Precaches `APP_FILES`. Never touches Firestore traffic. |
 | `manifest.webmanifest`, `*.png` | Install settings and icons. |
@@ -91,6 +92,17 @@ Tips: if you edit `make-preview.js`, use the LAST `<body>` (comments can contain
 ## 8. Working with agents (David's standing instruction)
 Give implementation tasks to subagents with worktree isolation, each on its own branch, with a short scope and a clear definition of done (tests that must pass, files they may touch, files they must NOT touch: changelog, versions, sw.js, script tags). You write the changelog and stamp the version yourself after merging, so agents never conflict there. Parallelize independent pieces. Agents commit; you review diffs, merge into a `release/X.Y.Z` branch, resolve conflicts (two agents editing neighboring lines in js/themes.js or a shared test is common), run the full tests, then clean up branches and worktrees. Tell each agent to put scratch scripts and screenshots in its own temp folder, never in the repo.
 
+**Specialist helpers (added after 3.2.0).** Pick the one whose area fits the task; each reads `docs/agent-rules.md` first and knows its files and tests. Launch them with worktree isolation.
+| Agent | Area |
+| --- | --- |
+| `looks-themes` | themes, seasonal styles, patterns, colors/contrast, general CSS, phone layout |
+| `items-board` | adding/editing items, suggestions, cards, months, search, filters, repeats, trash, undo |
+| `sync-household` | household code, Firebase sync, people/profiles, photos, backups, install; guards the no-new-top-level-field rule |
+| `scrolling-dialogs` | sticky headers, scroll lock, confirm dialogs, Settings (except Themes tab), version list, update notice |
+| `reviewer` | read-only check of a helper's branch (house rules, bugs, tests) before merging or previewing |
+| `test-runner` | runs all tests and reports |
+Flow: area helper(s) in parallel -> `reviewer` on each branch -> fix rounds -> merge into `release/X.Y.Z` -> `test-runner` -> `/preview` for David -> `/release`. A task spanning two areas: split it, or give it to the main area's helper and say which other files it may touch.
+
 ## 9. Feature notes worth knowing
 **Themes (js/themes.js, js/settings.js, js/settings-modal.js):** Settings -> Themes. Besides the base themes there are 8 seasonal ones: Halloween (dark), Autumn, Christmas, Winter, Valentine's, Spring, Summer, Fourth of July. Three derived color values in `customVars` were tuned for WCAG AA (soft text, danger red, text on accent buttons).
 **Christmas (3.2.0):** light, red and white: paper `#FBF7F4`, accent `#A50F2A`, 🎅 pattern. A theme may set an optional `danger` color (only Christmas does: `#A33A00`), because the standard danger red was identical to its red accent. Saved themes keep `danger`; editing colors by hand in Custom drops it. The two reds differ mainly in hue (contrast 1.17), so a red/orange color-blind person may not tell them apart.
@@ -114,12 +126,12 @@ Give implementation tasks to subagents with worktree isolation, each on its own 
 - **3.0.0**: behavior-neutral split of the single big file into `index.html` + `styles.css` + `js/*.js`; `tools/release.py`; offline file list in `sw.js`.
 - **3.1.0** (commit 1124993): seasonal themes, background patterns, calmer sticky headers, scroll lock behind dialogs, "Show all versions", Collapse all next to Filters.
 - **3.2.0** (commit a913a15): red and white Christmas with 🎅, stronger patterns, frosted Active/Completed bar, README refresh.
-- After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide.
+- After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide. Then (2026-10-17): four area helper agents plus a reviewer, `docs/agent-rules.md`, the `/preview` skill file (it was missing from the repo), and empty CSS section markers.
 Older history lives in the Version History doc and `js/changelog.js`. The dates for 1.0.0 to 1.1.0 in the doc are guesses (a doc comment asks the owner to confirm).
 
 ## 12. Open items and known gaps
-1. **Not tested on a real iPhone:** sideways scroll, sticky headers (momentum and rubber-band scrolling), emoji patterns (Apple emoji inside SVG), the frosted bar (Safari backdrop-filter). David was given a 4-point checklist to try on the live site in Safari after 3.2.0; ask how it went.
+1. **iPhone check for 3.2.0: done.** David tried the 4-point checklist (sideways scroll, sticky headers, emoji patterns, frosted bar) on the live site in Safari on 2026-10-17; all looked fine. New visual work still needs its own iPhone check.
 2. **David's original "sticky header not working" instance was never reproduced.** Three plausible causes were fixed in Chromium. If it happens again, ask what screen, what device and what he was doing, and get a screenshot.
 3. Stale preview Artifacts on claude.ai: 3.1.0 (https://claude.ai/artifact/4ucpbLVWA2FBK7UvaKzqiq) and 3.2.0 (https://claude.ai/artifact/Vb2m99WLmjsAkzxwAGhD7X). Delete only if David asks.
 4. Never verified: the live deployment after each push, real phone install and offline use, real Firebase behavior for new features.
-5. Unknown until the first local session: whether the Claude Docs connector is available in Claude Code on David's computer (affects release step 6).
+5. Claude Docs tools were available in a claude.ai cloud session on 2026-10-17. Still unknown for Claude Code on David's own computer (affects release step 6).
