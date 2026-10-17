@@ -13,6 +13,9 @@ saved custom themes and background patterns (stripes, dots, grid or emoji).
 
 Live at https://horizonbudget.github.io/Horizon/ (GitHub Pages, serves this repo as it is, no build step).
 
+Developed with Claude Code: `CLAUDE.md` holds the working rules, `docs/handbook.md` the full handbook,
+`docs/SETUP-CLAUDE-CODE.md` the one-time setup, and `.claude/` the `/start`, `/preview` and `/release` shortcuts.
+
 ## How it is put together
 
 Plain HTML, CSS and JavaScript. No framework, no bundler, no install step to run the app.

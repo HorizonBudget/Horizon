@@ -1,0 +1,23 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node tests/run-all.js:*)",
+      "Bash(node run-all.js:*)",
+      "Bash(node tools/make-preview.js:*)",
+      "Bash(node tests/lib/build-app.js:*)",
+      "Bash(python3 tools/release.py:*)",
+      "Bash(python3 tests/browser-smoke.py:*)",
+      "Bash(python3 tests/overflow-audit.py:*)",
+      "Bash(python3 tests/sticky-audit.py:*)",
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git log:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git worktree list:*)"
+    ],
+    "ask": [
+      "Bash(git push:*)"
+    ]
+  }
+}
