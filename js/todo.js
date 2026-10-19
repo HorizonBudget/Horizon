@@ -249,7 +249,7 @@ function buildTodoRow(t){
   }
   if(t.owner) meta.push(`<span class="todo-owner">${avatarHtml(t.owner, 'sm')}<span class="todo-owner-name">${escapeHtml(t.owner)}</span></span>`);
   const li = todoLinkedItem(t);
-  if(li) meta.push(`<button type="button" class="todo-link-chip" title="Open the budget item “${escAttr(li.name)}”"><span aria-hidden="true">💵</span> <span class="todo-link-name">${escapeHtml(li.name)}</span></button>`);
+  if(li) meta.push(`<button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span aria-hidden="true">💵</span> <span class="todo-link-name">${escapeHtml(li.name)}</span></button>`);
   const note = String(t.notes || '').trim();
   main.innerHTML = `<div class="todo-name">${escapeHtml(t.name)}</div>`
     + (meta.length ? `<div class="todo-meta">${meta.join('')}</div>` : '')
@@ -258,7 +258,7 @@ function buildTodoRow(t){
   main.addEventListener('click', e => { if(!e.target.closest('.todo-link-chip')) open(); });
   main.addEventListener('keydown', e => { if(e.target === main && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(); } });
   const chip = main.querySelector('.todo-link-chip');
-  if(chip && li) chip.addEventListener('click', e => { e.stopPropagation(); editItem(li.id); });
+  if(chip && li) chip.addEventListener('click', e => { e.stopPropagation(); goToBudgetItem(li.id); });
 
   const more = document.createElement('button');
   more.type = 'button';
@@ -303,6 +303,23 @@ function quickAddTodo(){
   try { inp.focus({ preventScroll: true }); } catch(e) {}
   flashTodoRow(t && t.id);
   return t;
+}
+// The 💵 chip on a to-do: switch to the Budget side and bring that item's card into view, opening its month
+// (or the Completed tab, or clearing a category filter that hides it) and flashing it, like a new to-do.
+function goToBudgetItem(id){
+  const it = findLiveItem(id);
+  if(!it) return;
+  activeTab = it.completed ? 'completed' : 'active';
+  if(!it.completed){
+    if(collapsedMonths.delete(it.month || 'No date yet')) saveCollapsedMonths();
+    if(activeCategoryFilter !== 'All' && activeCategoryFilter !== it.category) activeCategoryFilter = 'All';
+  }
+  setSide('budget');
+  const card = document.querySelector(`#budgetView [data-item-id="${it.id}"]`);
+  if(!card) return;
+  card.classList.add('is-new');
+  if(card.scrollIntoView) try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e) {}
+  setTimeout(() => card.classList.remove('is-new'), 1600);
 }
 function flashTodoRow(id){
   if(id == null) return;

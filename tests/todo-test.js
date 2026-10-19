@@ -93,10 +93,13 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   // ---------- linked item chip ----------
   const chip = row('Order tires').querySelector('.todo-link-chip');
   ok(!!chip && /Tires/.test(chip.textContent), 'linked budget item shows as a chip');
+  const tiresId = A.eval(`items.find(i => i.name === 'Tires' && i.kind !== 'todo').id`);
+  const tiresMonth = A.eval(`items.find(i => i.id === ${tiresId}).month`);
+  A.eval(`collapsedMonths.add(${JSON.stringify(tiresMonth)})`);
   chip.click();
-  ok($('itemOverlay').style.display === 'flex' && $('f_name').value === 'Tires' && $('todoOverlay').style.display !== 'flex', 'tapping the chip opens that budget item (not the to-do)');
-  A.closeItemModal();
-  A.setSide('budget');
+  const jumped = d.querySelector(`#itemsList [data-item-id="${tiresId}"]`);
+  ok(A.eval('uiSide') === 'budget' && $('itemOverlay').style.display !== 'flex' && $('todoOverlay').style.display !== 'flex', 'tapping the chip goes to the Budget side (no dialog)');
+  ok(!!jumped && jumped.classList.contains('is-new') && !A.eval(`collapsedMonths.has(${JSON.stringify(tiresMonth)})`), 'the linked card is shown (its month opened) and flashed');
   const tireCard = [...d.querySelectorAll('#itemsList .item-card')].find(c => c.querySelector('.item-name').textContent === 'Tires');
   ok(!!tireCard.querySelector('.tag-todo') && /0\/1 to-do/.test(tireCard.querySelector('.tag-todo').textContent), 'budget card shows the linked to-do tag: ' + (tireCard.querySelector('.tag-todo') || {}).textContent);
   ok(![...d.querySelectorAll('#itemsList .item-card')].some(c => c.querySelector('.item-name').textContent === 'Dentist' && c.querySelector('.tag-todo')), 'no tag on items without to-dos');

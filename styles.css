@@ -1183,7 +1183,7 @@
   .todo-row[data-group="overdue"]::before{background:var(--coral);}
   .todo-row[data-group="today"]::before{background:var(--mustard);}
   .todo-row[data-group="week"]::before{background:var(--teal);}
-  .todo-row.is-new{box-shadow:0 0 0 2px var(--teal);}
+  .todo-row.is-new, .item-card.is-new{box-shadow:0 0 0 2px var(--teal);}
   /* the checkbox is the budget cards' square .complete-check, sitting in the flow on the right with a 44px tap area */
   .todo-check-wrap{flex:none; align-self:stretch; width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
   .todo-row .complete-check{position:static; flex:none;}
