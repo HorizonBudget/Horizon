@@ -101,6 +101,17 @@ const {sleep,ok,boot,setItems,finish}=require('./lib/h.js');
   d.querySelector('#searchRow .link-btn').click();
   ok($('searchRow').hidden && $('searchRow').parentNode===$('appHeader') && !$('topCompact').classList.contains('search-on') && $('searchView').hidden,'Close puts the field back and restores the compact bar');
 
+  // ---- tapping off the search closes it; taps on the field, the results or a result's checkbox do not
+  btn.click(); $('searchInput').click(); ok(!$('searchRow').hidden,'tapping the field keeps it open');
+  d.querySelector('#appHeader .brand').click();
+  ok($('searchRow').hidden && shown(d.querySelector('#appHeader .top-actions')),'tapping off an empty search closes it');
+  btn.click(); type('tire'); d.querySelector('#searchResults .search-section-head').click();
+  ok(!$('searchRow').hidden && !$('searchView').hidden,'tapping inside the results keeps the search open');
+  d.querySelector('#appHeader .brand').click();
+  ok($('searchRow').hidden && $('searchView').hidden && shown($('budgetView')) && $('searchInput').value==='','tapping off with a query closes the search and shows the board');
+  cbtn.click(); d.querySelector('#appHeader .brand').click();
+  ok($('searchRow').hidden && !$('topCompact').classList.contains('search-on'),'tapping off closes the compact-bar search too');
+
   ok(!JSON.stringify(w.eval('snapshotState()')).includes('searchQuery'),'search is UI-only, not synced');
   ok($('tabActiveBtn').textContent==='Active' && $('tabCompletedBtn').textContent==='Completed' && /Recent activity/.test($('activityToggle').textContent),'tabs + activity pill intact');
   setItems(w,[]); btn.click(); type('x'); ok(/No matches/.test($('searchResults').textContent),'empty board + query shows no-match message');

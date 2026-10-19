@@ -88,6 +88,12 @@ function onSearchInput(){
 document.getElementById('searchInput').addEventListener('keydown', e => {
   if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeSearch(); }
 });
+// A tap anywhere off the search (not the field, its results, the search buttons, a dialog or a toast) closes it.
+document.addEventListener('click', e => {
+  if(!searchOpen || !(e.target instanceof Element) || !e.target.isConnected) return;
+  if(e.target.closest('#searchRow, #searchView, #searchBtn, #searchBtnCompact, .overlay, #toastRegion')) return;
+  closeSearch();
+});
 
 // The results: "Budget items (N)" then "To-dos (N)". Cards and rows are the real ones, so their checkbox and ⋯ work.
 function renderSearchResults(){
