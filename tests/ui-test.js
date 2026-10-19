@@ -278,7 +278,7 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
   // names and avatar mirrored into the compact bar
   w.eval(`householdName='The Smiths'`); w.updateHouseholdTitle(); ok($('hhTitleCompact').textContent==='The Smiths'&&$('hhTitle').textContent==='The Smiths','household name is mirrored into the compact bar');
   ok(/avatar/.test($('profileBtnAvatarCompact').innerHTML),'profile avatar is mirrored into the compact bar');
-  ok(!!d.querySelector('#boardSticky > .view-tabs')&&!!d.querySelector('#boardSticky > #searchRow'),'Active/Completed row and the search box share the sticky wrapper');
+  ok(!!d.querySelector('#boardSticky > .view-tabs')&&!!d.querySelector('#appHeader > #searchRow'),'Active/Completed row is in the sticky wrapper; the search field lives in the top banner');
   ok(w.eval(`typeof window.requestAnimationFrame`)==='function','rAF available (fallback to setTimeout exists otherwise)');
 
   finish();

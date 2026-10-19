@@ -1,7 +1,8 @@
 // ---- Search (the 🔍 button in the header and the compact bar) ----
-// One results view for budget items AND to-dos together, whichever side is showing. The boards themselves are not
+// The search field opens IN the bar you tapped: it takes the place of the header's buttons, or fills the whole compact
+// bar (which then stays put while the search is open; js/sticky-headers.js checks searchOpen). One results view for budget items AND to-dos together, whichever side is showing. The boards themselves are not
 // filtered. Every word typed must appear somewhere in the item (any field), ignoring upper/lower case.
-let searchQuery = '', searchOpen = false, searchWasShowing = false;
+let searchQuery = '', searchOpen = false, searchWasShowing = false, searchWhere = 'header';
 function searchTerm(){ return searchQuery.trim().toLowerCase(); }
 function searchWords(q){ return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
 function textMatchesAll(parts, q){
@@ -27,8 +28,18 @@ function todoMatchesSearch(t, q){
 }
 function searchShowing(){ return searchOpen && !!searchTerm(); }
 
+// moves the one search field into the header or the compact bar and swaps that bar's buttons for it
+function placeSearchRow(){
+  const row = document.getElementById('searchRow');
+  const header = document.getElementById('appHeader'), compact = document.getElementById('topCompact');
+  const host = searchOpen && searchWhere === 'compact' ? compact : header;
+  if(row.parentNode !== host) host.appendChild(row);
+  header.classList.toggle('search-on', searchOpen && searchWhere === 'header');
+  compact.classList.toggle('search-on', searchOpen && searchWhere === 'compact');
+}
 function updateSearchUi(){
   document.getElementById('searchRow').hidden = !searchOpen;
+  placeSearchRow();
   ['searchBtn', 'searchBtnCompact'].forEach(id => {
     const btn = document.getElementById(id);
     if(!btn) return;
@@ -38,7 +49,10 @@ function updateSearchUi(){
   });
   document.getElementById('searchClear').hidden = !searchQuery;
 }
-function openSearch(){
+// where: 'header' or 'compact'; by default the bar that is showing right now
+function openSearch(where){
+  searchWhere = where === 'compact' || where === 'header' ? where
+    : (document.documentElement.classList.contains('page-collapsed') ? 'compact' : 'header');
   searchOpen = true;
   updateSearchUi();
   const inp = document.getElementById('searchInput');
@@ -53,10 +67,11 @@ function closeSearch(){
   searchOpen = false; searchQuery = '';
   document.getElementById('searchInput').value = '';
   updateSearchUi();
+  if(window.syncPageBar) window.syncPageBar();   // the page header may have been held still while searching
   if(had) renderCore();   // back to the side you were on
   try { visibleSearchBtn().focus({ preventScroll:true }); } catch(e) {}
 }
-function toggleSearch(){ searchOpen ? closeSearch() : openSearch(); }
+function toggleSearch(where){ searchOpen ? closeSearch() : openSearch(where); }
 function clearSearch(){
   searchQuery = '';
   const inp = document.getElementById('searchInput');
@@ -84,7 +99,13 @@ function renderSearchResults(){
   const res = document.getElementById('searchResults');
   res.innerHTML = '';
   if(!on){ document.getElementById('searchCountNote').textContent = ''; searchWasShowing = false; return; }
-  if(!searchWasShowing && (window.pageYOffset || 0) > 0){ try { window.scrollTo(0, 0); } catch(e) {} }
+  // results start at the top: under the header, or (searching from the compact bar, which stays) right under it
+  if(!searchWasShowing){
+    const cur = window.pageYOffset || 0;
+    const y = searchWhere === 'compact'
+      ? Math.max(0, Math.round(view.getBoundingClientRect().top + cur - document.getElementById('topCompact').offsetHeight - 12)) : 0;
+    if(Math.abs(cur - y) > 1){ try { window.scrollTo(0, y); } catch(e) {} }
+  }
   searchWasShowing = true;
   const q = searchTerm();
   const its = liveItems().filter(i => itemMatchesSearch(i, q))

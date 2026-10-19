@@ -1263,6 +1263,7 @@
   .search-toggle.open, .search-toggle.active{color:var(--teal); border-color:var(--teal); background:var(--teal-light);}
   #app.is-searching #budgetView, #app.is-searching #todoView, #app.is-searching .side-switch-main, #app.is-searching .view-tabs{display:none;}
   .search-view[hidden]{display:none;}
+  #app.is-searching .search-view{min-height:100vh; min-height:100dvh;}   /* room to line the results up under a bar */
   .search-head{margin:18px 0 12px;}
   .search-section{margin-bottom:22px;}
   .search-section-head{display:inline-flex; align-items:center; gap:8px; margin:0 0 10px; font-size:15px; font-weight:700; color:var(--ink);}
@@ -1273,6 +1274,18 @@
   @media (max-width:640px){
     .top-actions .hdr-icon{padding-left:0; padding-right:0; min-width:42px;}
   }
+  /* The search field opens inside the bar that was tapped: in the header it replaces the button row (name/logo row
+     stays); in the compact bar it replaces everything. js/search.js moves #searchRow and sets .search-on. */
+  header.top.search-on .top-actions{display:none;}
+  header.top .search-row, .top-compact .search-row{margin:0; padding:0; gap:12px; min-width:0;}
+  header.top .search-row{flex:1 1 320px; max-width:560px;}
+  .top-compact .search-row{flex:1 1 auto;}
+  header.top .search-box, .top-compact .search-box{max-width:none;}
+  .top-compact .search-box input{padding-top:8px; padding-bottom:8px;}
+  .top-compact.search-on > :not(.search-row){display:none;}
+  .search-row .link-btn{flex:none; min-height:40px; display:inline-flex; align-items:center; padding:0 2px;}
+  @media (max-width:640px){ header.top .search-row{flex-basis:100%; max-width:none;} }
+
   /* phones: the compact bar holds the logo, the switch and 4 buttons; tighten its spacing so it fits at 375px */
   @media (max-width:400px){ .top-compact{padding-left:12px; padding-right:12px; gap:6px;} }
   /* narrow phones: no logo in the compact bar */

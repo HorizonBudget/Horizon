@@ -32,6 +32,8 @@ const {sleep,ok,boot,setItems,finish}=require('./lib/h.js');
   btn.click();
   ok(!$('searchRow').hidden && btn.getAttribute('aria-expanded')==='true' && cbtn.getAttribute('aria-expanded')==='true' && d.activeElement===$('searchInput'),'opens and focuses the input');
   ok($('searchView').hidden && shown($('budgetView')),'empty query: the board stays as it was');
+  ok($('searchRow').parentNode===$('appHeader') && $('appHeader').classList.contains('search-on') && !shown(d.querySelector('#appHeader .top-actions')) && shown(d.querySelector('#appHeader .brand')),'the field replaces the header buttons; name/logo row stays');
+  ok(!d.querySelector('#boardSticky #searchRow') && !$('topCompact').classList.contains('search-on'),'no search row under the banner; compact bar untouched');
 
   // ---- one results view, both kinds
   type('WASHING');
@@ -92,7 +94,12 @@ const {sleep,ok,boot,setItems,finish}=require('./lib/h.js');
   ok($('searchRow').hidden && shown($('todoView')),'Close returns to the side');
   btn.click(); type('tire'); w.setSide('budget');
   ok($('searchRow').hidden && $('searchView').hidden && shown($('budgetView')),'picking a side closes the search');
-  cbtn.click(); ok(!$('searchRow').hidden,'compact search button opens it'); cbtn.click(); ok($('searchRow').hidden,'and closes it');
+  cbtn.click();
+  ok(!$('searchRow').hidden && $('searchRow').parentNode===$('topCompact') && $('topCompact').classList.contains('search-on') && !$('appHeader').classList.contains('search-on') && d.activeElement===$('searchInput'),'compact search button turns the compact bar into the search field');
+  ok([...$('topCompact').children].filter(c=>c!==$('searchRow')).every(c=>!shown(c)),'everything else in the compact bar is hidden');
+  type('tire'); ok(rcards().length>0,'results show from the compact bar');
+  d.querySelector('#searchRow .link-btn').click();
+  ok($('searchRow').hidden && $('searchRow').parentNode===$('appHeader') && !$('topCompact').classList.contains('search-on') && $('searchView').hidden,'Close puts the field back and restores the compact bar');
 
   ok(!JSON.stringify(w.eval('snapshotState()')).includes('searchQuery'),'search is UI-only, not synced');
   ok($('tabActiveBtn').textContent==='Active' && $('tabCompletedBtn').textContent==='Completed' && /Recent activity/.test($('activityToggle').textContent),'tabs + activity pill intact');

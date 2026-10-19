@@ -175,14 +175,17 @@ function initPageHeader(){
   if(!header || !compact) return;
   let collapsed = false;
   const setBarVar = () => root.style.setProperty('--page-bar-h', (collapsed ? compact.offsetHeight : header.offsetHeight) + 'px');
+  // while the search is open its field lives in one of the bars, so that bar stays where it is (js/search.js)
+  const show = c => { collapsed = c; root.classList.toggle('page-collapsed', c); setBarVar(); };
   const ctl = bindScrollBar({
     target: window,
     getY: () => window.pageYOffset || root.scrollTop || 0,
     getMax: () => root.scrollHeight - window.innerHeight,
     rules: PAGE_BAR_RULES,
     onScroll: y => root.classList.toggle('is-scrolled', y > 4),
-    apply: c => { collapsed = c; root.classList.toggle('page-collapsed', c); setBarVar(); }
+    apply: c => { if(!searchOpen) show(c); }
   });
+  window.syncPageBar = () => { if(ctl.state().collapsed !== collapsed) show(ctl.state().collapsed); };
   setBarVar();
   const main = document.querySelector('#app main'), stuck = document.getElementById('boardSticky');
   if(main && window.ResizeObserver) new ResizeObserver(() => ctl.rebase()).observe(main);

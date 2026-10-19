@@ -58,7 +58,7 @@
       <button type="button" class="side-opt" data-side="todo" onclick="setSide('todo')">To-do</button>
     </div>
     <button type="button" class="btn btn-ghost tc-btn tc-profile" id="profileBtnCompact" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatarCompact"></span></button>
-    <button type="button" class="btn btn-ghost tc-btn search-toggle" id="searchBtnCompact" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
+    <button type="button" class="btn btn-ghost tc-btn search-toggle" id="searchBtnCompact" onclick="toggleSearch('compact')" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
     <button type="button" class="btn btn-ghost tc-btn" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
     <button type="button" class="btn btn-add tc-btn" id="tcAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item">+</button>
   </div>
@@ -72,9 +72,17 @@
     </div>
     <div class="top-actions">
       <button class="btn btn-ghost profile-btn" id="profileBtn" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatar"></span><span class="profile-btn-name" id="profileBtnName"></span></button>
-      <button type="button" class="btn btn-ghost hdr-icon search-toggle" id="searchBtn" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
+      <button type="button" class="btn btn-ghost hdr-icon search-toggle" id="searchBtn" onclick="toggleSearch('header')" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
       <button class="btn btn-ghost hdr-icon" onclick="openSettingsModal()" title="Settings">⚙</button>
       <button class="btn btn-add" id="hdrAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item"><span class="budget-only">+ Budget item</span><span class="todo-only">+ To-do item</span></button>
+    </div>
+    <!-- Search field: opens in place of the header buttons (or fills the compact bar; js/search.js moves it there) -->
+    <div class="search-row" id="searchRow" hidden>
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="Search budget items and to-dos…" aria-label="Search budget items and to-dos" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onSearchInput()">
+        <button type="button" class="search-clear" id="searchClear" onclick="clearSearch()" aria-label="Clear search" hidden>✕</button>
+      </div>
+      <button type="button" class="link-btn" onclick="closeSearch()">Close</button>
     </div>
   </header>
 
@@ -119,13 +127,6 @@
       </div>
     </div>
 
-    <div class="search-row" id="searchRow" hidden>
-      <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search budget items and to-dos…" aria-label="Search budget items and to-dos" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onSearchInput()">
-        <button type="button" class="search-clear" id="searchClear" onclick="clearSearch()" aria-label="Clear search" hidden>✕</button>
-      </div>
-      <button type="button" class="link-btn" onclick="closeSearch()">Close</button>
-    </div>
     </div>
 
     <!-- Search results (js/search.js): budget items and to-dos together, whichever side is showing -->
