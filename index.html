@@ -59,7 +59,7 @@
     </div>
     <button type="button" class="btn btn-ghost tc-btn tc-profile" id="profileBtnCompact" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatarCompact"></span></button>
     <button type="button" class="btn btn-ghost tc-btn" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
-    <button type="button" class="btn btn-add tc-btn" id="tcAddBtn" onclick="openAddForSide()" aria-label="Add future item" title="Add future item">+</button>
+    <button type="button" class="btn btn-add tc-btn" id="tcAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item">+</button>
   </div>
   <header class="top" id="appHeader">
     <div class="brand">
@@ -72,7 +72,7 @@
     <div class="top-actions">
       <button class="btn btn-ghost profile-btn" id="profileBtn" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatar"></span><span class="profile-btn-name" id="profileBtnName"></span></button>
       <button class="btn btn-ghost" onclick="openSettingsModal()" title="Settings">⚙</button>
-      <button class="btn btn-add" onclick="openAddForSide()"><span class="budget-only">+ Add<span class="add-long"> future</span> item</span><span class="todo-only">+ Add to-do</span></button>
+      <button class="btn btn-add" id="hdrAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item"><span class="budget-only">+ Budget item</span><span class="todo-only">+ To-do list item</span></button>
     </div>
   </header>
 
@@ -175,9 +175,12 @@
         <input type="text" id="todoQuickInput" maxlength="200" placeholder="Add a to-do…" aria-label="New to-do" autocomplete="off" enterkeyhint="done">
         <button type="submit" class="btn btn-primary todo-add-btn">Add</button>
       </form>
-      <div class="todo-head">
+      <div class="section-head todo-head">
         <div class="section-title" id="todoTitle">To do</div>
-        <span class="todo-head-count" id="todoCountNote"></span>
+        <div class="head-tools">
+          <span class="todo-head-count" id="todoCountNote"></span>
+          <span class="month-tools" id="todoToolsSlot"></span>
+        </div>
       </div>
       <div class="todo-list" id="todoList"></div>
       <div class="todo-done" id="todoDone"></div>
@@ -188,7 +191,7 @@
 <!-- Add/Edit Item Modal -->
 <div class="overlay" id="itemOverlay">
   <div class="modal">
-    <h3 id="modalTitle">Add a future item</h3>
+    <h3 id="modalTitle">Add a budget item</h3>
     <p class="gate-sub" data-bar-extra>Doesn't need to be exact yet — you can adjust the estimate later.</p>
 
     <div class="gate-row">
@@ -284,7 +287,7 @@
 <!-- To-do details (add / edit) -->
 <div class="overlay" id="todoOverlay" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
   <div class="modal">
-    <h3 id="todoModalTitle">New to-do</h3>
+    <h3 id="todoModalTitle">Add a to-do list item</h3>
     <div class="gate-row">
       <label class="field-label" for="t_name">What needs doing?</label>
       <input type="text" id="t_name" maxlength="200" placeholder="e.g. Book the furnace service" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();saveTodoModal();}" oninput="document.getElementById('t_nameError').textContent=''">

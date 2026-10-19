@@ -8,6 +8,10 @@
 let todoFilter = 'all';       // 'all' (Everyone) or 'mine'; remembered only while the page is open
 let todoDoneOpen = false;     // the "Done (N)" section starts folded
 let editingTodoId = null;
+// collapsed due-date groups, remembered on this device like the budget's month groups (never synced)
+const TODO_COLLAPSE_KEY = 'horizonCollapsedTodoGroups';
+let collapsedTodoGroups = readCollapsedSet(TODO_COLLAPSE_KEY);
+let shownTodoGroups = [];
 const TODO_TICK_MS = 420;     // the tick animation plays this long before the to-do moves to Done
 const TODO_NAME_MAX = 200, TODO_NOTES_MAX = 500;
 const TODO_GROUPS = [
@@ -99,8 +103,11 @@ function applySide(){
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
-  const add = document.getElementById('tcAddBtn');
-  if(add){ const l = todo ? 'Add to-do' : 'Add future item'; add.setAttribute('aria-label', l); add.title = l; }
+  const addLabel = todo ? 'Add to-do list item' : 'Add budget item';
+  ['tcAddBtn', 'hdrAddBtn'].forEach(id => {
+    const b = document.getElementById(id);
+    if(b){ b.setAttribute('aria-label', addLabel); b.title = addLabel; }
+  });
   const si = document.getElementById('searchInput');
   if(si){
     si.placeholder = todo ? 'Search to-dos, people, notes…' : 'Search name, category, owner, note…';
@@ -150,6 +157,7 @@ function renderTodos(){
   document.getElementById('todoTitle').textContent = todoFilter === 'mine' ? 'My to-dos' : 'To do';
 
   list.innerHTML = '';
+  shownTodoGroups = [];
   if(!shownOpen.length){
     let msg;
     if(q && !shownDone.length) msg = `No to-dos match “${escapeHtml(searchQuery.trim())}”.`;
@@ -161,24 +169,23 @@ function renderTodos(){
   } else {
     const byGroup = {};
     shownOpen.forEach(t => { const k = todoGroupKey(t); (byGroup[k] = byGroup[k] || []).push(t); });
-    TODO_GROUPS.forEach(g => {
+    const groups = TODO_GROUPS.filter(g => byGroup[g.key] && byGroup[g.key].length);
+    shownTodoGroups = groups.map(g => g.key);
+    groups.forEach(g => {
       const rows = byGroup[g.key];
-      if(!rows || !rows.length) return;
       // dated groups: soonest first; No date: newest first, so something just added is easy to find
       if(g.key === 'none') rows.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       else rows.sort((a, b) => a.due < b.due ? -1 : a.due > b.due ? 1 : (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
-      const sec = document.createElement('section');
-      sec.className = 'todo-group';
-      sec.dataset.group = g.key;
-      sec.innerHTML = `<h3 class="todo-group-head"><span class="mg-dot" style="background:${g.color}" aria-hidden="true"></span>`
-        + `<span class="tg-name">${g.label}</span><span class="tg-count">${rows.length}</span></h3>`;
-      const body = document.createElement('div');
-      body.className = 'todo-group-body';
-      rows.forEach(t => body.appendChild(buildTodoRow(t)));
-      sec.appendChild(body);
-      list.appendChild(sec);
+      list.appendChild(buildGroupSection({
+        data: { group: g.key }, bodyId: 'todoGroupBody-' + g.key, collapsed: collapsedTodoGroups.has(g.key),
+        dot: g.color, name: g.label, count: `${rows.length} to-do${rows.length === 1 ? '' : 's'}`, className: 'todo-group',
+        onToggle: () => toggleTodoGroup(g.key),
+        fill: body => rows.forEach(t => body.appendChild(buildTodoRow(t)))
+      }));
     });
   }
+  const allCollapsed = shownTodoGroups.length > 0 && shownTodoGroups.every(k => collapsedTodoGroups.has(k));
+  renderCollapseAllLink(document.getElementById('todoToolsSlot'), 'todoCollapseAllBtn', shownTodoGroups.length, allCollapsed, () => setAllTodoGroupsCollapsed(!allCollapsed));
 
   // Done (N): folded by default, newest first, with Clear done
   const doneWrap = document.getElementById('todoDone');
@@ -211,6 +218,21 @@ function renderTodos(){
   }
 }
 
+function toggleTodoGroup(key){
+  if(collapsedTodoGroups.has(key)) collapsedTodoGroups.delete(key); else collapsedTodoGroups.add(key);
+  writeCollapsedSet(TODO_COLLAPSE_KEY, collapsedTodoGroups);
+  renderCore();
+  const b = [...document.querySelectorAll('#todoList .month-group-btn')].find(x => x.dataset.group === key);
+  if(b) try { b.focus({ preventScroll: true }); } catch(e) {}
+}
+function setAllTodoGroupsCollapsed(collapse){
+  shownTodoGroups.forEach(k => { if(collapse) collapsedTodoGroups.add(k); else collapsedTodoGroups.delete(k); });
+  writeCollapsedSet(TODO_COLLAPSE_KEY, collapsedTodoGroups);
+  renderCore();
+  const b = document.getElementById('todoCollapseAllBtn');
+  if(b) try { b.focus({ preventScroll: true }); } catch(e) {}
+}
+
 function buildTodoRow(t){
   const row = document.createElement('div');
   row.className = 'todo-row' + (t.completed ? ' is-done' : '');
@@ -218,13 +240,15 @@ function buildTodoRow(t){
   const g = todoGroupKey(t);
   if(!t.completed) row.dataset.group = g;
 
+  // the same square checkbox as the budget cards (restore-check when done), on the right, in a 44px tap area
   const wrap = document.createElement('label');
   wrap.className = 'todo-check-wrap';
   const cb = document.createElement('input');
   cb.type = 'checkbox';
-  cb.className = 'todo-check';
+  cb.className = 'complete-check' + (t.completed ? ' restore-check' : '');
   cb.checked = !!t.completed;
-  cb.setAttribute('aria-label', (t.completed ? 'Put back on the list: ' : 'Tick off: ') + t.name);
+  cb.title = t.completed ? 'Mark as not done' : 'Mark done';
+  cb.setAttribute('aria-label', (t.completed ? 'Put back on the list: ' : 'Mark done: ') + t.name);
   cb.addEventListener('change', () => onTodoCheck(t.id, cb));
   wrap.appendChild(cb);
 
@@ -258,7 +282,7 @@ function buildTodoRow(t){
   more.textContent = '⋯';
   more.addEventListener('click', open);
 
-  row.appendChild(wrap); row.appendChild(main); row.appendChild(more);
+  row.appendChild(main); row.appendChild(more); row.appendChild(wrap);
   return row;
 }
 
@@ -405,7 +429,7 @@ function updateTodoDueChips(){
 function openTodoModal(id){
   const t = id != null ? findLiveTodo(id) : null;
   editingTodoId = t ? t.id : null;
-  document.getElementById('todoModalTitle').textContent = t ? 'Edit to-do' : 'New to-do';
+  document.getElementById('todoModalTitle').textContent = t ? 'Edit to-do' : 'Add a to-do list item';
   document.getElementById('t_name').value = t ? t.name : '';
   document.getElementById('t_nameError').textContent = '';
   document.getElementById('t_due').value = t ? cleanTodoDue(t.due) : '';
@@ -413,7 +437,7 @@ function openTodoModal(id){
   populateTodoLinkSelect(t ? t.linkId : null);
   document.getElementById('t_notes').value = t ? (t.notes || '') : '';
   document.getElementById('todoDeleteBtn').style.display = t ? '' : 'none';
-  document.getElementById('todoSaveBtn').textContent = t ? 'Save' : 'Add to-do';
+  document.getElementById('todoSaveBtn').textContent = t ? 'Save' : 'Add';
   updateTodoDueChips();
   document.getElementById('todoOverlay').style.display = 'flex';
   if(!t){ try { document.getElementById('t_name').focus({ preventScroll: true }); } catch(e) {} }

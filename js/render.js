@@ -86,7 +86,7 @@ function renderBoard(){
   if(visible.length === 0 && q){
     list.innerHTML = `<div class="empty">No items match “${escapeHtml(searchQuery.trim())}”</div>`;
   } else if(activeItems.length === 0){
-    list.innerHTML = '<div class="empty">Nothing on the board yet. Tap “+ Add future item” to add the first thing you’ll need to buy.</div>';
+    list.innerHTML = '<div class="empty">Nothing on the board yet. Tap “+ Budget item” to add the first thing you’ll need to buy.</div>';
   } else if(visible.length === 0){
     list.innerHTML = '<div class="empty">Nothing matches this filter yet.</div>';
   } else {
@@ -102,13 +102,9 @@ function renderBoard(){
       groups.forEach(g => g.items.sort((a, b) => (a.subcategory || '￿').localeCompare(b.subcategory || '￿')));
     }
     shownGroupMonths = groups.map(g => g.month);
-    if(groups.length >= 2){
-      const allCollapsed = groups.every(g => collapsedMonths.has(g.month));
-      // lives in the heading row beside Filters (not in the list), so it takes no row of its own
-      const tools = document.getElementById('monthToolsSlot');
-      tools.innerHTML = `<button type="button" class="link-btn" id="collapseAllBtn">${allCollapsed ? 'Expand all' : 'Collapse all'}</button>`;
-      tools.firstChild.addEventListener('click', () => setAllMonthsCollapsed(!allCollapsed));
-    }
+    // lives in the heading row beside Filters (not in the list), so it takes no row of its own
+    const allCollapsed = groups.every(g => collapsedMonths.has(g.month));
+    renderCollapseAllLink(document.getElementById('monthToolsSlot'), 'collapseAllBtn', groups.length, allCollapsed, () => setAllMonthsCollapsed(!allCollapsed));
     groups.forEach((g, i) => list.appendChild(buildMonthGroup(g, i)));
   }
 

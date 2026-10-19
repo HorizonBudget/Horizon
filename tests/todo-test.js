@@ -34,7 +34,7 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   const pills = () => [...d.querySelectorAll('#categoryFilter .month-pill')].map(p => p.textContent.replace(/\s+/g, ' ').trim());
   const groups = () => [...d.querySelectorAll('#itemsList .mg-name')].map(x => x.textContent);
   const todoNames = () => [...d.querySelectorAll('#todoList .todo-row .todo-name')].map(x => x.textContent);
-  const groupNames = () => [...d.querySelectorAll('#todoList .todo-group')].map(g => g.dataset.group + ':' + g.querySelector('.tg-count').textContent);
+  const groupNames = () => [...d.querySelectorAll('#todoList .todo-group')].map(g => g.dataset.group + ':' + g.querySelector('.mg-count').textContent.replace(/ to-dos?$/, ''));
   const baseCards = cards().join(), baseStat = stat(), basePills = pills().join('|'), baseGroups = groups().join();
 
   // ---------- defaults ----------
@@ -68,6 +68,26 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   const row = id => [...d.querySelectorAll('.todo-row')].find(r => r.querySelector('.todo-name').textContent === id);
   ok(/Yesterday/.test(row('Return library books').querySelector('.todo-due').textContent) && row('Return library books').querySelector('.todo-due').classList.contains('due-overdue'), 'overdue due label');
   ok(/Today/.test(row('Pay school lunch').textContent) && /Sam/.test(row('Pay school lunch').querySelector('.todo-owner').textContent), 'today label + owner');
+  const pr = row('Pay school lunch'), pcb = pr.querySelector('input.complete-check');
+  ok(!!pcb && !pr.querySelector('.todo-check') && pr.lastElementChild.contains(pcb) && pr.firstElementChild.classList.contains('todo-main'), 'square budget-style checkbox on the right of the row');
+  ok(pr.querySelector('.todo-more').compareDocumentPosition(pcb) & 4, '⋯ sits before the checkbox');
+  ok(/1 to-do$/.test(d.querySelector('#todoList .todo-group[data-group="overdue"] .mg-count').textContent) && /2 to-dos$/.test(d.querySelector('#todoList .todo-group[data-group="none"] .mg-count').textContent), 'group counts read “N to-dos”');
+  ok(d.querySelectorAll('#todoList .todo-group .month-group-btn .mg-chev').length === 5 && !d.querySelector('#todoList .mg-total'), 'groups use the month-group header (arrow, no money total)');
+
+  // ---------- collapsing groups ----------
+  const gbtn = k => d.querySelector(`#todoList .month-group-btn[data-group="${k}"]`);
+  gbtn('today').click();
+  ok(gbtn('today').getAttribute('aria-expanded') === 'false' && d.getElementById('todoGroupBody-today').hidden && !todoNames().includes('Pay school lunch'), 'tapping a group header collapses it');
+  ok(d.activeElement === gbtn('today'), 'focus stays on the group header');
+  ok(JSON.parse(A.localStorage.getItem('horizonCollapsedTodoGroups')).join() === 'today', 'collapsed state saved on this device');
+  ok($('todoCollapseAllBtn').textContent === 'Collapse all' && $('todoCollapseAllBtn').closest('.todo-head'), 'Collapse all link in the To do heading row');
+  $('todoCollapseAllBtn').click();
+  ok([...d.querySelectorAll('#todoList .month-group-btn')].every(b => b.getAttribute('aria-expanded') === 'false') && todoNames().length === 0 && $('todoCollapseAllBtn').textContent === 'Expand all', 'Collapse all folds every group');
+  const R = boot({ horizonCollapsedTodoGroups: A.localStorage.getItem('horizonCollapsedTodoGroups') }); await sleep(30);
+  ok(R.eval('collapsedTodoGroups.size') === 5, 'collapsed groups remembered after a reload');
+  $('todoCollapseAllBtn').click();
+  ok(todoNames().length === 6 && $('todoCollapseAllBtn').textContent === 'Collapse all' && JSON.parse(A.localStorage.getItem('horizonCollapsedTodoGroups')).length === 0, 'Expand all opens everything again');
+  ok(!/collapsed|horizonCollapsed/i.test(A.eval('JSON.stringify(snapshotState())')), 'collapsed groups are not synced');
   ok(/Costco has a deal/.test(row('Order tires').querySelector('.todo-note').textContent), 'note preview on the row');
 
   // ---------- linked item chip ----------
@@ -128,14 +148,15 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   ok(A.eval(`findLiveTodo(${pid}).completed`) === false && A.eval(`'completedAt' in findLiveTodo(${pid})`) === false, 'Undo puts it back');
   ok(!$('todoDoneToggle'), 'Done section disappears when empty');
   // tick through the checkbox (with the short animation)
-  const cb = row('Call the plumber').querySelector('.todo-check');
+  const cb = row('Call the plumber').querySelector('.complete-check');
   cb.checked = true; cb.dispatchEvent(new A.Event('change', { bubbles: true }));
   ok(row('Call the plumber').classList.contains('is-ticking'), 'tick animation class');
   await sleep(500);
   ok(A.eval(`findLiveTodo(${pid}).completed`) === true, 'checkbox ticks it off');
   // un-tick from Done
   A.toggleTodoDone(true);
-  const dcb = $('todoDoneBody').querySelector('.todo-check');
+  const dcb = $('todoDoneBody').querySelector('.complete-check');
+  ok(dcb.classList.contains('restore-check') && dcb.checked, 'done rows show the checked restore-check box');
   dcb.checked = false; dcb.dispatchEvent(new A.Event('change', { bubbles: true }));
   ok(A.eval(`findLiveTodo(${pid}).completed`) === false, 'un-ticking in Done puts it back on the list');
   A.completeTodo(pid);
@@ -163,8 +184,8 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   ok(t.name === 'Plan trip' && t.owner === '' && t.notes === undefined && t.linkId === undefined && t.due === in20, 'Undo restores the edit');
   // new to-do from the + button on the to-do side; empty name is refused
   d.querySelector('#topCompact .btn-add').click();
-  ok($('todoOverlay').style.display === 'flex' && $('todoModalTitle').textContent === 'New to-do' && $('itemOverlay').style.display !== 'flex', 'compact + adds a to-do on the To-do side');
-  ok($('tcAddBtn').getAttribute('aria-label') === 'Add to-do', 'compact + is labelled Add to-do');
+  ok($('todoOverlay').style.display === 'flex' && $('todoModalTitle').textContent === 'Add a to-do list item' && $('itemOverlay').style.display !== 'flex', 'compact + adds a to-do on the To-do side');
+  ok($('tcAddBtn').getAttribute('aria-label') === 'Add to-do list item' && $('hdrAddBtn').title === 'Add to-do list item' && A.getComputedStyle(d.querySelector('#hdrAddBtn .todo-only')).display !== 'none' && d.querySelector('#hdrAddBtn .todo-only').textContent === '+ To-do list item', 'add buttons say To-do list item');
   A.saveTodoModal();
   ok(/name/.test($('t_nameError').textContent) && $('todoOverlay').style.display === 'flex', 'empty name refused');
   $('t_name').value = 'Fix the gate'; A.setTodoDueQuick(0); A.saveTodoModal();
@@ -225,9 +246,9 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   ok(C.eval('uiSide') === 'todo', 'a reload remembers the To-do side');
   A.setSide('budget');
   ok(JSON.parse(A.localStorage.getItem('ledgerSettings')).side === 'budget' && $('app').dataset.side === 'budget', 'switching back is saved');
-  ok($('tcAddBtn').getAttribute('aria-label') === 'Add future item', 'compact + is Add future item again');
+  ok($('tcAddBtn').getAttribute('aria-label') === 'Add budget item' && $('hdrAddBtn').getAttribute('aria-label') === 'Add budget item' && d.querySelector('#hdrAddBtn .budget-only').textContent === '+ Budget item' && A.getComputedStyle(d.querySelector('#hdrAddBtn .todo-only')).display === 'none', 'add buttons say Budget item again');
   d.querySelector('#topCompact .btn-add').click();
-  ok($('itemOverlay').style.display === 'flex' && $('todoOverlay').style.display !== 'flex', 'compact + adds a budget item on the Budget side');
+  ok($('itemOverlay').style.display === 'flex' && $('todoOverlay').style.display !== 'flex' && $('modalTitle').textContent === 'Add a budget item', 'compact + adds a budget item on the Budget side');
   A.closeItemModal();
   const D = boot({ ledgerSettings: JSON.stringify({ side: 'bogus' }) }); await sleep(50);
   ok(D.eval('uiSide') === 'budget', 'unknown side falls back to Budget');

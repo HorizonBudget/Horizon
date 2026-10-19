@@ -120,7 +120,7 @@ function timeAgo(t){
 
 function openItemModal(prefill){
   editingId = prefill && prefill.id ? prefill.id : null;
-  document.getElementById('modalTitle').textContent = editingId ? 'Edit item' : 'Add a future item';
+  document.getElementById('modalTitle').textContent = editingId ? 'Edit item' : 'Add a budget item';
   document.getElementById('f_name').value = prefill ? prefill.name : '';
   document.getElementById('nameHint').innerHTML = '';
   // no name typed yet for a brand-new item, so don't lock the category to a fixed default —
