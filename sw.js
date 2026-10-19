@@ -38,6 +38,7 @@ const APP_FILES = [
   'js/settings-modal.js',
   'js/sticky-headers.js',
   'js/render.js',
+  'js/todo.js',
   'js/style-guide.js',
   'js/cloud.js',
   'js/household.js',

@@ -1123,4 +1123,137 @@
   }
   .cl-toggle[aria-expanded="true"] .cl-toggle-chev{transform:rotate(225deg); margin-top:3px;}
 
+/* ==== SECTION: todo (Budget | To-do switch, the To-do side, its dialog) - add new rules below this line ==== */
+
+  /* Which side is showing: js/todo.js sets #app[data-side]. The id in the selector beats any class rule. */
+  #app[data-side="todo"] .budget-only{display:none;}
+  #app:not([data-side="todo"]) .todo-only{display:none;}
+
+  /* Budget | To-do segmented switch (top of the board, plus a small copy in the compact bar) */
+  .side-switch{display:flex; gap:3px; padding:3px; background:linear-gradient(var(--tint), var(--tint)), var(--paper); border:1px solid var(--line); border-radius:12px; box-sizing:border-box; min-width:0;}
+  .side-opt{
+    flex:1 1 0; min-width:0; min-height:40px; padding:0 12px; box-sizing:border-box;
+    display:inline-flex; align-items:center; justify-content:center; gap:7px;
+    border:none; border-radius:9px; background:transparent; color:var(--ink-soft); cursor:pointer;
+    font-family:'Inter',sans-serif; font-size:14.5px; font-weight:600; white-space:nowrap;
+    transition:background .15s ease, color .15s ease, box-shadow .15s ease;
+  }
+  .side-opt:hover{color:var(--ink);}
+  .side-opt.active{background:var(--card); color:var(--ink); box-shadow:0 1px 3px rgba(0,0,0,.14), 0 0 0 1px var(--line);}
+  .side-switch-main{max-width:380px; margin:0 0 4px;}
+  .side-count{
+    display:inline-flex; align-items:center; justify-content:center; box-sizing:border-box;
+    min-width:20px; height:20px; padding:0 6px; border-radius:10px;
+    background:var(--teal); color:var(--on-accent); font-size:11.5px; font-weight:700; line-height:1;
+  }
+  .side-count.has-overdue{background:var(--coral);}
+  .side-count[hidden]{display:none;}
+  .side-switch-compact{flex:none; padding:2px; border-radius:10px;}
+  .side-switch-compact .side-opt{flex:none; min-height:36px; padding:0 10px; font-size:13px; border-radius:8px;}
+  @media (max-width:640px){ .side-switch-main{max-width:none;} }
+  /* phones: the compact bar has no room for the household name next to the switch */
+  @media (max-width:430px){
+    .top-compact .tc-name{display:none;}
+    .side-switch-compact{margin-right:auto;}
+  }
+  @media (max-width:340px){ .side-switch-compact .side-opt{padding:0 8px;} }
+
+  /* Quick add */
+  .todo-add{display:flex; gap:8px; align-items:stretch;}
+  .todo-add input[type=text]{flex:1 1 auto; min-width:0; min-height:46px; border-radius:8px; box-sizing:border-box;}
+  .todo-add-btn{flex:none; width:auto; margin:0; padding:0 20px; min-height:46px; border-radius:8px;}
+  .todo-head{display:flex; align-items:baseline; justify-content:space-between; flex-wrap:wrap; gap:4px 12px; margin:24px 0 12px;}
+  .todo-head-count{font-size:12.5px; color:var(--ink-soft);}
+  .todo-head-count:empty{display:none;}
+
+  /* Groups: Overdue, Today, This week, Later, No date */
+  .todo-list{display:flex; flex-direction:column; gap:18px;}
+  .todo-group-head{
+    display:inline-flex; align-items:center; gap:8px; margin:0 0 8px; padding:2px 0;
+    font-size:12px; font-weight:700; letter-spacing:.07em; text-transform:uppercase; color:var(--ink);
+  }
+  .tg-count{font-size:11.5px; font-weight:600; letter-spacing:0; color:var(--ink-soft); background:var(--tint); border-radius:10px; padding:1px 8px;}
+  .todo-group-body, .todo-done-body{display:flex; flex-direction:column; gap:8px;}
+
+  /* One to-do */
+  .todo-row{
+    position:relative; display:flex; align-items:center; gap:2px; min-height:58px; box-sizing:border-box;
+    background:var(--card); border:1px solid var(--line); border-radius:10px; padding:4px 4px 4px 2px;
+    transition:opacity .3s ease, box-shadow .3s ease;
+  }
+  .todo-row::before{content:""; position:absolute; left:0; top:12px; bottom:12px; width:3px; border-radius:2px; background:transparent;}
+  .todo-row[data-group="overdue"]::before{background:var(--coral);}
+  .todo-row[data-group="today"]::before{background:var(--mustard);}
+  .todo-row[data-group="week"]::before{background:var(--teal);}
+  .todo-row.is-new{box-shadow:0 0 0 2px var(--teal);}
+  .todo-check-wrap{flex:none; align-self:stretch; width:48px; min-height:48px; display:flex; align-items:center; justify-content:center; cursor:pointer;}
+  .todo-check{
+    appearance:none; -webkit-appearance:none; flex:none; margin:0; width:26px; height:26px; box-sizing:border-box;
+    border:2px solid var(--ink-soft); border-radius:50%; background:var(--field); cursor:pointer;
+    display:flex; align-items:center; justify-content:center; transition:background .15s ease, border-color .15s ease, transform .15s ease;
+  }
+  .todo-check:hover{border-color:var(--teal);}
+  .todo-check:checked{background:var(--teal); border-color:var(--teal);}
+  .todo-check:checked::after{content:'✓'; color:var(--on-accent); font-size:15px; font-weight:800; line-height:1;}
+  .todo-row.is-ticking .todo-check{transform:scale(1.12);}
+  .todo-main{flex:1 1 auto; min-width:0; padding:9px 4px; border-radius:6px; cursor:pointer; overflow-wrap:anywhere;}
+  .todo-name{
+    display:inline; -webkit-box-decoration-break:clone; box-decoration-break:clone;
+    font-size:15.5px; font-weight:600; line-height:1.4; color:var(--ink);
+    background-image:linear-gradient(currentColor, currentColor); background-repeat:no-repeat; background-position:0 58%; background-size:0% 2px;
+    transition:background-size .35s ease, color .35s ease;
+  }
+  .todo-row.is-ticking .todo-name, .todo-row.is-done .todo-name{background-size:100% 2px; color:var(--ink-soft);}
+  .todo-row.is-ticking{opacity:.75;}
+  .todo-row.is-done .todo-name{font-weight:500;}
+  .todo-meta{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:5px; font-size:12.5px; color:var(--ink-soft); min-width:0;}
+  .todo-due{display:inline-flex; align-items:center; gap:4px; font-weight:600; white-space:nowrap;}
+  .todo-due.due-overdue{color:var(--coral);}
+  .todo-due.due-today{color:var(--warn-fg);}
+  .todo-due.due-week{color:var(--teal);}
+  .todo-owner{display:inline-flex; align-items:center; gap:5px; min-width:0; max-width:100%;}
+  .todo-owner-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .todo-link-chip{
+    display:inline-flex; align-items:center; gap:4px; min-width:0; max-width:100%; min-height:28px; box-sizing:border-box;
+    padding:2px 10px; border-radius:14px; border:1px solid var(--line); background:var(--tint); color:var(--teal);
+    font:inherit; font-size:12.5px; font-weight:600; cursor:pointer;
+  }
+  .todo-link-chip:hover{border-color:var(--teal);}
+  .todo-link-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .todo-note{display:flex; gap:5px; min-width:0; margin-top:4px; font-size:12.5px; color:var(--ink-soft);}
+  .todo-note-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .todo-more{
+    flex:none; width:40px; height:40px; padding:0; border:none; border-radius:8px; background:none; cursor:pointer;
+    color:var(--ink-soft); font-size:20px; line-height:1; font-family:'Inter',sans-serif;
+  }
+  .todo-more:hover{background:var(--hover); color:var(--ink);}
+  .todo-row.is-done{opacity:.85;}
+
+  /* Done (N) */
+  .todo-done{margin-top:22px;}
+  .todo-done:empty{display:none;}
+  .todo-done-head{display:flex; align-items:center; gap:8px;}
+  .todo-done-toggle{flex:1 1 auto; min-width:0;}
+  .todo-clear-done{flex:none; width:auto; margin:0; background:var(--card); min-height:44px; padding:0 14px; font-size:13px; border-radius:4px;}
+  .todo-done-body{margin-top:10px;}
+  .todo-done-body[hidden]{display:none;}
+  .todo-empty{line-height:1.6;}
+  .todo-empty strong{color:var(--ink);}
+
+  /* Budget card tag: "☑ 1/3 to-dos" */
+  .tag-todo{border:1px solid var(--line); background:var(--teal-light); color:var(--teal); cursor:pointer; font-family:inherit; text-transform:none; letter-spacing:.02em;}
+  .tag-todo.all-done{background:var(--tint); color:var(--ink-soft);}
+
+  /* Dialog: the date field looks like the other fields */
+  #todoOverlay input[type=date]{
+    display:block; width:100%; max-width:100%; min-width:0; min-height:46px; box-sizing:border-box;
+    padding:10px 12px; border:1px solid var(--line); border-radius:3px; background:var(--field); color:var(--ink);
+    font-size:15px; font-family:'Inter',sans-serif;
+  }
+  .todo-due-chips .chip{min-height:36px;}
+  .trash-kind-todo{font-family:'Inter',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); background:var(--tint); border-radius:10px; padding:2px 8px;}
+
+  /* soft text straight on the page gets a paper backing while a background pattern is on */
+  html[data-pat] .todo-group-head, html[data-pat] .todo-head-count{background:var(--paper); border-radius:6px; padding-left:6px; padding-right:6px;}
+
 /* ==== END OF FILE ==== */

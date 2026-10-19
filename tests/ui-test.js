@@ -118,12 +118,12 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
 
   // ---------- 5. shared modal header ----------
   const overlays=[...d.querySelectorAll('.overlay')];
-  ok(overlays.length===9,'9 dialogs in the page ('+overlays.length+')');
+  ok(overlays.length===10,'10 dialogs in the page ('+overlays.length+')');
   overlays.forEach(o=>{
     const m=o.querySelector('.modal'), bar=m.firstElementChild;
     ok(bar&&bar.classList.contains('modal-bar')&&m.classList.contains('has-bar')&&bar.querySelector('.modal-bar-row > h3'),'#'+o.id+': first child is the shared .modal-bar with the title row');
   });
-  ok(d.querySelectorAll('.modal-bar').length===9&&d.querySelectorAll('.modal:not(.has-bar)').length===0,'every .modal has exactly one shared bar');
+  ok(d.querySelectorAll('.modal-bar').length===10&&d.querySelectorAll('.modal:not(.has-bar)').length===0,'every .modal has exactly one shared bar');
   ok(overlays.every(o=>{ const lab=o.getAttribute('aria-labelledby'); return !lab||o.querySelector('.modal-bar #'+lab); }),'aria-labelledby titles live inside the bars (ids preserved)');
   const withClose=['itemOverlay','settingsOverlay','guideOverlay','trashOverlay','cropOverlay','profileOverlay','peopleOverlay','chooseOverlay'];
   ok(withClose.every(id=>$(id).querySelector('.modal-bar .modal-close')&&$(id).querySelector('.modal-close').textContent==='← Close')&&!$('confirmOverlay').querySelector('.modal-close'),'all dialogs share the "← Close" button; the question dialog keeps its own buttons');
@@ -266,7 +266,7 @@ const declHas=(part,re)=>rulesFor(part).some(r=>re.test(r.decl));
   Object.defineProperty(w,'pageYOffset',{get:()=>py,configurable:true}); Object.defineProperty(root,'scrollHeight',{get:()=>6000,configurable:true});
   const pscroll=async y=>{ py=y; w.dispatchEvent(new w.Event('scroll')); await sleep(40); };
   ok($('topCompact')&&$('appHeader')&&$('hhTitleCompact'),'compact bar and full header both exist');
-  ok($('topCompact').querySelector('button[onclick="openSettingsModal()"]')&&$('topCompact').querySelector('button[onclick="openItemModal()"]')&&$('topCompact').querySelector('#profileBtnCompact'),'compact bar keeps profile, settings and add-item buttons');
+  ok($('topCompact').querySelector('button[onclick="openSettingsModal()"]')&&$('topCompact').querySelector('button[onclick="openAddForSide()"]')&&$('topCompact').querySelector('#profileBtnCompact'),'compact bar keeps profile, settings and add-item buttons');
   ok($('backupBanner').previousElementSibling.tagName==='HEADER','backup banner is not part of the header (it scrolls away normally)');
   ok(!root.classList.contains('page-collapsed'),'page starts with the full header');
   await pscroll(200); ok(root.classList.contains('page-collapsed')&&root.classList.contains('is-scrolled'),'page: scroll down collapses the header');

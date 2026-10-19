@@ -53,9 +53,13 @@
   <div class="top-compact" id="topCompact">
     <svg class="tc-logo" aria-hidden="true"><use href="#horizonLogo"/></svg>
     <span class="tc-name" id="hhTitleCompact">Household board</span>
+    <div class="side-switch side-switch-compact" role="group" aria-label="Show budget or to-do list">
+      <button type="button" class="side-opt" data-side="budget" onclick="setSide('budget')">Budget</button>
+      <button type="button" class="side-opt" data-side="todo" onclick="setSide('todo')">To-do</button>
+    </div>
     <button type="button" class="btn btn-ghost tc-btn tc-profile" id="profileBtnCompact" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatarCompact"></span></button>
     <button type="button" class="btn btn-ghost tc-btn" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
-    <button type="button" class="btn btn-add tc-btn" onclick="openItemModal()" aria-label="Add future item" title="Add future item">+</button>
+    <button type="button" class="btn btn-add tc-btn" id="tcAddBtn" onclick="openAddForSide()" aria-label="Add future item" title="Add future item">+</button>
   </div>
   <header class="top" id="appHeader">
     <div class="brand">
@@ -68,7 +72,7 @@
     <div class="top-actions">
       <button class="btn btn-ghost profile-btn" id="profileBtn" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatar"></span><span class="profile-btn-name" id="profileBtnName"></span></button>
       <button class="btn btn-ghost" onclick="openSettingsModal()" title="Settings">⚙</button>
-      <button class="btn btn-add" onclick="openItemModal()">+ Add<span class="add-long"> future</span> item</button>
+      <button class="btn btn-add" onclick="openAddForSide()"><span class="budget-only">+ Add<span class="add-long"> future</span> item</span><span class="todo-only">+ Add to-do</span></button>
     </div>
   </header>
 
@@ -93,10 +97,16 @@
   </div>
 
   <main>
+    <div class="side-switch side-switch-main" id="sideSwitch" role="group" aria-label="Show budget or to-do list">
+      <button type="button" class="side-opt" data-side="budget" onclick="setSide('budget')">Budget</button>
+      <button type="button" class="side-opt" data-side="todo" onclick="setSide('todo')">To-do <span class="side-count" id="sideTodoCount" hidden></span></button>
+    </div>
     <div class="board-sticky" id="boardSticky">
     <div class="view-tabs">
-      <button class="view-tab" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
-      <button class="view-tab" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
+      <button class="view-tab budget-only" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
+      <button class="view-tab budget-only" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
+      <button class="view-tab todo-only" id="todoTabAllBtn" onclick="setTodoFilter('all')">Everyone</button>
+      <button class="view-tab todo-only" id="todoTabMineBtn" onclick="setTodoFilter('mine')">Mine</button>
       <button type="button" class="search-btn" id="searchBtn" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search items" title="Search">
         <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg>
       </button>
@@ -119,6 +129,7 @@
     </div>
     </div>
 
+    <div id="budgetView" class="budget-only">
     <div class="summary-strip" id="summaryStrip">
       <div class="stat">
         <div class="stat-label">Items on Horizon</div>
@@ -156,6 +167,21 @@
       </div>
     </div>
     <div class="items" id="itemsList"></div>
+    </div>
+
+    <!-- To-do side (js/todo.js). To-dos are stored in items[] with kind:'todo'. -->
+    <div id="todoView" class="todo-view todo-only">
+      <form class="todo-add" id="todoAddForm" onsubmit="event.preventDefault(); quickAddTodo();">
+        <input type="text" id="todoQuickInput" maxlength="200" placeholder="Add a to-do…" aria-label="New to-do" autocomplete="off" enterkeyhint="done">
+        <button type="submit" class="btn btn-primary todo-add-btn">Add</button>
+      </form>
+      <div class="todo-head">
+        <div class="section-title" id="todoTitle">To do</div>
+        <span class="todo-head-count" id="todoCountNote"></span>
+      </div>
+      <div class="todo-list" id="todoList"></div>
+      <div class="todo-done" id="todoDone"></div>
+    </div>
   </main>
 </div>
 
@@ -255,6 +281,44 @@
   </div>
 </div>
 
+<!-- To-do details (add / edit) -->
+<div class="overlay" id="todoOverlay" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
+  <div class="modal">
+    <h3 id="todoModalTitle">New to-do</h3>
+    <div class="gate-row">
+      <label class="field-label" for="t_name">What needs doing?</label>
+      <input type="text" id="t_name" maxlength="200" placeholder="e.g. Book the furnace service" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();saveTodoModal();}" oninput="document.getElementById('t_nameError').textContent=''">
+      <p class="field-error" id="t_nameError" role="alert"></p>
+    </div>
+    <div class="gate-row">
+      <label class="field-label" for="t_due">Due date <span class="opt">(optional)</span></label>
+      <input type="date" id="t_due" oninput="updateTodoDueChips()" onchange="updateTodoDueChips()">
+      <div class="chip-row todo-due-chips" id="todoDueChips">
+        <button type="button" class="chip" data-due="0" onclick="setTodoDueQuick(0)">Today</button>
+        <button type="button" class="chip" data-due="1" onclick="setTodoDueQuick(1)">Tomorrow</button>
+        <button type="button" class="chip" data-due="7" onclick="setTodoDueQuick(7)">In a week</button>
+        <button type="button" class="chip" data-due="" onclick="setTodoDueQuick(null)">No date</button>
+      </div>
+    </div>
+    <div class="gate-row">
+      <label class="field-label" for="t_owner">Who's on it?</label>
+      <select id="t_owner"></select>
+    </div>
+    <div class="gate-row">
+      <label class="field-label" for="t_link">Link to a budget item <span class="opt">(optional)</span></label>
+      <select id="t_link"></select>
+    </div>
+    <div class="gate-row">
+      <label class="field-label" for="t_notes">Notes <span class="opt">(optional)</span></label>
+      <textarea id="t_notes" rows="3" maxlength="500" placeholder="Phone numbers, sizes, anything worth remembering"></textarea>
+    </div>
+    <div class="modal-actions">
+      <button type="button" class="btn btn-danger btn-left" id="todoDeleteBtn" style="display:none" onclick="deleteTodoFromModal()">Delete</button>
+      <button type="button" class="btn btn-ghost" onclick="closeTodoModal()">Cancel</button>
+      <button type="button" class="btn btn-primary" id="todoSaveBtn" onclick="saveTodoModal()">Save</button>
+    </div>
+  </div>
+</div>
 <!-- Settings modal -->
 <div class="overlay" id="settingsOverlay">
   <div class="modal settings-modal">
@@ -543,6 +607,7 @@
 <script src="js/settings-modal.js?v=3.2.0"></script>
 <script src="js/sticky-headers.js?v=3.2.0"></script>
 <script src="js/render.js?v=3.2.0"></script>
+<script src="js/todo.js?v=3.2.0"></script>
 <script src="js/style-guide.js?v=3.2.0"></script>
 <script src="js/cloud.js?v=3.2.0"></script>
 <script src="js/household.js?v=3.2.0"></script>

@@ -1,5 +1,6 @@
 // ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
 let theme = 'light';
+let uiSide = 'budget';         // 'budget' or 'todo': which side of Horizon is showing. This device only.
 let savedThemes = [];          // [{id, name, dark, paper, accent, danger?, pattern?}], this device only
 let bgPattern = defaultPattern();   // {type, size, strength, emoji, auto}; auto = it came with a seasonal theme and was not changed. This device only.
 const MAX_SAVED_THEMES = 12;
@@ -34,11 +35,12 @@ function loadSettings(){
     else if(findTheme(saved.theme)) theme = saved.theme;
     else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
     if(typeof saved.confirmOnRestore === 'boolean') confirmOnRestore = saved.confirmOnRestore;
+    uiSide = saved.side === 'todo' ? 'todo' : 'budget';
   } catch(e) { /* storage unavailable: fall back to defaults */ }
   applyTheme();
 }
 function saveSettings(){
-  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme, savedThemes, pattern: bgPattern })); } catch(e) {}
+  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme, savedThemes, pattern: bgPattern, side: uiSide })); } catch(e) {}
 }
 function applyTheme(){
   const root = document.documentElement;

@@ -6,7 +6,9 @@ function render(){
 
 function renderCore(){
   updateIdentityUi();
+  applySide();
   renderBoard();
+  renderTodos();
   refreshTrashUi();
   if(!window.ResizeObserver && window.refreshPageBar) window.refreshPageBar();
 }

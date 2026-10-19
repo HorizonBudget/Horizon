@@ -44,6 +44,7 @@ function buildItemCard(item, opts){
           ${!opts.completedView && !item.owner ? `<span class="tag tag-warn" title="No one assigned yet">No owner</span>` : ''}
           ${!opts.completedView && item.month === 'No date yet' ? `<span class="tag tag-warn" title="No target month set">No month</span>` : ''}
           ${normalizeRepeat(item.repeat) ? `<span class="tag-repeat" role="img" aria-label="${escAttr(repeatLabel(item.repeat))}" title="${escAttr(repeatLabel(item.repeat))}">🔁</span>` : ''}
+          ${opts.preview ? '' : linkedTodoTagHtml(item)}
         </div>
         ${itemLinkNoteHtml(item)}
         <div class="item-actions">

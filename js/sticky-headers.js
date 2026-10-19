@@ -99,6 +99,7 @@ function keepFocusClear(scroller, below, scrollBy){
 // while scrolling. `closers` says what each dialog's Close button does (none: title only).
 const MODAL_BARS = {
   itemOverlay:     () => closeItemModal(),
+  todoOverlay:     () => closeTodoModal(),
   settingsOverlay: () => closeSettingsModal(),
   guideOverlay:    () => closeStyleGuide(),
   trashOverlay:    () => closeTrashModal(),

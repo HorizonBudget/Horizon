@@ -17,7 +17,7 @@ function renderTrashList(){
       <div class="trash-item" data-trash-id="${escAttr(it.id)}">
         <div class="trash-item-top">
           <span class="trash-item-name">${escapeHtml(it.name)}</span>
-          <span class="trash-item-cost">$${(Number(it.cost) || 0).toLocaleString()}</span>
+          ${isTodo(it) ? '<span class="trash-item-cost trash-kind-todo">To-do</span>' : `<span class="trash-item-cost">$${(Number(it.cost) || 0).toLocaleString()}</span>`}
         </div>
         <div class="trash-item-meta">Deleted ${daysAgoText(Number(it.deletedAt), now)} · ${daysLeftText(Number(it.deletedAt), now)}</div>
         <div class="trash-item-actions">

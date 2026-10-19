@@ -5,9 +5,14 @@ let items = [];
 // array so the synced fields don't change. Everything that lists, counts or totals items must
 // go through liveItems() so they never show up as real items.
 const TRASH_DAYS = 30, DAY_MS = 86400000;
+// To-dos (the To-do side) live in the same `items` array with kind:'todo', again so the synced fields
+// never change. liveItems()/findLiveItem() are the BUDGET items only; to-dos go through liveTodos()/findLiveTodo().
 function isDeleted(it){ return !!it && Number(it.deletedAt) > 0; }
-function liveItems(){ return items.filter(i => !isDeleted(i)); }
-function findLiveItem(id){ return items.find(i => i.id === id && !isDeleted(i)); }
+function isTodo(it){ return !!it && it.kind === 'todo'; }
+function liveItems(){ return items.filter(i => !isDeleted(i) && !isTodo(i)); }
+function findLiveItem(id){ return items.find(i => i.id === id && !isDeleted(i) && !isTodo(i)); }
+function liveTodos(){ return items.filter(i => isTodo(i) && !isDeleted(i)); }
+function findLiveTodo(id){ return items.find(i => i.id === id && isTodo(i) && !isDeleted(i)); }
 function deletedItems(){ return items.filter(isDeleted).sort((a, b) => Number(b.deletedAt) - Number(a.deletedAt)); }
 // Erases items deleted more than 30 days ago. Returns how many were erased.
 function purgeTrash(now){

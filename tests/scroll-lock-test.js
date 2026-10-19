@@ -24,7 +24,7 @@ const w = dom.window, d = w.document, root = d.documentElement, $ = id => d.getE
 
   // ---------- 2. wiring ----------
   const ids = [...d.querySelectorAll('.overlay')].map(o => o.id);
-  ok(ids.length === 9, 'the page has 9 dialogs: ' + ids.join(', '));
+  ok(ids.length === 10, 'the page has 10 dialogs: ' + ids.join(', '));
   ok(w.dialogScrollLock && typeof w.dialogScrollLock.isLocked === 'function', 'initScrollLock ran at start-up and published window.dialogScrollLock');
   ok(!root.classList.contains('dialog-open') && !w.dialogScrollLock.isLocked(), 'nothing open: not locked');
   let all = true;
@@ -34,7 +34,7 @@ const w = dom.window, d = w.document, root = d.documentElement, $ = id => d.getE
     $(id).style.display = 'none'; await sleep(5);
     if (!on || root.classList.contains('dialog-open')) { all = false; console.log('  ' + id + ' on=' + on); }
   }
-  ok(all, 'every one of the 9 dialogs locks the page while open and unlocks it when closed');
+  ok(all, 'every one of the 10 dialogs locks the page while open and unlocks it when closed');
   $('settingsOverlay').style.display = 'flex'; $('trashOverlay').style.display = 'flex'; await sleep(5);
   $('trashOverlay').style.display = 'none'; await sleep(5);
   ok(root.classList.contains('dialog-open'), 'two dialogs open (Settings, then Deleted items): closing the top one keeps the lock (Settings is still open)');

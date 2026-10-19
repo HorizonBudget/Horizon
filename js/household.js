@@ -29,8 +29,8 @@ function exportBackup(){
     a.download = `household-forecast-backup-${new Date().toISOString().slice(0,10)}.json`;
     document.body.appendChild(a); a.click(); a.remove();
     setTimeout(() => URL.revokeObjectURL(a.href), 4000);
-    const n = liveItems().length;
-    msg.textContent = `Backup saved (${n} item${n === 1 ? '' : 's'}, ${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
+    const n = liveItems().length, nt = liveTodos().length;
+    msg.textContent = `Backup saved (${n} item${n === 1 ? '' : 's'}, ${nt ? nt + ' to-do' + (nt === 1 ? '' : 's') + ', ' : ''}${people.length} ${people.length === 1 ? 'person' : 'people'}).`;
     lsSet(BACKUP_KEY, String(Date.now()));
     lsDel(BACKUP_SEED_KEY); lsDel(BACKUP_SNOOZE_KEY);
     updateBackupBanner();
@@ -48,9 +48,10 @@ function onRestoreFileChosen(input){
     try {
       const d = JSON.parse(reader.result);
       if(!d || d.app !== 'household-forecast' || !Array.isArray(d.items) || !Array.isArray(d.people)) throw new Error('bad');
+      const nItems = d.items.filter(i => !isDeleted(i) && !isTodo(i)).length, nTodos = d.items.filter(i => !isDeleted(i) && isTodo(i)).length;
       askConfirm({
         title: 'Restore from backup?',
-        message: `Replace everything on the board with this backup (${d.items.filter(i => !isDeleted(i)).length} items, ${d.people.length} people)? This also replaces it for everyone sharing the board.`,
+        message: `Replace everything on the board with this backup (${nItems} items, ${nTodos ? nTodos + ' to-dos, ' : ''}${d.people.length} people)? This also replaces it for everyone sharing the board.`,
         confirmLabel: 'Replace board', danger: true
       }).then(ok => {
         if(!ok) return;

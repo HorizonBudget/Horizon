@@ -23,7 +23,13 @@ SEED='''
   {id:13,name:'Winter tires',category:'Vehicle',subcategory:'',cost:900,month:M0,saved:0,owner:'Christopher-Montgomery-Wellington',link:'',note:'',completed:false},
   {id:14,name:'Vacation to Tahiti',category:'Travel',subcategory:'',cost:9900,month:M1,saved:100,owner:'Alexander',link:'',note:'',completed:false},
   {id:15,name:'Old thing',category:'Home',subcategory:'',cost:50,month:M2,saved:0,owner:'Jo',link:'',note:'',completed:true,actualCost:61.25},
-  {id:16,name:'Deleted one',category:'Home',subcategory:'',cost:50,month:M2,saved:0,owner:'Jo',link:'',note:'',completed:false,deletedAt:Date.now()-86400000});
+  {id:16,name:'Deleted one',category:'Home',subcategory:'',cost:50,month:M2,saved:0,owner:'Jo',link:'',note:'',completed:false,deletedAt:Date.now()-86400000},
+  {id:21,kind:'todo',name:'Call the insurance company about the very long renewal letter that keeps going on and on',completed:false,owner:'Christopher-Montgomery-Wellington',due:todoDateStr(-3),linkId:11,notes:'Supercalifragilisticexpialidocious_unbreakable_word_in_a_todo_note',createdAt:1},
+  {id:22,kind:'todo',name:'Pick up dry cleaning',completed:false,owner:'Samantha',due:todoDateStr(0),createdAt:2},
+  {id:23,kind:'todo',name:'Book_the_annual_service_appointment_unbreakable',completed:false,owner:'',due:todoDateStr(4),linkId:13,createdAt:3},
+  {id:24,kind:'todo',name:'Plan the trip',completed:false,owner:'Jo',due:todoDateStr(40),createdAt:4},
+  {id:25,kind:'todo',name:'Return books',completed:false,owner:'',createdAt:5},
+  {id:26,kind:'todo',name:'Done thing',completed:true,completedAt:Date.now(),owner:'',createdAt:6});
  render();
 })()
 '''
@@ -84,6 +90,13 @@ STATES=[
  ('admin',"openAdminModal()"),
  ('search',"openSearch()"),
  ('activity',"setActivityOpen(true)"),
+ ('todo-main',"setSide('todo')"),
+ ('todo-done-open',"setSide('todo');toggleTodoDone(true)"),
+ ('todo-edit',"setSide('todo');openTodoModal(21)"),
+ ('todo-new',"setSide('todo');openTodoModal()"),
+ ('todo-search',"setSide('todo');openSearch()"),
+ ('todo-compact',"setSide('todo');window.scrollTo(0,600);document.documentElement.classList.add('page-collapsed')"),
+ ('back-to-budget',"window.scrollTo(0,0);document.documentElement.classList.remove('page-collapsed');setSide('budget')"),
 ]
 with sync_playwright() as p:
     b=p.chromium.launch(executable_path='/opt/pw-browsers/chromium' if os.path.exists('/opt/pw-browsers/chromium') else None)
@@ -117,7 +130,7 @@ with sync_playwright() as p:
               ('dots',"setPatternType('dots');setPatternSize('medium')"),
               ('grid',"setPatternType('grid');setPatternSize('large')"),
               ('emoji-multi',"setPatternEmoji('\U0001F383\U0001F384\u2744\uFE0F');setPatternSize('large');setPatternStrength('bold')")]
-    THEME_STATES=[s for s in STATES if s[0] in ('main','add','settings-themes','settings-general','activity')]
+    THEME_STATES=[s for s in STATES if s[0] in ('main','add','settings-themes','settings-general','activity','todo-main','todo-edit','back-to-budget')]
     for vw,vh in [(320,568),(390,844)]:
       for label,setup,pre in [(t,f"setTheme('{t}')",None) for t in SEASONAL]+[('pat-'+n,"setTheme('light');"+js,None) for n,js in PATTERNS]+[('pat-dark-'+n,"setTheme('midnight');"+js,None) for n,js in PATTERNS[:2]]:
         ctx=b.new_context(viewport={'width':vw,'height':vh},device_scale_factor=2,has_touch=True,is_mobile=True)
