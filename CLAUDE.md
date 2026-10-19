@@ -16,7 +16,7 @@ You are helping David (a non-developer who builds this for his family) keep deve
 7. **Nothing may scroll sideways on a phone**, and form fields stay 16px on touch screens.
 8. Plain language with David. Short summaries, no long recaps. Tell him what changed in terms of what he will see. When you need him to do something on his computer, give exact clicks or one command to paste.
 9. David does not want reCAPTCHA / App Check right now. Do not bring it up unless something changes.
-10. **Always ask before `git push`.** Pushing to `main` publishes to the family.
+10. **Always ask before `git push`.** Pushing to `main` publishes to the family. Once David says yes to a push, anything else he asks for in that same round rides along: finish it, bundle it into the same release, and push it all when he stops adding, without asking again. A new round of work after that push needs a new yes.
 
 ## Shortcuts in this folder
 - `/start`: fresh-session checklist (pull latest, check tools, green test baseline, ask what's next).
