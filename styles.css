@@ -1299,4 +1299,10 @@
   /* soft text straight on the page gets a paper backing while a background pattern is on */
   html[data-pat] .todo-head-count{background:var(--paper); border-radius:6px; padding-left:6px; padding-right:6px;}
 
+/* ==== SECTION: items-board (cards, months, search, filters, trash, undo) - add new rules below this line ==== */
+
+/* ==== SECTION: household-sync (sign-in, household code, people/profiles, backups, install) - add new rules below this line ==== */
+
+/* ==== SECTION: dialogs (pop-ups, Settings screen, update notice) - add new rules below this line ==== */
+
 /* ==== END OF FILE ==== */

@@ -23,5 +23,6 @@ You are helping David (a non-developer who builds this for his family) keep deve
 - `/preview`: build and open a safe preview with demo data (never touches real data).
 - `/release X.Y.Z`: changelog, version stamp, tests, commit, push (after David's OK), Version History doc.
 - `test-runner` agent: runs every test and reports in plain language.
+- Area helpers `looks-themes`, `items-board`, `sync-household`, `scrolling-dialogs`, plus `reviewer`: see handbook section 8. Every helper reads `docs/agent-rules.md` first.
 
 @docs/handbook.md
