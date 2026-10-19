@@ -1,6 +1,6 @@
 # Horizon handbook
 
-Last updated at version **3.2.0** (main = commit a913a15), 2026-10-16. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
+Last updated at version **3.3.0** (main = commit c8d6044), 2026-10-19. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
 
 ## 0. The owner's vision (read first)
 Horizon is a **shared to-do list for upcoming expenses**, not a money tracker. EveryDollar already tracks what the family actually spends and saves. Do NOT propose features that ask the user to keep numbers up to date (savings progress, set-aside amounts, budget-vs-actual reports, spending charts). Good ideas make the list easier to keep, share, see and tick off.
@@ -40,6 +40,7 @@ config, util, state, suggest, themes, profiles, crop, items, dialogs, trash, ite
 - The Firestore security rules use `hasOnly`. **NEVER add a new top-level synced field.** New data goes inside an item or person object, or into per-device localStorage.
 - Per-device localStorage keys include `ledgerSettings` (theme, pattern, view settings), `horizonSeenVersion` (update notice), `lastBackupAt`.
 - Removed items stay in `items` with a `deletedAt` for 30 days (trash).
+- To-dos (3.3.0) also live in `items`, marked `kind:'todo'` (fields: name, completed, completedAt, due 'YYYY-MM-DD', owner, notes, linkId, createdAt). `liveItems()`/`findLiveItem()` are budget items only; use `liveTodos()`/`findLiveTodo()` for to-dos. Per-device: `ledgerSettings.side`, `horizonCollapsedTodoGroups`.
 - Item owners are stored by name; people have stable ids. Renaming a person rewrites item owners.
 - Firebase web keys in `js/config.js` are public by design. Protection is the Firestore rules. (Sanity check: `spending-forecast-939d9` appears 3 times in `js/config.js`.) The owner does not want reCAPTCHA / App Check for now.
 
@@ -127,6 +128,7 @@ Flow: area helper(s) in parallel -> `reviewer` on each branch -> fix rounds -> m
 - **3.1.0** (commit 1124993): seasonal themes, background patterns, calmer sticky headers, scroll lock behind dialogs, "Show all versions", Collapse all next to Filters.
 - **3.2.0** (commit a913a15): red and white Christmas with 🎅, stronger patterns, frosted Active/Completed bar, README refresh.
 - After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide. Then (2026-10-17): four area helper agents plus a reviewer, `docs/agent-rules.md`, the `/preview` skill file (it was missing from the repo), and empty CSS section markers.
+- **3.3.0** (commit c8d6044): shared To-do side (js/todo.js), search in the top bar covering budget and to-dos (closes on tap-off), ⋯ on budget cards, "+ Budget item" / "+ To-do item". 22 jsdom suites now.
 Older history lives in the Version History doc and `js/changelog.js`. The dates for 1.0.0 to 1.1.0 in the doc are guesses (a doc comment asks the owner to confirm).
 
 ## 12. Open items and known gaps
