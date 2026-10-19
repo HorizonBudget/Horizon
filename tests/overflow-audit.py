@@ -95,6 +95,7 @@ STATES=[
  ('todo-edit',"setSide('todo');openTodoModal(21)"),
  ('todo-new',"setSide('todo');openTodoModal()"),
  ('todo-search',"setSide('todo');openSearch()"),
+ ('search-results',"openSearch();document.getElementById('searchInput').value='e';onSearchInput()"),
  ('todo-compact',"setSide('todo');window.scrollTo(0,600);document.documentElement.classList.add('page-collapsed')"),
  ('back-to-budget',"window.scrollTo(0,0);document.documentElement.classList.remove('page-collapsed');setSide('budget')"),
 ]
@@ -130,7 +131,7 @@ with sync_playwright() as p:
               ('dots',"setPatternType('dots');setPatternSize('medium')"),
               ('grid',"setPatternType('grid');setPatternSize('large')"),
               ('emoji-multi',"setPatternEmoji('\U0001F383\U0001F384\u2744\uFE0F');setPatternSize('large');setPatternStrength('bold')")]
-    THEME_STATES=[s for s in STATES if s[0] in ('main','add','settings-themes','settings-general','activity','todo-main','todo-edit','back-to-budget')]
+    THEME_STATES=[s for s in STATES if s[0] in ('main','add','settings-themes','settings-general','activity','todo-main','todo-edit','search-results','back-to-budget')]
     for vw,vh in [(320,568),(390,844)]:
       for label,setup,pre in [(t,f"setTheme('{t}')",None) for t in SEASONAL]+[('pat-'+n,"setTheme('light');"+js,None) for n,js in PATTERNS]+[('pat-dark-'+n,"setTheme('midnight');"+js,None) for n,js in PATTERNS[:2]]:
         ctx=b.new_context(viewport={'width':vw,'height':vh},device_scale_factor=2,has_touch=True,is_mobile=True)

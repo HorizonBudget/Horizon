@@ -100,6 +100,10 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   const tireCard = [...d.querySelectorAll('#itemsList .item-card')].find(c => c.querySelector('.item-name').textContent === 'Tires');
   ok(!!tireCard.querySelector('.tag-todo') && /0\/1 to-do/.test(tireCard.querySelector('.tag-todo').textContent), 'budget card shows the linked to-do tag: ' + (tireCard.querySelector('.tag-todo') || {}).textContent);
   ok(![...d.querySelectorAll('#itemsList .item-card')].some(c => c.querySelector('.item-name').textContent === 'Dentist' && c.querySelector('.tag-todo')), 'no tag on items without to-dos');
+  const more = tireCard.querySelector('.card-more');
+  ok(!!more && more.textContent === '⋯' && more.getAttribute('aria-label') === 'Edit Tires' && !tireCard.querySelector('.item-actions') && !/>Edit</.test(tireCard.innerHTML), 'budget card has ⋯ (aria “Edit Tires”) instead of an Edit button');
+  more.click(); ok($('itemOverlay').style.display === 'flex' && $('f_name').value === 'Tires', '⋯ opens the edit dialog'); A.closeItemModal();
+  ok($('todoQuickInput').placeholder === 'Quick add todo', 'quick-add placeholder');
 
   // ---------- budget side ignores to-dos ----------
   ok(cards().join() === baseCards, 'budget cards unchanged: ' + cards());
@@ -113,7 +117,7 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   A.eval(`finishCompleting(${todoId})`); ok(A.eval(`findLiveTodo(${todoId}).completed`) === false, 'budget complete ignores to-dos');
   A.switchTab('completed'); ok(cards().join() === 'Old Done', 'Completed tab unaffected'); A.switchTab('active');
   A.openSearch(); $('searchInput').value = 'plumber'; A.onSearchInput();
-  ok(cards().length === 0 && /No items match/.test($('itemsList').textContent), 'budget search does not find to-dos');
+  ok(cards().join() === baseCards && d.querySelectorAll('#searchBudget .item-card').length === 0 && d.querySelectorAll('#searchTodos .todo-row').length === 1, 'search: to-dos only in the To-dos section, board untouched');
   A.closeSearch();
   A.openItemModal(); A.eval(`document.getElementById('f_name').value='x'`);
   ok(A.eval(`[...document.querySelectorAll('#f_category option')].every(o=>o.textContent!=='undefined')`), 'category list has no blank/undefined entries');
@@ -121,11 +125,13 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   A.setSide('todo');
 
   // ---------- search on the to-do side ----------
+  const sTodos = () => [...d.querySelectorAll('#searchTodos .todo-name')].map(x => x.textContent);
   A.openSearch(); $('searchInput').value = 'costco'; A.onSearchInput();
-  ok(todoNames().join() === 'Order tires', 'to-do search matches notes: ' + todoNames());
+  ok(sTodos().join() === 'Order tires', 'to-do search matches notes: ' + sTodos());
   $('searchInput').value = 'tires'; A.onSearchInput();
-  ok(todoNames().join() === 'Order tires', 'to-do search matches name/linked item');
+  ok(sTodos().join() === 'Order tires', 'to-do search matches name/linked item');
   A.closeSearch();
+  ok(todoNames().length === 6, 'closing search shows the whole list again');
 
   // ---------- Mine filter ----------
   A.setTodoFilter('mine');
@@ -184,8 +190,8 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   ok(t.name === 'Plan trip' && t.owner === '' && t.notes === undefined && t.linkId === undefined && t.due === in20, 'Undo restores the edit');
   // new to-do from the + button on the to-do side; empty name is refused
   d.querySelector('#topCompact .btn-add').click();
-  ok($('todoOverlay').style.display === 'flex' && $('todoModalTitle').textContent === 'Add a to-do list item' && $('itemOverlay').style.display !== 'flex', 'compact + adds a to-do on the To-do side');
-  ok($('tcAddBtn').getAttribute('aria-label') === 'Add to-do list item' && $('hdrAddBtn').title === 'Add to-do list item' && A.getComputedStyle(d.querySelector('#hdrAddBtn .todo-only')).display !== 'none' && d.querySelector('#hdrAddBtn .todo-only').textContent === '+ To-do list item', 'add buttons say To-do list item');
+  ok($('todoOverlay').style.display === 'flex' && $('todoModalTitle').textContent === 'Add a to-do item' && $('itemOverlay').style.display !== 'flex', 'compact + adds a to-do on the To-do side');
+  ok($('tcAddBtn').getAttribute('aria-label') === 'Add to-do item' && $('hdrAddBtn').title === 'Add to-do item' && A.getComputedStyle(d.querySelector('#hdrAddBtn .todo-only')).display !== 'none' && d.querySelector('#hdrAddBtn .todo-only').textContent === '+ To-do item', 'add buttons say To-do item');
   A.saveTodoModal();
   ok(/name/.test($('t_nameError').textContent) && $('todoOverlay').style.display === 'flex', 'empty name refused');
   $('t_name').value = 'Fix the gate'; A.setTodoDueQuick(0); A.saveTodoModal();

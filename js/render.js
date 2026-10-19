@@ -9,6 +9,7 @@ function renderCore(){
   applySide();
   renderBoard();
   renderTodos();
+  renderSearchResults();
   refreshTrashUi();
   if(!window.ResizeObserver && window.refreshPageBar) window.refreshPageBar();
 }
@@ -16,9 +17,8 @@ function renderCore(){
 function renderBoard(){
   document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
   document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
-  const q = searchTerm();
-  const allCompleted = liveItems().filter(i => i.completed);
-  const completedItems = allCompleted.filter(i => itemMatchesSearch(i, q));
+  // search no longer filters the board: it has its own results view covering both sides (js/search.js)
+  const completedItems = liveItems().filter(i => i.completed);
   updateSearchUi();
   updateBackupBanner();
 
@@ -43,9 +43,7 @@ function renderBoard(){
     document.getElementById('filterSummary').style.display = completedItems.length ? '' : 'none';
 
     list.innerHTML = '';
-    if(completedItems.length === 0 && q){
-      list.innerHTML = `<div class="empty">No items match “${escapeHtml(searchQuery.trim())}”</div>`;
-    } else if(completedItems.length === 0){
+    if(completedItems.length === 0){
       list.innerHTML = '<div class="empty">Nothing completed yet. Check an item off from Active to see it here.</div>';
     } else {
       const sorted = [...completedItems].sort((a,b) => cmpMonth(a.month, b.month));
@@ -68,7 +66,6 @@ function renderBoard(){
   const activeItems = liveItems().filter(i => !i.completed);
   let visible = activeItems;
   if(activeCategoryFilter !== 'All') visible = visible.filter(i => i.category === activeCategoryFilter);
-  if(q) visible = visible.filter(i => itemMatchesSearch(i, q));
 
   // "sort by subcategory" only makes sense once a single category with subcategories is selected
   const catHasSub = activeCategoryFilter !== 'All'
@@ -83,9 +80,7 @@ function renderBoard(){
   }
 
   shownGroupMonths = [];
-  if(visible.length === 0 && q){
-    list.innerHTML = `<div class="empty">No items match “${escapeHtml(searchQuery.trim())}”</div>`;
-  } else if(activeItems.length === 0){
+  if(activeItems.length === 0){
     list.innerHTML = '<div class="empty">Nothing on the board yet. Tap “+ Budget item” to add the first thing you’ll need to buy.</div>';
   } else if(visible.length === 0){
     list.innerHTML = '<div class="empty">Nothing matches this filter yet.</div>';
@@ -108,9 +103,8 @@ function renderBoard(){
     groups.forEach((g, i) => list.appendChild(buildMonthGroup(g, i)));
   }
 
-  // stats — reflect the category filter (and the search) when they are on
+  // stats — reflect the category filter when it is on
   const activeFilters = [activeCategoryFilter].filter(f => f !== 'All');
-  if(q) activeFilters.push('“' + searchQuery.trim() + '”');
   const filterLabel = activeFilters.length ? activeFilters.join(' · ') : null;
 
   document.getElementById('statCount').textContent = visible.length;

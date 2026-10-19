@@ -1,17 +1,41 @@
-// ---- Search (tab row) ----
-let searchQuery = '', searchOpen = false;
+// ---- Search (the 🔍 button in the header and the compact bar) ----
+// One results view for budget items AND to-dos together, whichever side is showing. The boards themselves are not
+// filtered. Every word typed must appear somewhere in the item (any field), ignoring upper/lower case.
+let searchQuery = '', searchOpen = false, searchWasShowing = false;
 function searchTerm(){ return searchQuery.trim().toLowerCase(); }
-function itemMatchesSearch(it, q){
-  if(!q) return true;
-  return [it.name, it.category, it.subcategory, it.owner, itemNote(it), itemLink(it), typeof it.link === 'string' ? it.link : '']
-    .some(v => String(v || '').toLowerCase().includes(q));
+function searchWords(q){ return String(q || '').toLowerCase().split(/\s+/).filter(Boolean); }
+function textMatchesAll(parts, q){
+  const words = searchWords(q);
+  if(!words.length) return true;
+  const hay = parts.map(v => String(v == null ? '' : v).toLowerCase()).join('\n');
+  return words.every(w => hay.includes(w));
 }
+// budget item: name, category, subcategory, owner, note, link, month, forecast and actual amounts, linked to-do names
+function itemMatchesSearch(it, q){
+  if(!searchWords(q).length) return true;
+  const parts = [it.name, it.category, it.subcategory, it.owner, itemNote(it), itemLink(it), typeof it.link === 'string' ? it.link : '',
+    it.month, fmtMoney(it.cost), String(Number(it.cost) || 0)];
+  if(hasActualCost(it)) parts.push(fmtMoney(it.actualCost), String(it.actualCost));
+  linkedTodosFor(it).forEach(t => parts.push(t.name));
+  return textMatchesAll(parts, q);
+}
+// to-do: name, notes, owner, due date (as shown and as typed), linked budget item name
+function todoMatchesSearch(t, q){
+  if(!searchWords(q).length) return true;
+  const li = todoLinkedItem(t);
+  return textMatchesAll([t.name, t.notes, t.owner, t.due ? todoDueLabel(t.due) : '', t.due, li ? li.name : ''], q);
+}
+function searchShowing(){ return searchOpen && !!searchTerm(); }
+
 function updateSearchUi(){
   document.getElementById('searchRow').hidden = !searchOpen;
-  const btn = document.getElementById('searchBtn');
-  btn.setAttribute('aria-expanded', searchOpen ? 'true' : 'false');
-  btn.classList.toggle('open', searchOpen);
-  btn.classList.toggle('active', !!searchTerm());
+  ['searchBtn', 'searchBtnCompact'].forEach(id => {
+    const btn = document.getElementById(id);
+    if(!btn) return;
+    btn.setAttribute('aria-expanded', searchOpen ? 'true' : 'false');
+    btn.classList.toggle('open', searchOpen);
+    btn.classList.toggle('active', !!searchTerm());
+  });
   document.getElementById('searchClear').hidden = !searchQuery;
 }
 function openSearch(){
@@ -20,13 +44,17 @@ function openSearch(){
   const inp = document.getElementById('searchInput');
   try { inp.focus({ preventScroll:true }); } catch(e) {}
 }
+// the search button that can be seen right now (the compact bar's while the page header is tucked away)
+function visibleSearchBtn(){
+  return document.getElementById(document.documentElement.classList.contains('page-collapsed') ? 'searchBtnCompact' : 'searchBtn');
+}
 function closeSearch(){
   const had = !!searchQuery;
   searchOpen = false; searchQuery = '';
   document.getElementById('searchInput').value = '';
   updateSearchUi();
-  if(had) renderCore();
-  try { document.getElementById('searchBtn').focus({ preventScroll:true }); } catch(e) {}
+  if(had) renderCore();   // back to the side you were on
+  try { visibleSearchBtn().focus({ preventScroll:true }); } catch(e) {}
 }
 function toggleSearch(){ searchOpen ? closeSearch() : openSearch(); }
 function clearSearch(){
@@ -45,3 +73,45 @@ function onSearchInput(){
 document.getElementById('searchInput').addEventListener('keydown', e => {
   if(e.key === 'Escape'){ e.preventDefault(); e.stopPropagation(); closeSearch(); }
 });
+
+// The results: "Budget items (N)" then "To-dos (N)". Cards and rows are the real ones, so their checkbox and ⋯ work.
+function renderSearchResults(){
+  const view = document.getElementById('searchView');
+  if(!view) return;
+  const on = searchShowing();
+  document.getElementById('app').classList.toggle('is-searching', on);
+  view.hidden = !on;
+  const res = document.getElementById('searchResults');
+  res.innerHTML = '';
+  if(!on){ document.getElementById('searchCountNote').textContent = ''; searchWasShowing = false; return; }
+  if(!searchWasShowing && (window.pageYOffset || 0) > 0){ try { window.scrollTo(0, 0); } catch(e) {} }
+  searchWasShowing = true;
+  const q = searchTerm();
+  const its = liveItems().filter(i => itemMatchesSearch(i, q))
+    .sort((a, b) => (a.completed ? 1 : 0) - (b.completed ? 1 : 0) || cmpMonth(a.month, b.month));
+  const groupRank = t => t.completed ? 99 : TODO_GROUPS.findIndex(g => g.key === todoGroupKey(t));
+  const tds = liveTodos().filter(t => todoMatchesSearch(t, q))
+    .sort((a, b) => groupRank(a) - groupRank(b) || String(a.due || '9999').localeCompare(String(b.due || '9999')) || (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
+  const n = its.length + tds.length;
+  document.getElementById('searchCountNote').textContent = n ? `${n} match${n === 1 ? '' : 'es'}` : '';
+  if(!n){
+    res.innerHTML = `<div class="empty"><strong>No matches</strong> for “${escapeHtml(searchQuery.trim())}”.<br>Try a different word. Search looks in budget items and to-dos, including notes, people and amounts.</div>`;
+    return;
+  }
+  const section = (id, title, count, noneText, fill) => {
+    const sec = document.createElement('section');
+    sec.className = 'search-section';
+    sec.id = id;
+    sec.innerHTML = `<h3 class="search-section-head">${title} <span class="search-count">${count}</span></h3>`;
+    const body = document.createElement('div');
+    body.className = 'search-section-body';
+    if(count) fill(body);
+    else body.innerHTML = `<p class="search-none">${noneText}</p>`;
+    sec.appendChild(body);
+    res.appendChild(sec);
+  };
+  section('searchBudget', 'Budget items', its.length, 'No budget items match.',
+    body => its.forEach(it => body.appendChild(buildItemCard(it, { completedView: !!it.completed, doneLabel: true }))));
+  section('searchTodos', 'To-dos', tds.length, 'No to-dos match.',
+    body => tds.forEach(t => body.appendChild(buildTodoRow(t))));
+}

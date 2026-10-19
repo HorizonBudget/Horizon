@@ -26,8 +26,12 @@ function buildItemCard(item, opts){
     checkboxHtml = `<input type="checkbox" class="complete-check" title="Mark complete" onchange="completeItem(${item.id})">`;
   }
 
+  // ⋯ (edit) sits just left of the checkbox, like on the to-do rows
+  const moreHtml = `<button type="button" class="todo-more card-more" aria-label="Edit ${escAttr(item.name)}" title="Edit" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>⋯</button>`;
+
   card.innerHTML = `
     ${checkboxHtml}
+    ${moreHtml}
     <div class="card-body">
       <div class="card-side">
         <div class="month-badge" style="background:${mc.bg}; border-color:${mc.border};">
@@ -39,6 +43,7 @@ function buildItemCard(item, opts){
       <div class="item-main">
         <div class="item-top">
           <span class="item-name">${escapeHtml(item.name)}</span>
+          ${opts.doneLabel && item.completed ? '<span class="tag tag-done">Completed</span>' : ''}
           <span class="tag tag-cat">${escapeHtml(item.category)}</span>
           ${item.subcategory ? `<span class="tag tag-subcat">${escapeHtml(item.subcategory)}</span>` : ''}
           ${!opts.completedView && !item.owner ? `<span class="tag tag-warn" title="No one assigned yet">No owner</span>` : ''}
@@ -47,9 +52,6 @@ function buildItemCard(item, opts){
           ${opts.preview ? '' : linkedTodoTagHtml(item)}
         </div>
         ${itemLinkNoteHtml(item)}
-        <div class="item-actions">
-          <button class="icon-btn" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>Edit</button>
-        </div>
       </div>
     </div>
     <div class="item-amount">

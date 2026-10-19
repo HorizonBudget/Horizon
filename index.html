@@ -58,6 +58,7 @@
       <button type="button" class="side-opt" data-side="todo" onclick="setSide('todo')">To-do</button>
     </div>
     <button type="button" class="btn btn-ghost tc-btn tc-profile" id="profileBtnCompact" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatarCompact"></span></button>
+    <button type="button" class="btn btn-ghost tc-btn search-toggle" id="searchBtnCompact" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
     <button type="button" class="btn btn-ghost tc-btn" onclick="openSettingsModal()" aria-label="Settings" title="Settings">⚙</button>
     <button type="button" class="btn btn-add tc-btn" id="tcAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item">+</button>
   </div>
@@ -71,8 +72,9 @@
     </div>
     <div class="top-actions">
       <button class="btn btn-ghost profile-btn" id="profileBtn" onclick="openProfileModal()" aria-label="Your profile" title="Your profile"><span id="profileBtnAvatar"></span><span class="profile-btn-name" id="profileBtnName"></span></button>
-      <button class="btn btn-ghost" onclick="openSettingsModal()" title="Settings">⚙</button>
-      <button class="btn btn-add" id="hdrAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item"><span class="budget-only">+ Budget item</span><span class="todo-only">+ To-do list item</span></button>
+      <button type="button" class="btn btn-ghost hdr-icon search-toggle" id="searchBtn" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search budget items and to-dos" title="Search"><svg viewBox="0 0 20 20" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg></button>
+      <button class="btn btn-ghost hdr-icon" onclick="openSettingsModal()" title="Settings">⚙</button>
+      <button class="btn btn-add" id="hdrAddBtn" onclick="openAddForSide()" aria-label="Add budget item" title="Add budget item"><span class="budget-only">+ Budget item</span><span class="todo-only">+ To-do item</span></button>
     </div>
   </header>
 
@@ -107,9 +109,6 @@
       <button class="view-tab budget-only" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
       <button class="view-tab todo-only" id="todoTabAllBtn" onclick="setTodoFilter('all')">Everyone</button>
       <button class="view-tab todo-only" id="todoTabMineBtn" onclick="setTodoFilter('mine')">Mine</button>
-      <button type="button" class="search-btn" id="searchBtn" onclick="toggleSearch()" aria-expanded="false" aria-controls="searchRow" aria-label="Search items" title="Search">
-        <svg viewBox="0 0 20 20" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="8.5" cy="8.5" r="5.2"/><path d="M12.4 12.4L17 17"/></svg>
-      </button>
       <div class="activity-wrap" id="activityWrap">
         <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
           <span class="act-recent">Recent </span>activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
@@ -122,11 +121,20 @@
 
     <div class="search-row" id="searchRow" hidden>
       <div class="search-box">
-        <input type="text" id="searchInput" placeholder="Search name, category, owner, note…" aria-label="Search items" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onSearchInput()">
+        <input type="text" id="searchInput" placeholder="Search budget items and to-dos…" aria-label="Search budget items and to-dos" autocomplete="off" autocapitalize="off" spellcheck="false" oninput="onSearchInput()">
         <button type="button" class="search-clear" id="searchClear" onclick="clearSearch()" aria-label="Clear search" hidden>✕</button>
       </div>
       <button type="button" class="link-btn" onclick="closeSearch()">Close</button>
     </div>
+    </div>
+
+    <!-- Search results (js/search.js): budget items and to-dos together, whichever side is showing -->
+    <div id="searchView" class="search-view" hidden>
+      <div class="section-head search-head">
+        <div class="section-title">Search results</div>
+        <span class="todo-head-count" id="searchCountNote"></span>
+      </div>
+      <div id="searchResults"></div>
     </div>
 
     <div id="budgetView" class="budget-only">
@@ -172,7 +180,7 @@
     <!-- To-do side (js/todo.js). To-dos are stored in items[] with kind:'todo'. -->
     <div id="todoView" class="todo-view todo-only">
       <form class="todo-add" id="todoAddForm" onsubmit="event.preventDefault(); quickAddTodo();">
-        <input type="text" id="todoQuickInput" maxlength="200" placeholder="Add a to-do…" aria-label="New to-do" autocomplete="off" enterkeyhint="done">
+        <input type="text" id="todoQuickInput" maxlength="200" placeholder="Quick add todo" aria-label="New to-do" autocomplete="off" enterkeyhint="done">
         <button type="submit" class="btn btn-primary todo-add-btn">Add</button>
       </form>
       <div class="section-head todo-head">
@@ -287,7 +295,7 @@
 <!-- To-do details (add / edit) -->
 <div class="overlay" id="todoOverlay" role="dialog" aria-modal="true" aria-labelledby="todoModalTitle">
   <div class="modal">
-    <h3 id="todoModalTitle">Add a to-do list item</h3>
+    <h3 id="todoModalTitle">Add a to-do item</h3>
     <div class="gate-row">
       <label class="field-label" for="t_name">What needs doing?</label>
       <input type="text" id="t_name" maxlength="200" placeholder="e.g. Book the furnace service" autocomplete="off" onkeydown="if(event.key==='Enter'){event.preventDefault();saveTodoModal();}" oninput="document.getElementById('t_nameError').textContent=''">

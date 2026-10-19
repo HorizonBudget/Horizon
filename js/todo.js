@@ -70,26 +70,21 @@ function todoLinkedItem(t){
   if(!t || t.linkId == null) return null;
   return liveItems().find(i => String(i.id) === String(t.linkId)) || null;
 }
-function todoMatchesSearch(t, q){
-  if(!q) return true;
-  const li = todoLinkedItem(t);
-  return [t.name, t.owner, t.notes, li ? li.name : ''].some(v => String(v || '').toLowerCase().includes(q));
-}
 function todoIsMine(t){ return !!t.owner && t.owner === household.name; }
 function linkedTodosFor(item){ return liveTodos().filter(t => t.linkId != null && String(t.linkId) === String(item.id)); }
 
 // ---- Switching sides ----
 function setSide(side){
   side = side === 'todo' ? 'todo' : 'budget';
-  if(side === uiSide){ applySide(); return; }
-  uiSide = side;
-  saveSettings();
-  // each side has its own search; start the other side clean
-  if(searchQuery || searchOpen){
+  // picking a side while searching closes the search (results cover both sides)
+  const wasSearching = !!(searchQuery || searchOpen);
+  if(wasSearching){
     searchQuery = ''; searchOpen = false;
     const inp = document.getElementById('searchInput');
     if(inp) inp.value = '';
   }
+  if(side === uiSide && !wasSearching){ applySide(); return; }
+  if(side !== uiSide){ uiSide = side; saveSettings(); }
   if((window.pageYOffset || 0) > 0){ try { window.scrollTo(0, 0); } catch(e) {} }
   renderCore();
 }
@@ -103,18 +98,11 @@ function applySide(){
     b.classList.toggle('active', on);
     b.setAttribute('aria-pressed', on ? 'true' : 'false');
   });
-  const addLabel = todo ? 'Add to-do list item' : 'Add budget item';
+  const addLabel = todo ? 'Add to-do item' : 'Add budget item';
   ['tcAddBtn', 'hdrAddBtn'].forEach(id => {
     const b = document.getElementById(id);
     if(b){ b.setAttribute('aria-label', addLabel); b.title = addLabel; }
   });
-  const si = document.getElementById('searchInput');
-  if(si){
-    si.placeholder = todo ? 'Search to-dos, people, notes…' : 'Search name, category, owner, note…';
-    si.setAttribute('aria-label', todo ? 'Search to-dos' : 'Search items');
-  }
-  const sb = document.getElementById('searchBtn');
-  if(sb) sb.setAttribute('aria-label', todo ? 'Search to-dos' : 'Search items');
 }
 // the + buttons in the header and the compact bar add to whichever side is showing
 function openAddForSide(){
@@ -145,8 +133,7 @@ function renderTodos(){
   document.getElementById('todoTabAllBtn').classList.toggle('active', todoFilter === 'all');
   document.getElementById('todoTabMineBtn').classList.toggle('active', todoFilter === 'mine');
 
-  const q = searchTerm();
-  const shown = t => (todoFilter !== 'mine' || todoIsMine(t)) && todoMatchesSearch(t, q);
+  const shown = t => todoFilter !== 'mine' || todoIsMine(t);
   const shownOpen = open.filter(shown);
   const shownDone = all.filter(t => t.completed && shown(t)).sort((a, b) => (Number(b.completedAt) || 0) - (Number(a.completedAt) || 0));
 
@@ -160,10 +147,9 @@ function renderTodos(){
   shownTodoGroups = [];
   if(!shownOpen.length){
     let msg;
-    if(q && !shownDone.length) msg = `No to-dos match “${escapeHtml(searchQuery.trim())}”.`;
-    else if(!all.length) msg = '<strong>Nothing on the list yet.</strong><br>Add the little jobs that go with your plans, like “Book the furnace service” or “Call about the roof quote”.';
+    if(!all.length) msg = '<strong>Nothing on the list yet.</strong><br>Add the little jobs that go with your plans, like “Book the furnace service” or “Call about the roof quote”.';
     else if(!open.length) msg = '<strong>All done!</strong> 🎉<br>Everything on the list is ticked off.';
-    else if(todoFilter === 'mine' && !q) msg = '<strong>Nothing on your plate.</strong><br>No open to-dos are assigned to you. Tap Everyone to see the whole list.';
+    else if(todoFilter === 'mine') msg = '<strong>Nothing on your plate.</strong><br>No open to-dos are assigned to you. Tap Everyone to see the whole list.';
     else msg = 'Nothing open here.';
     list.innerHTML = `<div class="empty todo-empty">${msg}</div>`;
   } else {
@@ -375,10 +361,9 @@ function deleteTodo(id){
   });
   return true;
 }
-// moves the done to-dos that are showing (respecting Everyone / Mine and the search) to Deleted items
+// moves the done to-dos that are showing (respecting Everyone / Mine) to Deleted items
 function clearDoneTodos(){
-  const q = searchTerm();
-  const done = liveTodos().filter(t => t.completed && (todoFilter !== 'mine' || todoIsMine(t)) && todoMatchesSearch(t, q));
+  const done = liveTodos().filter(t => t.completed && (todoFilter !== 'mine' || todoIsMine(t)));
   if(!done.length) return 0;
   const now = Date.now(), ids = done.map(t => t.id);
   done.forEach(t => { t.deletedAt = now; });
@@ -429,7 +414,7 @@ function updateTodoDueChips(){
 function openTodoModal(id){
   const t = id != null ? findLiveTodo(id) : null;
   editingTodoId = t ? t.id : null;
-  document.getElementById('todoModalTitle').textContent = t ? 'Edit to-do' : 'Add a to-do list item';
+  document.getElementById('todoModalTitle').textContent = t ? 'Edit to-do' : 'Add a to-do item';
   document.getElementById('t_name').value = t ? t.name : '';
   document.getElementById('t_nameError').textContent = '';
   document.getElementById('t_due').value = t ? cleanTodoDue(t.due) : '';

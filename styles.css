@@ -1245,6 +1245,44 @@
   .todo-due-chips .chip{min-height:36px;}
   .trash-kind-todo{font-family:'Inter',sans-serif; font-size:11px; font-weight:700; letter-spacing:.06em; text-transform:uppercase; color:var(--ink-soft); background:var(--tint); border-radius:10px; padding:2px 8px;}
 
+  /* ⋯ on budget cards: just left of the square checkbox, the same button as on the to-do rows. The amount column
+     starts below it, so the two never overlap. */
+  .item-card .card-more{position:absolute; top:4px; right:40px; z-index:1;}
+  .item-card .card-more:disabled{opacity:.5; cursor:default;}
+  .item-card .item-amount{align-self:stretch; display:flex; flex-direction:column; justify-content:flex-end; padding-top:30px;}
+  .tag-done{background:var(--teal-light); color:var(--teal);}
+  @media (max-width:640px){
+    .item-card .card-more{top:3px; right:36px;}
+    .item-card .item-amount{min-width:66px;}
+  }
+
+  /* Search lives in the top bars now (header + compact bar) and shows one results view for both sides */
+  .view-tabs .activity-wrap{margin-left:auto;}
+  .hdr-icon{display:inline-flex; align-items:center; justify-content:center; min-width:44px; padding-left:0; padding-right:0;}
+  .search-toggle svg{display:block;}
+  .search-toggle.open, .search-toggle.active{color:var(--teal); border-color:var(--teal); background:var(--teal-light);}
+  #app.is-searching #budgetView, #app.is-searching #todoView, #app.is-searching .side-switch-main, #app.is-searching .view-tabs{display:none;}
+  .search-view[hidden]{display:none;}
+  .search-head{margin:18px 0 12px;}
+  .search-section{margin-bottom:22px;}
+  .search-section-head{display:inline-flex; align-items:center; gap:8px; margin:0 0 10px; font-size:15px; font-weight:700; color:var(--ink);}
+  .search-count{font-size:12px; font-weight:600; color:var(--ink-soft); background:var(--tint); border-radius:10px; padding:1px 8px;}
+  .search-section-body{display:flex; flex-direction:column; gap:10px;}
+  .search-none{margin:0; font-size:13.5px; color:var(--ink-soft);}
+  html[data-pat] .search-section-head, html[data-pat] .search-none{background:var(--paper); border-radius:6px; padding:2px 8px;}
+  @media (max-width:640px){
+    .top-actions .hdr-icon{padding-left:0; padding-right:0; min-width:42px;}
+  }
+  /* phones: the compact bar holds the logo, the switch and 4 buttons; tighten its spacing so it fits at 375px */
+  @media (max-width:400px){ .top-compact{padding-left:12px; padding-right:12px; gap:6px;} }
+  /* narrow phones: no logo in the compact bar */
+  @media (max-width:360px){
+    .top-compact{padding-left:10px; padding-right:10px; gap:4px;}
+    .top-compact .tc-logo{display:none;}
+    .top-actions .profile-btn-name{display:none;}
+    .top-actions .profile-btn{padding:5px 6px;}
+  }
+
   /* soft text straight on the page gets a paper backing while a background pattern is on */
   html[data-pat] .todo-head-count{background:var(--paper); border-radius:6px; padding-left:6px; padding-right:6px;}
 
