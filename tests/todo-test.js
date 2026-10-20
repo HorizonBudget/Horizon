@@ -106,6 +106,9 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   const more = tireCard.querySelector('.card-more');
   ok(!!more && more.textContent === '⋯' && more.getAttribute('aria-label') === 'Edit Tires' && !tireCard.querySelector('.item-actions') && !/>Edit</.test(tireCard.innerHTML), 'budget card has ⋯ (aria “Edit Tires”) instead of an Edit button');
   more.click(); ok($('itemOverlay').style.display === 'flex' && $('f_name').value === 'Tires', '⋯ opens the edit dialog'); A.closeItemModal();
+  tireCard.querySelector('.item-name').click(); ok($('itemOverlay').style.display === 'flex' && $('f_name').value === 'Tires', 'tapping anywhere on a budget card opens it'); A.closeItemModal();
+  tireCard.querySelector('.month-badge').click(); ok($('itemOverlay').style.display === 'flex', 'tapping the month badge opens it too'); A.closeItemModal();
+  tireCard.querySelector('.tag-todo').click(); ok($('itemOverlay').style.display !== 'flex' && A.eval('uiSide') === 'todo', 'the to-do tag still goes to the To-do side, not the dialog'); A.setSide('budget');
   ok($('todoQuickInput').placeholder === 'Quick add todo', 'quick-add placeholder');
 
   // ---------- budget side ignores to-dos ----------

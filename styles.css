@@ -1311,6 +1311,7 @@
   html[data-pat] .todo-head-count{background:var(--paper); border-radius:6px; padding-left:6px; padding-right:6px;}
 
 /* ==== SECTION: items-board (cards, months, search, filters, trash, undo) - add new rules below this line ==== */
+  .item-card.card-tap{cursor:pointer;}   /* a tap anywhere on a budget card opens it, like a to-do row */
 
 /* ==== SECTION: household-sync (sign-in, household code, people/profiles, backups, install) - add new rules below this line ==== */
 

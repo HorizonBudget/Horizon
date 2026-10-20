@@ -59,6 +59,14 @@ function buildItemCard(item, opts){
       ${opts.completedView && hasActualCost(item) ? paidHtml(item) : ''}
     </div>
   `;
+  // like a to-do row: a tap anywhere on the card opens it (⋯ stays for keyboards; the checkbox, links and tags keep their own job)
+  if(!opts.preview){
+    card.classList.add('card-tap');
+    card.addEventListener('click', e => {
+      if(e.target.closest('input, button, a, select, textarea, label')) return;
+      editItem(item.id);
+    });
+  }
   return card;
 }
 
