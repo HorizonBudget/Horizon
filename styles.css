@@ -1212,7 +1212,7 @@
   }
   .todo-link-chip:hover{border-color:var(--teal);}
   .todo-link-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
-  .todo-note{display:flex; gap:5px; min-width:0; margin-top:4px; font-size:12.5px; color:var(--ink-soft);}
+  .todo-note{margin-top:6px;}   /* the rest (outlined 📝 box) comes from .item-note, same as budget cards */
   .todo-note-text{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
   .todo-more{
     flex:none; width:40px; height:40px; padding:0; border:none; border-radius:8px; background:none; cursor:pointer;

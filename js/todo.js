@@ -253,7 +253,7 @@ function buildTodoRow(t){
   const note = String(t.notes || '').trim();
   main.innerHTML = `<div class="todo-name">${escapeHtml(t.name)}</div>`
     + (meta.length ? `<div class="todo-meta">${meta.join('')}</div>` : '')
-    + (note ? `<div class="todo-note"><span aria-hidden="true">📝</span> <span class="todo-note-text">${escapeHtml(note)}</span></div>` : '');
+    + (note ? `<div class="todo-note item-note"><span class="note-icon" aria-hidden="true">📝</span><span class="todo-note-text">${escapeHtml(note)}</span></div>` : '');
   const open = () => openTodoModal(t.id);
   main.addEventListener('click', e => { if(!e.target.closest('.todo-link-chip')) open(); });
   main.addEventListener('keydown', e => { if(e.target === main && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(); } });
