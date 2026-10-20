@@ -117,13 +117,101 @@ function initScrollLock(){
     root.classList.remove(SCROLL_LOCK_CLASS, 'had-scrollbar');
     if(Math.abs(pageY() - savedY) > 1) window.scrollTo(0, savedY);
   }
-  const sync = () => { overlays.some(overlayIsOpen) ? lock() : unlock(); };
+  const kb = initKeyboardFit(() => locked);
+  const sync = () => { overlays.some(overlayIsOpen) ? lock() : unlock(); if(kb) kb.update(); };
   if(window.MutationObserver){
     const mo = new MutationObserver(sync);
     overlays.forEach(o => mo.observe(o, { attributes: true, attributeFilter: ['style', 'class', 'hidden'] }));
   }
   sync();
-  const api = { sync, isLocked: () => locked };
+  const api = { sync, isLocked: () => locked, keyboard: kb };
   window.dialogScrollLock = api;
   return api;
+}
+
+// ---- Keep the field you are typing in above the on-screen keyboard ---------------------------------------------
+// iPhone Safari does not make the page shorter when the keyboard comes up: the keyboard slides over the bottom of
+// the screen and only the "visual viewport" (window.visualViewport) gets shorter. A dialog covers the whole screen
+// and, on a phone, sits at the bottom of it, so its lower fields (Notes) ended up under the keyboard; and because
+// the page is locked while a dialog is open, Safari could not scroll them into sight either.
+// So while a dialog is open and the keyboard is up, the dialogs are fitted into the part of the screen that is still
+// visible (--vv-top / --vv-h on <html> plus the class kb-open; CSS in the "sticky-scroll" section) and scroll inside
+// themselves, and the focused field is scrolled to the middle of what is left. Android Chrome already shrinks the page
+// for its keyboard, so there the difference is about 0 and nothing changes; desktops never get here at all.
+const KEYBOARD_MIN_PX = 100;   // a smaller difference is a toolbar sliding away, not a keyboard
+
+// The visible part of the screen when a keyboard covers the rest ({ top, height } in px), or null for "no keyboard".
+// layoutH = the full screen height the page is laid out for (it does not change when the iPhone keyboard opens).
+function keyboardViewport(vv, layoutH){
+  if(!vv || !(layoutH > 0)) return null;
+  if(vv.scale && vv.scale > 1.05) return null;         // pinch-zoomed in: that shrinks the visible part too, but it is not a keyboard
+  const h = Number(vv.height) || 0;
+  if(h <= 0 || layoutH - h < KEYBOARD_MIN_PX) return null;
+  return { top: Math.max(0, Math.round(Number(vv.offsetTop) || 0)), height: Math.round(h) };
+}
+
+// How far should a scroller move (positive = further down) so field `r` ({top, bottom}, screen px) sits in the middle
+// of the visible band top..bottom? 0 when it is already comfortably inside. A field taller than the band (a big
+// Notes box) lines its top up with the band instead, so the start of what you are typing shows.
+function fieldScrollDelta(r, top, bottom, margin){
+  margin = margin == null ? 12 : margin;
+  if(!r || bottom - top <= 2 * margin) return 0;
+  if(r.top >= top + margin && r.bottom <= bottom - margin) return 0;
+  if(r.bottom - r.top > bottom - top - 2 * margin) return Math.round(r.top - (top + margin));
+  return Math.round((r.top + r.bottom) / 2 - (top + bottom) / 2);
+}
+
+// Fields that bring up a keyboard (or the iPhone picker wheel, which covers the screen the same way).
+function isKeyboardField(el){
+  if(!el || el.nodeType !== 1) return false;
+  if(el.tagName === 'TEXTAREA' || el.tagName === 'SELECT') return true;
+  if(el.tagName !== 'INPUT') return false;
+  return !/^(checkbox|radio|range|button|submit|reset|file|color|image|hidden)$/i.test(el.type || 'text');
+}
+
+function initKeyboardFit(isLocked){
+  const vv = window.visualViewport, root = document.documentElement;
+  if(!vv || !vv.addEventListener) return null;
+  let fitted = false, timer = null;
+  const layoutH = () => Math.max(window.innerHeight || 0, root.clientHeight || 0);
+
+  // scroll the focused field into the visible part of its dialog (only while the keyboard is up)
+  function reveal(){
+    const el = document.activeElement;
+    if(!fitted || !isKeyboardField(el) || !el.closest) return;
+    const modal = el.closest('.modal'), overlay = modal && modal.closest('.overlay');
+    if(!modal || !overlayIsOpen(overlay)) return;
+    const m = modal.getBoundingClientRect(), bar = modal.querySelector('.modal-bar');
+    let top = m.top;
+    if(bar && !bar.contains(el)) top = Math.max(top, bar.getBoundingClientRect().bottom);
+    const bottom = Math.min(m.bottom, (Number(vv.offsetTop) || 0) + (Number(vv.height) || 0));
+    const delta = fieldScrollDelta(el.getBoundingClientRect(), top, bottom);
+    if(delta) modal.scrollTop += delta;
+  }
+  function update(){
+    const kb = isLocked() ? keyboardViewport(vv, layoutH()) : null;
+    if(kb){
+      root.style.setProperty('--vv-top', kb.top + 'px');
+      root.style.setProperty('--vv-h', kb.height + 'px');
+      if(!fitted){ fitted = true; root.classList.add('kb-open'); }
+    } else if(fitted){
+      fitted = false;
+      root.classList.remove('kb-open');
+      root.style.removeProperty('--vv-top');
+      root.style.removeProperty('--vv-h');
+    }
+  }
+  // the keyboard opening, closing or changing height is a resize of the visual viewport; Safari sliding the
+  // visible part around is a scroll of it (only the position needs updating then)
+  vv.addEventListener('resize', () => { update(); reveal(); });
+  vv.addEventListener('scroll', update);
+  window.addEventListener('resize', update);
+  // tapping into a field: wait for the keyboard to finish sliding up (about 300ms), then make sure the field shows.
+  // Moving from one field to the next keeps the keyboard up, so there is no resize then: this timer covers it.
+  document.addEventListener('focusin', e => {
+    if(!isKeyboardField(e.target) || !e.target.closest || !e.target.closest('.modal')) return;
+    if(timer) clearTimeout(timer);
+    timer = setTimeout(() => { timer = null; update(); reveal(); }, 300);
+  });
+  return { update, reveal, isFitted: () => fitted };
 }

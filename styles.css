@@ -1094,6 +1094,16 @@
   .overlay{overscroll-behavior:contain;}
   .modal{overscroll-behavior:contain;}
 
+  /* ---- On-screen keyboard over an open dialog (js/scroll-lock.js, initKeyboardFit) ----
+     iPhone Safari slides its keyboard over the page without making the page shorter, so a dialog sitting at the bottom
+     of the screen ended up under it. While the keyboard is up (html.kb-open), the dialogs fit into the part of the screen
+     still showing (--vv-top / --vv-h) and scroll inside themselves. The home-bar gap at the bottom is not needed then. */
+  html.dialog-open.kb-open .overlay{top:var(--vv-top, 0px); height:var(--vv-h, 100%); bottom:auto;}
+  html.dialog-open.kb-open .modal{max-height:calc(var(--vv-h, 100vh) - 40px);}
+  @media (max-width:640px){
+    html.dialog-open.kb-open .modal{max-height:calc(var(--vv-h, 100vh) - 24px); padding-bottom:18px;}
+  }
+
   /* Active / Completed bar over a background pattern (3.1.x). A solid paper fill showed as a blank, pattern-free strip,
      so while a pattern is on the bar is frosted glass instead: mostly paper, slightly see-through, with the page behind
      it blurred. The pattern shows through softly; cards scrolling underneath turn into a faint blur. Only the board bar
