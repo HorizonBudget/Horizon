@@ -271,6 +271,25 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   A.setSide('todo');
   ok(!d.querySelector('#todoList img') && !d.querySelector('#todoList b'), 'names and notes are escaped');
 
+  // ---------- website link ----------
+  A.setSide('todo');
+  A.openTodoModal();
+  $('t_name').value = 'Check the sale'; $('t_url').value = 'javascript:alert(1)';
+  ok(A.saveTodoModal() === false && /web address/.test($('t_urlError').textContent) && $('todoOverlay').style.display === 'flex', 'a non-web link is refused with a message');
+  $('t_url').value = 'www.example.com/deal';
+  A.saveTodoModal();
+  const ut = A.eval(`items.find(i => i.kind === 'todo' && i.name === 'Check the sale')`);
+  ok(ut && /example\.com\/deal/.test(ut.url), 'website link saved on the to-do: ' + (ut && ut.url));
+  const urow = [...d.querySelectorAll('#todoList .todo-row')].find(r => r.querySelector('.todo-name').textContent === 'Check the sale');
+  const uchip = urow && urow.querySelector('.todo-url a.link-chip');
+  ok(!!uchip && uchip.getAttribute('target') === '_blank' && /noopener/.test(uchip.getAttribute('rel')) && uchip.textContent === 'example.com' && urow.querySelector('.todo-url .note-icon').textContent === '🔗', 'row shows a boxed 🔗 and a link chip that opens in a new tab');
+  uchip.addEventListener('click', e => e.preventDefault()); uchip.click();
+  ok($('todoOverlay').style.display !== 'flex', 'tapping the link does not open the to-do');
+  A.openTodoModal(ut.id);
+  ok($('t_url').value === ut.url, 'editing shows the saved link');
+  $('t_url').value = ''; A.saveTodoModal();
+  ok(!('url' in A.eval(`items.find(i => i.id === ${ut.id})`)), 'clearing the box removes the link');
+
   console.log(`\n${pass} passed, ${fails} failed`);
   process.exit(fails ? 1 : 0);
 })().catch(e => { console.log('FAIL crashed: ' + (e && e.stack || e)); process.exit(1); });

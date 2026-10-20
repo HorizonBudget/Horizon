@@ -251,11 +251,13 @@ function buildTodoRow(t){
   const li = todoLinkedItem(t);
   if(li) meta.push(`<span class="todo-link"><span class="note-icon" aria-hidden="true">💵</span><button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span class="todo-link-name">${escapeHtml(li.name)}</span></button></span>`);
   const note = String(t.notes || '').trim();
+  const url = todoUrl(t);
   main.innerHTML = `<div class="todo-name">${escapeHtml(t.name)}</div>`
     + (meta.length ? `<div class="todo-meta">${meta.join('')}</div>` : '')
+    + (url ? `<div class="todo-url item-note"><span class="note-icon" aria-hidden="true">🔗</span>${linkChipHtml(url)}</div>` : '')
     + (note ? `<div class="todo-note item-note"><span class="note-icon" aria-hidden="true">📝</span><span class="todo-note-text">${escapeHtml(note)}</span></div>` : '');
   const open = () => openTodoModal(t.id);
-  main.addEventListener('click', e => { if(!e.target.closest('.todo-link-chip')) open(); });
+  main.addEventListener('click', e => { if(!e.target.closest('.todo-link-chip, .link-chip')) open(); });
   main.addEventListener('keydown', e => { if(e.target === main && (e.key === 'Enter' || e.key === ' ')){ e.preventDefault(); open(); } });
   const chip = main.querySelector('.todo-link-chip');
   if(chip && li) chip.addEventListener('click', e => { e.stopPropagation(); goToBudgetItem(li.id); });
@@ -280,6 +282,8 @@ function toggleTodoDone(open){
 }
 
 // ---- Changes (each ends in render(), which also syncs) ----
+// a to-do's website link (only a real http(s) address counts)
+function todoUrl(t){ const u = t && typeof t.url === 'string' ? t.url.trim() : ''; return u && isUrl(u) ? u : ''; }
 function addTodo(f){
   f = f || {};
   const name = cleanTodoName(f.name);
@@ -287,6 +291,7 @@ function addTodo(f){
   const t = { id: Date.now() + Math.random(), kind: 'todo', name, completed: false, owner: f.owner || '', createdAt: Date.now() };
   const due = cleanTodoDue(f.due); if(due) t.due = due;
   const notes = String(f.notes || '').trim().slice(0, TODO_NOTES_MAX); if(notes) t.notes = notes;
+  const url = normalizeLinkInput(f.url); if(url) t.url = url;
   if(f.linkId != null) t.linkId = f.linkId;
   items.push(t);
   logActivity(`${household.name} added to-do “${name}”`);
@@ -438,6 +443,8 @@ function openTodoModal(id){
   populateTodoOwnerSelect(t ? (t.owner || '') : (todoFilter === 'mine' ? household.name : ''));
   populateTodoLinkSelect(t ? t.linkId : null);
   document.getElementById('t_notes').value = t ? (t.notes || '') : '';
+  document.getElementById('t_url').value = t ? todoUrl(t) : '';
+  document.getElementById('t_urlError').textContent = '';
   document.getElementById('todoDeleteBtn').style.display = t ? '' : 'none';
   document.getElementById('todoSaveBtn').textContent = t ? 'Save' : 'Add';
   updateTodoDueChips();
@@ -458,6 +465,12 @@ function saveTodoModal(){
   const due = cleanTodoDue(document.getElementById('t_due').value);
   const owner = document.getElementById('t_owner').value || '';
   const notes = document.getElementById('t_notes').value.trim().slice(0, TODO_NOTES_MAX);
+  const url = normalizeLinkInput(document.getElementById('t_url').value);
+  if(url === null){
+    document.getElementById('t_urlError').textContent = "That doesn't look like a web address. Put plain text in Notes.";
+    try { document.getElementById('t_url').focus(); } catch(e) {}
+    return false;
+  }
   const lv = document.getElementById('t_link').value;
   const li = lv ? items.find(i => !isTodo(i) && String(i.id) === lv) : null;
   const linkId = li ? li.id : null;
@@ -465,12 +478,13 @@ function saveTodoModal(){
   const t = editingTodoId != null ? findLiveTodo(editingTodoId) : null;
   if(!t){
     closeTodoModal();
-    return !!addTodo({ name, due, owner, notes, linkId });
+    return !!addTodo({ name, due, owner, notes, url, linkId });
   }
   const before = JSON.parse(JSON.stringify(t));
   t.name = name; t.owner = owner;
   if(due) t.due = due; else delete t.due;
   if(notes) t.notes = notes; else delete t.notes;
+  if(url) t.url = url; else delete t.url;
   if(linkId != null) t.linkId = linkId; else delete t.linkId;
   closeTodoModal();
   if(JSON.stringify(before) === JSON.stringify(t)) return true;   // nothing changed

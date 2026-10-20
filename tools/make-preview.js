@@ -59,7 +59,7 @@ window.addEventListener('load', async () => {
       T('Call about soccer sign-ups', 0, { owner: 'Jo' }),
       T('Send in the school picture form', 0),
       T('Book the furnace service', 3, { linkId: itemId('Furnace service'), notes: 'Ask for the fall tune-up special. Number is on the fridge.' }),
-      T('Compare tire prices', 5, { owner: 'Alex' }),
+      T('Compare tire prices', 5, { owner: 'Alex', url: 'https://www.discounttire.com/' }),
       T('Make the Christmas gift list', 24, { owner: 'Preview' }),
       T('Return the library books', null),
       T('Buy birthday candles', null, { completed: true, completedAt: Date.now() - 3600000 })

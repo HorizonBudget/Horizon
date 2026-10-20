@@ -24,7 +24,7 @@ function itemMatchesSearch(it, q){
 function todoMatchesSearch(t, q){
   if(!searchWords(q).length) return true;
   const li = todoLinkedItem(t);
-  return textMatchesAll([t.name, t.notes, t.owner, t.due ? todoDueLabel(t.due) : '', t.due, li ? li.name : ''], q);
+  return textMatchesAll([t.name, t.notes, todoUrl(t), t.owner, t.due ? todoDueLabel(t.due) : '', t.due, li ? li.name : ''], q);
 }
 function searchShowing(){ return searchOpen && !!searchTerm(); }
 

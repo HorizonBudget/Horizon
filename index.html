@@ -321,6 +321,11 @@
       <select id="t_link"></select>
     </div>
     <div class="gate-row">
+      <label class="field-label" for="t_url">Website link <span class="opt">(optional)</span></label>
+      <input type="text" id="t_url" inputmode="url" autocapitalize="off" autocorrect="off" spellcheck="false" placeholder="https://…" oninput="document.getElementById('t_urlError').textContent=''">
+      <p class="field-error" id="t_urlError" role="alert"></p>
+    </div>
+    <div class="gate-row">
       <label class="field-label" for="t_notes">Notes <span class="opt">(optional)</span></label>
       <textarea id="t_notes" rows="3" maxlength="500" placeholder="Anything worth remembering"></textarea>
     </div>
