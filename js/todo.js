@@ -245,11 +245,11 @@ function buildTodoRow(t){
   const meta = [];
   if(t.due){
     const cls = t.completed ? '' : ' due-' + g;
-    meta.push(`<span class="todo-due${cls}"><span aria-hidden="true">📅</span> ${escapeHtml(todoDueLabel(t.due))}</span>`);
+    meta.push(`<span class="todo-due${cls}"><span class="note-icon" aria-hidden="true">📅</span>${escapeHtml(todoDueLabel(t.due))}</span>`);
   }
   if(t.owner) meta.push(`<span class="todo-owner">${avatarHtml(t.owner, 'sm')}<span class="todo-owner-name">${escapeHtml(t.owner)}</span></span>`);
   const li = todoLinkedItem(t);
-  if(li) meta.push(`<button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span aria-hidden="true">💵</span> <span class="todo-link-name">${escapeHtml(li.name)}</span></button>`);
+  if(li) meta.push(`<span class="todo-link"><span class="note-icon" aria-hidden="true">💵</span><button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span class="todo-link-name">${escapeHtml(li.name)}</span></button></span>`);
   const note = String(t.notes || '').trim();
   main.innerHTML = `<div class="todo-name">${escapeHtml(t.name)}</div>`
     + (meta.length ? `<div class="todo-meta">${meta.join('')}</div>` : '')

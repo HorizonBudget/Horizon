@@ -468,7 +468,7 @@
     font-size:12.5px; color:var(--ink-soft); margin-top:6px;
     display:flex; align-items:center; gap:5px; min-width:0;
   }
-  .item-note .note-icon{
+  .item-note .note-icon, .todo-meta .note-icon{
     flex:none; display:inline-flex; align-items:center; justify-content:center;
     width:24px; height:24px; box-sizing:border-box; font-size:13px; line-height:1;
     border:1.5px solid var(--ink-soft); border-radius:6px; background:var(--field);
@@ -1209,7 +1209,8 @@
   .todo-row.is-ticking{opacity:.75;}
   .todo-row.is-done .todo-name{font-weight:500;}
   .todo-meta{display:flex; flex-wrap:wrap; align-items:center; gap:6px 12px; margin-top:5px; font-size:12.5px; color:var(--ink-soft); min-width:0;}
-  .todo-due{display:inline-flex; align-items:center; gap:4px; font-weight:600; white-space:nowrap;}
+  .todo-link{display:inline-flex; align-items:center; gap:5px; min-width:0; max-width:100%;}
+  .todo-due{display:inline-flex; align-items:center; gap:5px; font-weight:600; white-space:nowrap;}
   .todo-due.due-overdue{color:var(--coral);}
   .todo-due.due-today{color:var(--warn-fg);}
   .todo-due.due-week{color:var(--teal);}
