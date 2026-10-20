@@ -1,7 +1,8 @@
 // ---- Update notice (2.12.0) ----
 // Each CHANGELOG entry may carry `ui`: short lines about things people will SEE or do differently.
-// Entries without `ui` are background work. After an update the app shows a small "updated" toast;
-// if any release since the last one this device saw has `ui`, it shows those lines in a notice instead.
+// Entries without `ui` are background work. Since 3.3.2 only a big update (the first number goes up, like 2.x to 3.0)
+// is announced: a notice with the `ui` lines of every release since the last one this device saw, or a small
+// "updated" toast if none had any. Smaller updates are silent (the version is still remembered).
 function versionParts(v){ return String(v || '0').split('.').map(n => parseInt(n, 10) || 0); }
 function versionCmp(a, b){
   const x = versionParts(a), y = versionParts(b);
@@ -22,6 +23,7 @@ function checkWhatsNew(resumed){
   }
   if(versionCmp(seen, APP_VERSION) >= 0) return;
   try { localStorage.setItem('horizonSeenVersion', APP_VERSION); } catch(e) {}
+  if(versionParts(APP_VERSION)[0] <= versionParts(seen)[0]) return;
   const lines = [];
   whatsNewSince(seen).forEach(c => (c.ui || []).forEach(t => lines.push(t)));
   if(!lines.length){ showToast('Horizon just got a little brighter!'); return; }

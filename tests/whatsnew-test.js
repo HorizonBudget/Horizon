@@ -6,8 +6,11 @@ const {sleep,ok,boot,finish}=require('./lib/h.js');
   // 1. first time on a device: silent, remembers version
   let w=boot(); w.eval('checkWhatsNew(false)');
   ok(!dlg(w)&&!toast(w)&&seenOf(w)===w.eval('APP_VERSION'),'fresh sign-in: no notice, version remembered');
-  // 2. update with a visible change -> dialog with bullets
+  // 2. a small update (same first number) is silent, even with visible changes
   w=boot(); w.eval("localStorage.setItem('horizonSeenVersion',CHANGELOG[1].v); CHANGELOG[0].ui=['This visible change is new.']; checkWhatsNew(false)");
+  ok(!dlg(w)&&!toast(w)&&seenOf(w)===w.eval('APP_VERSION'),'small update (same first number): no notice, no toast, version remembered');
+  // 3. a big update (first number went up) with a visible change -> dialog with bullets
+  w=boot(); w.eval("localStorage.setItem('horizonSeenVersion','2.12.0'); CHANGELOG[0].ui=['This visible change is new.']; checkWhatsNew(false)");
   const msg=w.document.getElementById('confirmMsg').textContent;
   ok(dlg(w)&&/^Horizon just got a little brighter!$/.test(w.document.getElementById('confirmTitle').textContent)&&/^• /.test(msg)&&/visible change is new/.test(msg),'UI change shows a notice with bullet lines');
   ok(w.document.getElementById('confirmCancel').style.display==='none'&&w.document.getElementById('confirmOk').textContent==='Got it','single "Got it" button');
@@ -15,8 +18,8 @@ const {sleep,ok,boot,finish}=require('./lib/h.js');
   ok(!toast(w)&&seenOf(w)===w.eval('APP_VERSION'),'no toast and version remembered');
   w.document.getElementById('confirmOk').click(); await sleep(20);
   w.eval('checkWhatsNew(false)'); ok(!dlg(w),'same version again: nothing shown');
-  // 3. background-only update -> just a small toast
-  w=boot(); w.eval("localStorage.setItem('horizonSeenVersion',CHANGELOG[1].v); delete CHANGELOG[0].ui; checkWhatsNew(false)");
+  // 3b. big update where no release since had visible changes -> just a small toast
+  w=boot(); w.eval("localStorage.setItem('horizonSeenVersion','2.12.0'); CHANGELOG.forEach(c=>{ if(versionCmp(c.v,'2.12.0')>0) delete c.ui; }); checkWhatsNew(false)");
   ok(!dlg(w)&&!!toast(w)&&/little brighter/.test(toast(w).textContent)&&!w.document.getElementById('toastUndo'),'background-only: small "updated" toast, no dialog, no Undo');
   ok(toast(w).textContent.length<45,'toast is short: '+toast(w).textContent);
   // 4. skipped several versions: lines from every release with ui, none from ones without

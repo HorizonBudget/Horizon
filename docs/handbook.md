@@ -59,7 +59,7 @@ config, util, state, suggest, themes, profiles, crop, items, dialogs, trash, ite
 **Version numbers:** middle number (3.1.0 -> 3.2.0) for feature releases, third number (3.2.0 -> 3.2.1) for fix-only releases, first number for big structural changes (3.0.0 was the file split).
 
 ## 5. How the update notice works
-`checkWhatsNew(resumed)` runs at the end of `enterApp` (js/update-notice.js). It compares `horizonSeenVersion` with `APP_VERSION` using `versionCmp` (numeric). First-time device: silent. Resumed device with nothing stored: treated as coming from 2.11.0. It collects `ui` lines from CHANGELOG entries newer than the last seen version; no lines gives the toast, otherwise `askConfirm({title:'Horizon just got a little brighter!', message: bullets, confirmLabel:'Got it', info:true})`. `#confirmMsg` uses `white-space:pre-line`.
+`checkWhatsNew(resumed)` runs at the end of `enterApp` (js/update-notice.js). It compares `horizonSeenVersion` with `APP_VERSION` using `versionCmp` (numeric). First-time device: silent. Resumed device with nothing stored: treated as coming from 2.11.0. Since 3.3.2 (David's call) only a big update is announced: if the first number did not go up (3.3.1 -> 3.4.0), it just remembers the new version silently. For a big update it collects `ui` lines from CHANGELOG entries newer than the last seen version; no lines gives the toast, otherwise `askConfirm({title:'Horizon just got a little brighter!', message: bullets, confirmLabel:'Got it', info:true})`. `#confirmMsg` uses `white-space:pre-line`.
 
 ## 6. Testing
 One-time setup on this computer (`/start` checks and offers to do it): Node.js, Python 3, git; then
