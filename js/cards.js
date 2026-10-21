@@ -38,7 +38,7 @@ function buildItemCard(item, opts){
           <div class="month-badge-label" style="color:${mc.fg};">${escapeHtml(monthWord)}</div>
           <div class="month-badge-sub" style="color:${mc.fg};">${escapeHtml(monthYear)}</div>
         </div>
-        ${item.owner ? `<span title="${escapeHtml(item.owner)}" style="display:inline-flex;">${avatarHtml(item.owner,'lg')}</span>` : ''}
+        ${item.owner ? `<span title="${escapeHtml(item.owner)}" style="display:inline-flex;">${cardAvatarHtml(item.owner, 'lg')}</span>` : ''}
       </div>
       <div class="item-main">
         <div class="item-top">

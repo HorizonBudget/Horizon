@@ -123,8 +123,9 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   A.eval(`finishCompleting(${todoId})`); ok(A.eval(`findLiveTodo(${todoId}).completed`) === false, 'budget complete ignores to-dos');
   A.switchTab('completed'); ok(cards().join() === 'Old Done', 'Completed tab unaffected'); A.switchTab('active');
   A.openSearch(); $('searchInput').value = 'plumber'; A.onSearchInput();
-  ok(cards().join() === baseCards && d.querySelectorAll('#searchBudget .item-card').length === 0 && d.querySelectorAll('#searchTodos .todo-row').length === 1, 'search: to-dos only in the To-dos section, board untouched');
+  ok(stat() === baseStat && d.querySelectorAll('#searchBudget .item-card').length === 0 && d.querySelectorAll('#searchTodos .todo-row').length === 1, 'search: to-dos only in the To-dos section, board untouched');
   A.closeSearch();
+  ok(cards().join() === baseCards, 'closing the search shows the same budget cards');
   A.openItemModal(); A.eval(`document.getElementById('f_name').value='x'`);
   ok(A.eval(`[...document.querySelectorAll('#f_category option')].every(o=>o.textContent!=='undefined')`), 'category list has no blank/undefined entries');
   A.closeItemModal();
