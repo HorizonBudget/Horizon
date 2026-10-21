@@ -3,7 +3,8 @@
 //  The whole board (items, people, activity, categories) lives in that document.
 // ============================================================
 const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
-const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '' };
+const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
+  held: false, heldBase: null, gen: 0, retry: null, cachedJson: '' };
 
 function cloudConfigured(){
   return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -91,6 +92,8 @@ function cloudDisconnect(){
   try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
   cloud.unsub = null; cloud.ready = false; cloud.adapter = null; cloud.lastJson = '';
   clearTimeout(cloud.timer); cloud.timer = null;
+  cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.cachedJson = '';
+  clearTimeout(cloud.retry); cloud.retry = null;
 }
 function friendlyCloudError(e){
   const code = e && e.code;
@@ -110,6 +113,7 @@ function cloudApplyRemote(data){
   clearTimeout(cloud.timer); cloud.timer = null;
   applyState(remote);
   cloud.lastJson = remote.idsAssigned ? '' : stableJson(snapshotState());
+  cacheConfirmedBoard(cloud.lastJson);
   reconcileIdentity();   // follow a rename made on another device, or ask if this profile is gone
   if(purgeTrash() || remote.idsAssigned){ render(); return; }   // expired deleted items / new ids are saved back
   renderCore();
@@ -117,8 +121,15 @@ function cloudApplyRemote(data){
 }
 
 function cloudSchedulePush(){
+  if(cloud.held){
+    const local = snapshotState();
+    saveBoardCache(household.code, cloud.heldBase, stableJson(local) === stableJson(cloud.heldBase) ? null : local);
+    setCloudStatus('updating');
+    return;
+  }
   if(!cloud.ready) return;
-  if(stableJson(snapshotState()) === cloud.lastJson) return;
+  const now = stableJson(snapshotState());
+  if(now === cloud.lastJson){ cacheConfirmedBoard(now); return; }
   setCloudStatus('saving');
   clearTimeout(cloud.timer);
   cloud.timer = setTimeout(cloudFlush, 400);
@@ -130,6 +141,7 @@ function cloudFlush(){
   const j = stableJson(state);
   if(j === cloud.lastJson){ setCloudStatus('ok'); return; }
   cloud.lastJson = j;
+  cacheConfirmedBoard(j, state);
   const payload = JSON.parse(JSON.stringify(Object.assign({}, state, { clientId, updatedAt: new Date().toISOString() })));
   Promise.resolve(cloud.adapter.push(household.code, payload))
     .then(() => { if(!cloud.timer) setCloudStatus('ok'); })
@@ -146,13 +158,160 @@ function setCloudStatus(kind){
   if(!el) return;
   // with no connection nothing can be "Synced". Edits are kept on this device and sent when it's back.
   if(kind !== 'local' && navigator.onLine === false) kind = 'offline';
-  const text = { ok: '● Synced', saving: 'Saving…', err: 'Not saved — retrying', local: 'This device only', offline: 'Offline — changes will sync later' }[kind] || '';
+  const text = { updating: 'Updating…', ok: '● Synced', saving: 'Saving…', err: 'Not saved — retrying', local: 'This device only', offline: 'Offline — changes will sync later' }[kind] || '';
   el.textContent = text;
   el.className = 'sync-pill' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
   el.title = kind === 'local' ? 'Sharing isn’t set up yet. See the setup guide.' : kind === 'offline' ? 'You’re offline. Horizon keeps your changes on this device and sends them when you’re back online.' : '';
 }
 
-window.addEventListener('online', () => { if(cloud.ready) cloudFlush(); });
+window.addEventListener('online', () => { if(cloud.ready) cloudFlush(); else if(cloud.held && cloud.retry) cloudResumeHeld(household.code); });
 window.addEventListener('offline', () => { if(cloud.ready) setCloudStatus('offline'); });
 document.addEventListener('visibilitychange', () => { if(document.hidden && cloud.timer) cloudFlush(); });
 window.addEventListener('pagehide', () => { if(cloud.timer) cloudFlush(); });
+
+// ============================================================
+//  Quick resume (per device only, never synced). A copy of the board is kept in localStorage per household
+//  code, so a signed-in device shows the board at once and catches up when Firestore answers.
+//  `base` is the last copy the server had (sent or received); `local` holds edits made on the cached board
+//  before the first answer. Saves are held until then; the first answer is merged field by field, so
+//  newer data from other devices is kept and only what was changed here goes on top.
+// ============================================================
+const BOARD_CACHE_KEY = 'horizonBoardCache';
+const BOARD_CACHE_MAX = 1500000;    // characters; localStorage is ~5 MB on most browsers
+const BOARD_PHOTO_MAX = 120000;     // bigger profile photos are left out of the copy (the server still has them)
+
+function stripCachePhotos(st, all){
+  if(!st || !Array.isArray(st.people)) return st;
+  return Object.assign({}, st, { people: st.people.map(p => {
+    if(!p || !p.photo || (!all && String(p.photo).length <= BOARD_PHOTO_MAX)) return p;
+    const q = Object.assign({}, p); delete q.photo; return q;
+  }) });
+}
+function saveBoardCache(code, base, local){
+  if(!code || !base) return;
+  try {
+    const rec = { code, savedAt: Date.now(), base, local: local || null };
+    let json = JSON.stringify(Object.assign({}, rec, { base: stripCachePhotos(base), local: local ? stripCachePhotos(local) : null }));
+    if(json.length > BOARD_CACHE_MAX) json = JSON.stringify(Object.assign({}, rec, { base: stripCachePhotos(base, true), local: local ? stripCachePhotos(local, true) : null }));
+    if(json.length > BOARD_CACHE_MAX){ clearBoardCache(); return; }
+    localStorage.setItem(BOARD_CACHE_KEY, json);
+  } catch(e){ clearBoardCache(); }   // full storage or private mode: just go without a copy
+}
+function loadBoardCache(code){
+  try {
+    const rec = JSON.parse(localStorage.getItem(BOARD_CACHE_KEY) || 'null');
+    if(!rec || !code || rec.code !== code || !rec.base || !Array.isArray(rec.base.items) || !Array.isArray(rec.base.people)) return null;
+    return rec;
+  } catch(e){ return null; }
+}
+function clearBoardCache(){ try { localStorage.removeItem(BOARD_CACHE_KEY); } catch(e) {} }
+// What the server has now matches this device: remember it as the copy to open next time.
+function cacheConfirmedBoard(json, state){
+  if(!cloud.ready || cloud.mode !== 'cloud' || !household.code || !json || json === cloud.cachedJson) return;
+  cloud.cachedJson = json;
+  saveBoardCache(household.code, state || snapshotState(), null);
+}
+
+// ---- three-way merge of the first server answer with edits made on the cached copy ----
+function mergeObjFields(b, l, r){
+  const out = Object.assign({}, r);
+  new Set(Object.keys(b).concat(Object.keys(l))).forEach(k => {
+    if(stableJson(l[k]) === stableJson(b[k])) return;
+    if(l[k] === undefined) delete out[k]; else out[k] = l[k];
+  });
+  return out;
+}
+function mergeById(base, local, remote){
+  const key = o => String(o && o.id);
+  const bMap = new Map(base.map(o => [key(o), o])), lMap = new Map(local.map(o => [key(o), o]));
+  const out = [], seen = new Set();
+  remote.forEach(r => {
+    const k = key(r), b = bMap.get(k), l = lMap.get(k);
+    seen.add(k);
+    if(b && l) out.push(mergeObjFields(b, l, r));
+    else if(b && !l){ if(stableJson(b) !== stableJson(r)) out.push(r); }   // removed here; keep only if changed elsewhere
+    else if(!b && l) out.push(l);
+    else out.push(r);
+  });
+  local.forEach(l => {
+    const k = key(l);
+    if(seen.has(k)) return;
+    const b = bMap.get(k);
+    if(!b || stableJson(b) !== stableJson(l)) out.push(l);   // new here, or changed here after it was removed elsewhere
+  });
+  return out;
+}
+function mergeList(base, local, remote){
+  const has = (arr, v) => arr.some(x => stableJson(x) === stableJson(v));
+  const out = remote.filter(v => !(has(base, v) && !has(local, v)));
+  local.forEach(v => { if(!has(base, v) && !has(out, v)) out.push(v); });
+  return out;
+}
+function mergeHeldState(base, local, remote){
+  const res = {
+    items: mergeById(base.items || [], local.items || [], remote.items || []),
+    people: mergeById(base.people || [], local.people || [], remote.people || []),
+    householdName: local.householdName !== base.householdName ? local.householdName : remote.householdName
+  };
+  const added = (local.activity || []).filter(a => !(base.activity || []).some(x => stableJson(x) === stableJson(a)));
+  res.activity = added.concat(remote.activity || []).slice(0, 6);
+  const bc = base.categories || [], lc = local.categories || [], rc = remote.categories || bc;
+  res.categories = stableJson(lc) === stableJson(bc) ? rc : mergeList(bc, lc, rc);
+  const bs = base.subcategories || {}, ls = local.subcategories || {}, rs = remote.subcategories || bs;
+  if(stableJson(ls) === stableJson(bs)) res.subcategories = rs;
+  else {
+    res.subcategories = {};
+    new Set(Object.keys(bs).concat(Object.keys(ls), Object.keys(rs))).forEach(c => {
+      const m = mergeList(bs[c] || [], ls[c] || [], rs[c] || []);
+      if(m.length) res.subcategories[c] = m;
+    });
+  }
+  return res;
+}
+
+// Connect in the background for a board already shown from the cached copy.
+function cloudResumeHeld(code){
+  clearTimeout(cloud.retry); cloud.retry = null;
+  const gen = ++cloud.gen;
+  let first = true;
+  const retry = () => {
+    if(gen !== cloud.gen) return;
+    try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
+    cloud.unsub = null;
+    setCloudStatus('updating');
+    cloud.retry = setTimeout(() => cloudResumeHeld(code), 15000);
+  };
+  getAdapter().then(adapter => {
+    if(gen !== cloud.gen) return;
+    cloud.adapter = adapter;
+    cloud.unsub = adapter.subscribe(code, (data, fromCache) => {
+      if(gen !== cloud.gen) return;
+      if(!data && fromCache) return;
+      if(first){ first = false; cloudFinishHeld(data); return; }
+      if(data && data.clientId !== clientId) cloudApplyRemote(data);
+    }, err => {
+      if(gen !== cloud.gen) return;
+      if(first) retry(); else setCloudStatus('err');
+    });
+  }).catch(retry);
+}
+function cloudFinishHeld(data){
+  const base = cloud.heldBase, local = snapshotState();
+  cloud.held = false; cloud.heldBase = null;
+  let remoteJson = '', remoteSnap = null;
+  if(data){
+    const remote = stateFromDoc(data);
+    applyState(remote);
+    remoteSnap = snapshotState();
+    remoteJson = remote.idsAssigned ? '' : stableJson(remoteSnap);
+    const merged = mergeHeldState(base, local, remoteSnap);
+    applyState(stateFromDoc(merged));
+  }
+  cloud.lastJson = remoteJson;
+  cloud.ready = true;
+  if(remoteJson) cacheConfirmedBoard(remoteJson, remoteSnap);
+  reconcileIdentity();
+  purgeTrash();
+  setCloudStatus('ok');
+  render();   // anything changed here before the answer is saved now
+}
