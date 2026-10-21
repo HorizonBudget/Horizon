@@ -66,12 +66,37 @@ function todoDueLabel(due){
 
 // ---- Small helpers ----
 function cleanTodoName(s){ return String(s == null ? '' : s).replace(/\s+/g, ' ').trim().slice(0, TODO_NAME_MAX); }
+// While renderCore() draws, links are looked up in an index built once (instead of scanning every item for
+// every card and row); outside a draw the data may change at any moment, so they are looked up directly.
+let linkIndexOn = false, linkIndex = null;
+function useLinkIndex(on){ linkIndexOn = !!on; linkIndex = null; }
+function currentLinkIndex(){
+  if(!linkIndexOn) return null;
+  if(!linkIndex){
+    const itemById = new Map(), todosByItem = new Map();
+    liveItems().forEach(i => { const k = String(i.id); if(!itemById.has(k)) itemById.set(k, i); });
+    liveTodos().forEach(t => {
+      if(t.linkId == null) return;
+      const k = String(t.linkId);
+      if(!todosByItem.has(k)) todosByItem.set(k, []);
+      todosByItem.get(k).push(t);
+    });
+    linkIndex = { itemById, todosByItem };
+  }
+  return linkIndex;
+}
 function todoLinkedItem(t){
   if(!t || t.linkId == null) return null;
+  const ix = currentLinkIndex();
+  if(ix) return ix.itemById.get(String(t.linkId)) || null;
   return liveItems().find(i => String(i.id) === String(t.linkId)) || null;
 }
 function todoIsMine(t){ return !!t.owner && t.owner === household.name; }
-function linkedTodosFor(item){ return liveTodos().filter(t => t.linkId != null && String(t.linkId) === String(item.id)); }
+function linkedTodosFor(item){
+  const ix = currentLinkIndex();
+  if(ix) return (ix.todosByItem.get(String(item.id)) || []).slice();
+  return liveTodos().filter(t => t.linkId != null && String(t.linkId) === String(item.id));
+}
 
 // ---- Switching sides ----
 function setSide(side){
@@ -145,6 +170,9 @@ function renderTodos(){
 
   list.innerHTML = '';
   shownTodoGroups = [];
+  // rows are only built while the To-do side is showing (not behind the Budget side or the search results);
+  // switching sides or closing the search redraws through renderCore()
+  const rowsShown = uiSide === 'todo' && !searchShowing();
   if(!shownOpen.length){
     let msg;
     if(!all.length) msg = '<strong>Nothing on the list yet.</strong><br>Add the little jobs that go with your plans, like “Book the furnace service” or “Call about the roof quote”.';
@@ -157,18 +185,20 @@ function renderTodos(){
     shownOpen.forEach(t => { const k = todoGroupKey(t); (byGroup[k] = byGroup[k] || []).push(t); });
     const groups = TODO_GROUPS.filter(g => byGroup[g.key] && byGroup[g.key].length);
     shownTodoGroups = groups.map(g => g.key);
-    groups.forEach(g => {
+    const frag = document.createDocumentFragment();
+    if(rowsShown) groups.forEach(g => {
       const rows = byGroup[g.key];
       // dated groups: soonest first; No date: newest first, so something just added is easy to find
       if(g.key === 'none') rows.sort((a, b) => (Number(b.createdAt) || 0) - (Number(a.createdAt) || 0));
       else rows.sort((a, b) => a.due < b.due ? -1 : a.due > b.due ? 1 : (Number(a.createdAt) || 0) - (Number(b.createdAt) || 0));
-      list.appendChild(buildGroupSection({
+      frag.appendChild(buildGroupSection({
         data: { group: g.key }, bodyId: 'todoGroupBody-' + g.key, collapsed: collapsedTodoGroups.has(g.key),
         dot: g.color, name: g.label, count: `${rows.length} to-do${rows.length === 1 ? '' : 's'}`, className: 'todo-group',
         onToggle: () => toggleTodoGroup(g.key),
         fill: body => rows.forEach(t => body.appendChild(buildTodoRow(t)))
       }));
     });
+    list.appendChild(frag);
   }
   const allCollapsed = shownTodoGroups.length > 0 && shownTodoGroups.every(k => collapsedTodoGroups.has(k));
   renderCollapseAllLink(document.getElementById('todoToolsSlot'), 'todoCollapseAllBtn', shownTodoGroups.length, allCollapsed, () => setAllTodoGroupsCollapsed(!allCollapsed));
@@ -176,7 +206,7 @@ function renderTodos(){
   // Done (N): folded by default, newest first, with Clear done
   const doneWrap = document.getElementById('todoDone');
   doneWrap.innerHTML = '';
-  if(shownDone.length){
+  if(shownDone.length && rowsShown){
     const head = document.createElement('div');
     head.className = 'todo-done-head';
     const tog = document.createElement('button');
@@ -247,7 +277,7 @@ function buildTodoRow(t){
     const cls = t.completed ? '' : ' due-' + g;
     meta.push(`<span class="todo-due${cls}"><span class="note-icon" aria-hidden="true">📅</span>${escapeHtml(todoDueLabel(t.due))}</span>`);
   }
-  if(t.owner) meta.push(`<span class="todo-owner">${avatarHtml(t.owner, 'sm')}<span class="todo-owner-name">${escapeHtml(t.owner)}</span></span>`);
+  if(t.owner) meta.push(`<span class="todo-owner">${cardAvatarHtml(t.owner, 'sm')}<span class="todo-owner-name">${escapeHtml(t.owner)}</span></span>`);
   const li = todoLinkedItem(t);
   if(li) meta.push(`<span class="todo-link"><span class="note-icon" aria-hidden="true">💵</span><button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span class="todo-link-name">${escapeHtml(li.name)}</span></button></span>`);
   const note = String(t.notes || '').trim();
@@ -320,6 +350,7 @@ function goToBudgetItem(id){
     if(activeCategoryFilter !== 'All' && activeCategoryFilter !== it.category) activeCategoryFilter = 'All';
   }
   setSide('budget');
+  finishLaterCards();   // the card may be one that a first draw was still going to add
   const card = document.querySelector(`#budgetView [data-item-id="${it.id}"]`);
   if(!card) return;
   card.classList.add('is-new');

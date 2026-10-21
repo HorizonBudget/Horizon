@@ -68,7 +68,9 @@ const {sleep,ok,boot,setItems,finish}=require('./lib/h.js');
 
   // ---- the board is never filtered by search
   type('alex');
-  ok(w.eval(`[...document.querySelectorAll('#itemsList .item-card')].length`)===4 && $('statCount').textContent==='4','budget board itself is not filtered');
+  ok($('statCount').textContent==='4' && !shown($('budgetView')),'budget board itself is not filtered (hidden behind the results)');
+  type('');
+  ok(shown($('budgetView')) && w.eval(`[...document.querySelectorAll('#itemsList .item-card')].length`)===4,'emptying the search shows the whole board again');
 
   // ---- actions on results keep working
   type('laundry');

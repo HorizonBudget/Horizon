@@ -5,20 +5,30 @@ function render(){
 }
 
 function renderCore(){
-  updateIdentityUi();
-  applySide();
-  renderBoard();
-  renderTodos();
-  renderSearchResults();
-  refreshTrashUi();
+  useLinkIndex(true);   // budget item <-> to-do links are indexed once per draw (js/todo.js)
+  try {
+    updateIdentityUi();
+    applySide();
+    renderBoard();
+    renderTodos();
+    renderSearchResults();
+    refreshTrashUi();
+  } finally { useLinkIndex(false); }
+  restoreLeftAt();   // after a reload or Back: back to where the page was (js/month-groups.js)
   if(!window.ResizeObserver && window.refreshPageBar) window.refreshPageBar();
 }
+
+// Cards are only built for what can be seen: the Budget side's list stays empty while the To-do side or the search
+// results are showing (both redraw through renderCore() when they hand back), and a collapsed month builds its cards
+// when it is opened (buildGroupSection). Totals, counts and filters are always kept up to date.
+function budgetListShown(){ return uiSide !== 'todo' && !searchShowing(); }
 
 function renderBoard(){
   document.getElementById('tabActiveBtn').classList.toggle('active', activeTab === 'active');
   document.getElementById('tabCompletedBtn').classList.toggle('active', activeTab === 'completed');
   // search no longer filters the board: it has its own results view covering both sides (js/search.js)
   const completedItems = liveItems().filter(i => i.completed);
+  cancelLaterCards();   // any cards still waiting from the first draw are rebuilt below (js/month-groups.js)
   updateSearchUi();
   updateBackupBanner();
 
@@ -43,7 +53,9 @@ function renderBoard(){
     document.getElementById('filterSummary').style.display = completedItems.length ? '' : 'none';
 
     list.innerHTML = '';
-    if(completedItems.length === 0){
+    if(!budgetListShown()){
+      // built when the Budget side shows again
+    } else if(completedItems.length === 0){
       list.innerHTML = '<div class="empty">Nothing completed yet. Check an item off from Active to see it here.</div>';
     } else {
       const sorted = [...completedItems].sort((a,b) => cmpMonth(a.month, b.month));
@@ -100,7 +112,14 @@ function renderBoard(){
     // lives in the heading row beside Filters (not in the list), so it takes no row of its own
     const allCollapsed = groups.every(g => collapsedMonths.has(g.month));
     renderCollapseAllLink(document.getElementById('monthToolsSlot'), 'collapseAllBtn', groups.length, allCollapsed, () => setAllMonthsCollapsed(!allCollapsed));
-    groups.forEach((g, i) => list.appendChild(buildMonthGroup(g, i)));
+    if(budgetListShown()){
+      const openCards = groups.reduce((n, g) => n + (collapsedMonths.has(g.month) ? 0 : g.items.length), 0);
+      const fill = boardCardFiller(openCards);   // a big board's first draw adds its far cards a moment later
+      const frag = document.createDocumentFragment();
+      groups.forEach((g, i) => frag.appendChild(buildMonthGroup(g, i, fill)));
+      list.appendChild(frag);
+      runLaterCards();
+    }
   }
 
   // stats — reflect the category filter when it is on

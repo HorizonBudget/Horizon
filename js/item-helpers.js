@@ -99,7 +99,10 @@ function cmpMonth(a, b){
 function renderCategoryFilter(){
   const wrap = document.getElementById('categoryFilter');
   wrap.innerHTML = '';
-  const cats = [...new Set(liveItems().map(i => i.category))].sort((a,b) => a.localeCompare(b));
+  const live = liveItems();
+  const perCat = new Map();
+  live.forEach(i => perCat.set(i.category, (perCat.get(i.category) || 0) + 1));
+  const cats = [...perCat.keys()].sort((a,b) => a.localeCompare(b));
 
   if(!cats.includes(activeCategoryFilter) && activeCategoryFilter !== 'All'){
     activeCategoryFilter = 'All';
@@ -107,12 +110,12 @@ function renderCategoryFilter(){
 
   const allPill = document.createElement('div');
   allPill.className = 'month-pill' + (activeCategoryFilter === 'All' ? ' active' : '');
-  allPill.innerHTML = `All categories <span class="count">${liveItems().length}</span>`;
+  allPill.innerHTML = `All categories <span class="count">${live.length}</span>`;
   allPill.onclick = () => { activeCategoryFilter = 'All'; render(); };
   wrap.appendChild(allPill);
 
   cats.forEach(c => {
-    const count = liveItems().filter(i => i.category === c).length;
+    const count = perCat.get(c);
     const cc = categoryColor(c);
     const isActive = activeCategoryFilter === c;
     const pill = document.createElement('div');
@@ -218,4 +221,43 @@ function updateRepeatHint(){
   const next = nextRepeatMonth(month, rp.repeat);
   hint.textContent = (next === 'No date yet' ? 'When you check this off, a new one is added with no date.' : `When you check this off, a new one is added for ${next}.`)
     + (rp.repeat.unit === 'week' ? ' Horizon plans by month, so weekly repeats land in the next month.' : '');
+}
+
+// ---- Owner avatars on cards and to-do rows ----
+// A photo is stored as a long data: URL. Putting that text into every card's HTML made the board slow to draw
+// (each card parsed and decoded its own copy), so cards point at one short blob: URL per photo instead.
+// Without blob support (or for anything that is not a data: URL) the photo is used as it is.
+const photoUrlCache = new Map();
+function photoSrc(photo){
+  if(typeof photo !== 'string' || !/^data:/i.test(photo)) return photo;
+  if(photoUrlCache.has(photo)) return photoUrlCache.get(photo);
+  let url = photo;
+  try {
+    const m = /^data:([^;,]*)(;base64)?,(.*)$/is.exec(photo);
+    if(m && m[2] && window.URL && URL.createObjectURL && window.Blob){
+      const bin = atob(m[3]), bytes = new Uint8Array(bin.length);
+      for(let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      url = URL.createObjectURL(new Blob([bytes], { type: m[1] || 'application/octet-stream' }));
+    }
+  } catch(e) { url = photo; }
+  // forget photos nobody uses any more (a changed or removed photo), so old copies are not kept in memory
+  if(photoUrlCache.size){
+    const inUse = new Set(people.map(p => p.photo));
+    photoUrlCache.forEach((u, p) => {
+      if(inUse.has(p)) return;
+      if(u !== p) try { URL.revokeObjectURL(u); } catch(e) {}
+      photoUrlCache.delete(p);
+    });
+  }
+  photoUrlCache.set(photo, url);
+  return url;
+}
+// avatarHtml() (js/themes.js) with the short photo address; same markup otherwise
+function cardAvatarHtml(name, size){
+  const person = people.find(p => p.name === name);
+  if(!person || !person.photo) return avatarHtml(name, size);
+  const src = photoSrc(person.photo);
+  if(src === person.photo) return avatarHtml(name, size);
+  const cls = 'avatar' + (size === 'sm' ? ' avatar-sm' : size === 'lg' ? ' avatar-lg' : size === 'xl' ? ' avatar-xl' : '');
+  return `<img class="${cls}" src="${escAttr(src)}" alt="${escapeHtml(name)}">`;
 }
