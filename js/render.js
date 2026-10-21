@@ -14,6 +14,7 @@ function renderCore(){
     renderSearchResults();
     refreshTrashUi();
   } finally { useLinkIndex(false); }
+  restoreLeftAt();   // after a reload or Back: back to where the page was (js/month-groups.js)
   if(!window.ResizeObserver && window.refreshPageBar) window.refreshPageBar();
 }
 

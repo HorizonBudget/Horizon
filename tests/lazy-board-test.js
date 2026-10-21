@@ -130,6 +130,46 @@ const {sleep,ok,boot,mk,finish}=require('./lib/h.js');
     w.eval(`people[0].photo=null; render();`);
     ok(d.querySelectorAll('#itemsList .item-card img.avatar').length===0 && d.querySelectorAll('#itemsList .item-card .avatar').length===4,'no photo: initials as before');
     ok(w.eval(`photoSrc('https://example.com/a.jpg')`)==='https://example.com/a.jpg','a non-data photo is used as it is');
+    // changing a photo: cards show the new one and the old short address is let go
+    const revoked=[];
+    w.URL.revokeObjectURL=u=>revoked.push(u);
+    w.eval(`people[0].photo='data:image/jpeg;base64,'+btoa('photo-one'); render();`);
+    const one=d.querySelector('#itemsList .item-card img.avatar').getAttribute('src');
+    w.eval(`people[0].photo='data:image/jpeg;base64,'+btoa('photo-two'); render();`);
+    const two=[...d.querySelectorAll('#itemsList .item-card img.avatar')].map(i=>i.getAttribute('src'));
+    ok(two.length===2 && two.every(s=>s!==one && /^blob:photo-/.test(s)),'after a photo change the cards show the new photo: '+one+' -> '+two.join());
+    ok(revoked.includes(one) && !revoked.includes(two[0]),'the old photo address is revoked, the new one kept: '+revoked.join());
+    w.eval(`people[0].photo=null; render();`);
+    w.eval(`photoSrc('data:image/png;base64,'+btoa('x'))`);
+    ok(revoked.includes(two[0]) && w.eval('photoUrlCache.size')===1,'a removed photo is let go the next time a photo is converted');
+  }
+  // ---------- after a reload while scrolled down: every card is built and the page goes back to its spot ----------
+  {
+    const w=boot(), d=w.document;
+    const scrolls=[];
+    w.scrollTo=(x,y)=>scrolls.push(y);
+    let tall=0;
+    Object.defineProperty(d.documentElement,'scrollHeight',{configurable:true,get:()=>tall});
+    w.eval(`restoreLeftAtY=5000;`);
+    w.eval(`render();`);
+    ok(scrolls.length===0 && w.eval('restoreLeftAtY')===5000,'empty board (data still coming): waits');
+    tall=20000;
+    w.eval(`items=${JSON.stringify(big(w,120))}; render();`);
+    ok(cardIds(d).length===120,'a reload that will restore the spot builds every card at once');
+    ok(scrolls.join()==='5000' && w.eval('restoreLeftAtY')===0,'and scrolls back to where the page was, once: '+scrolls.join());
+    w.render();
+    ok(scrolls.length===1,'later draws do not scroll');
+    // a scroll/tap first cancels it
+    const reload=w=>{ w.performance.getEntriesByType=t=>t==='navigation'?[{type:'reload'}]:[]; w.sessionStorage.setItem('horizonLeftAtY','5000'); };
+    const w3=boot({hook:reload});
+    ok(w3.eval('restoreLeftAtY')===5000 && w3.history.scrollRestoration==='manual','a reload left at 5000px: remembered, browser restoring off');
+    const w2=boot({hook:reload}), d2=w2.document, s2=[];
+    w2.scrollTo=(x,y)=>s2.push(y);
+    Object.defineProperty(d2.documentElement,'scrollHeight',{configurable:true,get:()=>20000});
+    w2.dispatchEvent(new w2.Event('wheel'));
+    w2.eval(`items=${JSON.stringify(big(w2,60))}; render();`);
+    ok(s2.length===0,'someone scrolling first: no jump');
+    ok(w.eval(`leftAtToRestore()`)===0,'a fresh open (not a reload) restores nothing');
   }
   finish();
 })().catch(e=>{ console.error(e); process.exit(1); });

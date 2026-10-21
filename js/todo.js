@@ -351,7 +351,7 @@ function goToBudgetItem(id){
   }
   setSide('budget');
   finishLaterCards();   // the card may be one that a first draw was still going to add
-  const card =document.querySelector(`#budgetView [data-item-id="${it.id}"]`);
+  const card = document.querySelector(`#budgetView [data-item-id="${it.id}"]`);
   if(!card) return;
   card.classList.add('is-new');
   if(card.scrollIntoView) try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e) {}

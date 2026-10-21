@@ -241,7 +241,7 @@ function photoSrc(photo){
     }
   } catch(e) { url = photo; }
   // forget photos nobody uses any more (a changed or removed photo), so old copies are not kept in memory
-  if(photoUrlCache.size >= people.length + 4){
+  if(photoUrlCache.size){
     const inUse = new Set(people.map(p => p.photo));
     photoUrlCache.forEach((u, p) => {
       if(inUse.has(p)) return;
