@@ -1,12 +1,15 @@
 // Horizon service worker.
-//  - The app page (index.html / the folder URL) is NETWORK-FIRST: whenever you are online you get the
-//    newest published version. The cached copy is only used when the network fails or is very slow,
-//    so a pushed update can never get stuck behind an old cached page.
+//  - The app page (index.html / the folder URL) is CACHE-FIRST WITH A BACKGROUND REFRESH (stale-while-revalidate):
+//    when a saved copy exists it opens at once, even on a slow or hung connection, and the newest published page is
+//    fetched behind it for the next open. A refreshed page is only saved once every app file it names (?v=) is saved
+//    too, so the saved copy always opens offline. A new release reaches people on the next open: the page refresh
+//    saves it, and the browser's own sw.js check installs the new worker (which precaches its own copy of the page).
+//    With nothing saved yet (first visit) the page comes straight from the network.
 //  - The app's own files (styles.css and js/*.js) carry ?v=<version> in their URL, so a cached copy of a
 //    given URL is always the right one: they are served cache-first and precached at install, so the app
 //    opens offline. The list is APP_FILES below; tools/release.py keeps it and the version in step.
-//  - Other static files (icons, manifest) and the Firebase SDK modules from www.gstatic.com are served from
-//    the cache and refreshed in the background.
+//  - Other static files (fonts, icons, manifest) and the Firebase SDK modules from www.gstatic.com are served from
+//    the cache and refreshed in the background. The fonts live in fonts/ (no Google Fonts requests at all).
 //  - Firestore traffic (firestore.googleapis.com and every other request) is never touched here.
 //    Firestore's own on-device cache handles offline data.
 // Keep SW_VERSION equal to APP_VERSION in js/config.js: run tools/release.py (a test checks this).
@@ -47,9 +50,9 @@ const APP_FILES = [
   'js/main.js',
 ];
 // APP_FILES:END
-const NAV_TIMEOUT_MS = 5000;   // slow network: fall back to the saved copy after this long
-const PRECACHE = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'horizon-icon-180.png'];
-const STATIC_EXT = /\.(?:png|svg|ico|webmanifest)$/i;
+const PRECACHE = ['manifest.webmanifest', 'icon-192.png', 'icon-512.png', 'icon-maskable-512.png', 'horizon-icon-180.png',
+  'fonts/inter-latin.woff2', 'fonts/fraunces-latin.woff2', 'fonts/ibm-plex-mono-500-latin.woff2'];
+const STATIC_EXT = /\.(?:png|svg|ico|webmanifest|woff2)$/i;
 
 function scopeUrl(){ return new URL('./', self.registration.scope).href; }   // the app shell lives here
 function shellKey(){ return scopeUrl(); }
@@ -64,8 +67,13 @@ self.addEventListener('install', event => {
     }));
     try { const r = await fetch(shellKey(), { cache: 'reload' }); if(r && r.ok) await cache.put(shellKey(), r); } catch(e) {}
     // the app's own files, at the exact ?v= URLs index.html asks for (same best-effort rule)
+    // (a same-URL copy is the same file, so reuse one the page refresh or the browser's HTTP cache already has)
     await Promise.all(APP_FILES.map(async f => {
-      try { const url = new URL(f + '?v=' + SW_VERSION, scopeUrl()).href; const r = await fetch(url, { cache: 'reload' }); if(r && r.ok) await cache.put(url, r); } catch(e) {}
+      try {
+        const url = new URL(f + '?v=' + SW_VERSION, scopeUrl()).href;
+        const r = (await caches.match(url)) || await fetch(url);
+        if(r && r.ok) await cache.put(url, r);
+      } catch(e) {}
     }));
   })());
 });
@@ -91,27 +99,45 @@ function isAppFileRequest(url){
 }
 function cacheable(res){ return !!res && (res.ok || res.type === 'opaque') && res.status !== 206; }
 
-async function networkFirst(req){
+// The ?v= app files a page asks for (styles.css and js/*.js), as full URLs.
+function pageAppFiles(html){
+  const out = [], re = /(?:src|href)="((?:js\/[^"?]+\.js|styles\.css)\?v=[^"]+)"/g;
+  let m; while((m = re.exec(html))) out.push(new URL(m[1], scopeUrl()).href);
+  return out;
+}
+
+// Background refresh: save the newest page, but only after every app file it names is saved too, so the saved
+// page can always open offline. Anything failing leaves the previous saved page in place.
+async function refreshShell(req, cache){
+  const res = await fetch(req, { cache: 'no-cache' });
+  if(!res || !res.ok) return;
+  const html = await res.clone().text();
+  const files = await Promise.all(pageAppFiles(html).map(async url => {
+    if(await cache.match(url)) return true;
+    try { const r = await fetch(url); if(!r || !r.ok) return false; await cache.put(url, r); return true; } catch(e) { return false; }
+  }));
+  if(files.every(Boolean)) await cache.put(shellKey(), res);
+  // a page from a newer release: ask the browser to check sw.js now (it usually does anyway)
+  if(html.indexOf('?v=' + SW_VERSION + '"') < 0){ try { self.registration.update().catch(() => {}); } catch(e) {} }
+}
+
+async function shellRequest(event){
+  const req = event.request;
   const cache = await caches.open(CACHE_NAME);
-  const key = shellKey();
-  const network = fetch(req, { cache: 'no-cache' }).then(async res => {
-    if(res && res.status >= 500) throw new Error('server error');   // a broken server shouldn't hide the saved copy
-    if(res && res.ok){ try { await cache.put(key, res.clone()); } catch(e) {} }
-    return res;
-  });
-  network.catch(() => {});   // handled below; this only stops an "unhandled rejection" if the timer wins first
-  let timer;
-  const timeout = new Promise(resolve => { timer = setTimeout(() => resolve(null), NAV_TIMEOUT_MS); });
+  const saved = await cache.match(shellKey());
+  if(saved){
+    // open at once from the saved copy; keep the worker alive until the refresh is done
+    const done = refreshShell(req, cache).catch(() => {});
+    try { event.waitUntil(done); } catch(e) {}
+    return saved;
+  }
+  // nothing saved yet (first visit): straight from the network
   try {
-    const first = await Promise.race([network, timeout]);
-    if(first){ clearTimeout(timer); return first; }
-    // slow: use the saved copy if there is one, otherwise keep waiting for the network
-    const saved = await cache.match(key);
-    return saved || await network;
+    const res = await fetch(req, { cache: 'no-cache' });
+    if(res && res.status >= 500) throw new Error('server error');
+    if(res && res.ok){ try { await cache.put(shellKey(), res.clone()); } catch(e) {} }
+    return res;
   } catch(e) {
-    clearTimeout(timer);
-    const saved = await cache.match(key);
-    if(saved) return saved;
     return new Response('Horizon is offline and has no saved copy yet. Open it once while online.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
   }
 }
@@ -142,7 +168,7 @@ self.addEventListener('fetch', event => {
   if(req.method !== 'GET') return;
   let url;
   try { url = new URL(req.url); } catch(e) { return; }
-  if(isShellRequest(req, url)){ event.respondWith(networkFirst(req)); return; }
+  if(isShellRequest(req, url)){ event.respondWith(shellRequest(event)); return; }
   if(isAppFileRequest(url)){ event.respondWith(cacheFirst(req)); return; }
   if(isStaticRequest(url)){ event.respondWith(staleWhileRevalidate(req)); return; }
   // anything else (Firestore, fonts, API calls) goes straight to the network

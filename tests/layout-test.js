@@ -8,13 +8,16 @@ const sleep = ms => new Promise(r => setTimeout(r, ms));
 (async () => {
   const idx = fs.readFileSync(path.join(ROOT, 'index.html'), 'utf8');
   const ver = /const APP_VERSION = '([^']+)'/.exec(fs.readFileSync(path.join(ROOT, 'js/config.js'), 'utf8'))[1];
-  const tags = [...idx.matchAll(/<script src="([^"]+)"><\/script>/g)].map(m => m[1]);
+  const tags = [...idx.matchAll(/<script src="([^"]+)"(?: defer)?><\/script>/g)].map(m => m[1]);
+  const allTags = idx.match(/<script\b[^>]*>/g) || [];
   const files = tags.map(t => t.split('?')[0]);
   ok(/^\d+\.\d+\.\d+$/.test(ver), 'APP_VERSION looks like X.Y.Z: ' + ver);
   ok(tags.length >= 10 && tags.every(t => /^js\/[a-z0-9-]+\.js\?v=/.test(t)), 'index.html loads ' + tags.length + ' script files from js/, each with ?v=');
   ok(tags.every(t => t.endsWith('?v=' + ver)), 'every script tag carries ?v=' + ver);
   ok(idx.includes('<link rel="stylesheet" href="styles.css?v=' + ver + '">'), 'styles.css is linked with ?v=' + ver);
   ok(!/<style>/.test(idx) && !/<script>/.test(idx), 'index.html has no inline <style> or <script> any more');
+  ok(allTags.length === tags.length && allTags.every(t => / defer>$/.test(t)), 'every script tag is deferred (the page draws before the scripts run; order is kept)');
+  ok(!/fonts\.googleapis\.com|fonts\.gstatic\.com/.test(idx), 'no Google Fonts request (it held up the first paint)');
   ok(new Set(files).size === files.length, 'no script listed twice');
   ok(files.every(f => fs.existsSync(path.join(ROOT, f))), 'every listed file exists');
   const onDisk = fs.readdirSync(path.join(ROOT, 'js')).filter(f => f.endsWith('.js')).map(f => 'js/' + f).sort();

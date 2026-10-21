@@ -53,7 +53,8 @@ const pngSize=f=>{ const b=fs.readFileSync(f); if(b.readUInt32BE(0)!==0x89504e47
       put:async(k,r)=>{ m.set(typeof k==='string'?k:k.url,r); },
       match:async k=>{ const r=m.get(typeof k==='string'?k:k.url); return r?r.clone():undefined; },
       keys:async()=>[...m.keys()] }; };
-    const cachesStub={ open:async n=>mkCache(n), keys:async()=>Object.keys(caches_), delete:async n=>{ calls.deleted.push(n); delete caches_[n]; return true; } };
+    const cachesStub={ open:async n=>mkCache(n), keys:async()=>Object.keys(caches_), delete:async n=>{ calls.deleted.push(n); delete caches_[n]; return true; },
+      match:async k=>{ const key=typeof k==='string'?k:k.url; for(const n of Object.keys(caches_)){ const r=caches_[n].get(key); if(r) return r.clone(); } return undefined; } };
     const state={ net:opts.net||(async()=>new Response('net',{status:200})) };
     const fetchStub=(req,init)=>{ calls.fetch.push({url:typeof req==='string'?req:req.url,init}); return state.net(req,init); };
     const self_={ registration:{scope:SCOPE}, location:{origin:'https://example.com'}, skipWaiting(){ calls.skip++; }, clients:{claim:async()=>{ calls.claim++; }}, addEventListener(t,f){ handlers[t]=f; } };
@@ -61,8 +62,8 @@ const pngSize=f=>{ const b=fs.readFileSync(f); if(b.readUInt32BE(0)!==0x89504e47
     vm.createContext(ctx); vm.runInContext(swSrc,ctx);
     const fire=async(type,ev)=>{ let p=null; ev.waitUntil=x=>{ p=x; }; ev.respondWith=x=>{ ev._resp=x; ev._responded=true; }; handlers[type](ev); if(p) await p; return ev; };
     const req=(url,extra)=>Object.assign({method:'GET',url,mode:'cors'},extra||{});
-    const doFetch=async r=>{ const ev={request:r,respondWith(x){ ev._resp=x; ev._responded=true; },waitUntil(){}}; handlers.fetch(ev); if(!ev._responded) return {handled:false}; return {handled:true,res:await ev._resp}; };
-    return {handlers,caches_,calls,state,fire,req,doFetch,cacheKeys:n=>[...(caches_[n]||new Map()).keys()]};
+    const doFetch=async r=>{ const ev={request:r,respondWith(x){ ev._resp=x; ev._responded=true; },waitUntil(p){ ev._wait=p; }}; handlers.fetch(ev); if(!ev._responded) return {handled:false}; const res=await ev._resp; return {handled:true,res,wait:Promise.resolve(ev._wait)}; };
+    return {handlers,caches_,calls,state,fire,req,doFetch,selfRef:self_,cacheKeys:n=>[...(caches_[n]||new Map()).keys()]};
   }
   const NAME='horizon-v'+appVer;
   const nav=sw=>sw.req(SCOPE,{mode:'navigate'});
@@ -79,28 +80,59 @@ const pngSize=f=>{ const b=fs.readFileSync(f); if(b.readUInt32BE(0)!==0x89504e47
     ok(!sw.caches_['horizon-v2.9.0']&&!sw.caches_['horizon-v2.8.0'],'activate: old Horizon caches deleted');
     ok(!!sw.caches_[NAME]&&!!sw.caches_['someone-elses'],'activate: current cache and unrelated caches kept');
     ok(sw.calls.claim===1,'activate: clients.claim'); }
-  // navigation network-first
-  { const sw=mkSW(); let body='v1'; sw.state.net=async()=>new Response(body,{status:200});
-    let r=await sw.doFetch(nav(sw)); ok(r.handled&&await r.res.text()==='v1','navigation online: served from the network');
-    ok(sw.calls.fetch[0].init&&sw.calls.fetch[0].init.cache==='no-cache','navigation fetch revalidates (bypasses the HTTP cache)');
-    ok(await (await caches_get(sw)).text()==='v1','navigation: response saved to the cache');
-    body='v2'; r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2','new version online: the NEW page is served, not the cached one');
-    ok(await (await caches_get(sw)).text()==='v2','updated network response replaces the cached copy');
-    sw.state.net=async()=>{ throw new TypeError('Failed to fetch'); };
-    r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2','offline: falls back to the last cached page');
-    // index.html and query-string navigations share the shell
-    r=await sw.doFetch(sw.req(SCOPE+'index.html?x=1',{mode:'navigate'})); ok(await r.res.text()==='v2','offline navigation to index.html?x=1 also gets the shell');
-    sw.state.net=async()=>new Response('boom',{status:503}); r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2','server error 503: cached page used');
-    sw.state.net=async()=>new Response('nf',{status:404}); r=await sw.doFetch(nav(sw)); ok(r.res.status===404&&await (await caches_get(sw)).text()==='v2','a 404 is passed through and never replaces the cache');
-  }
+  // navigation: saved page first, refreshed in the background (stale-while-revalidate)
   async function caches_get(sw){ return sw.caches_[NAME].get(SCOPE).clone(); }
-  { const sw=mkSW({net:async()=>{ throw new Error('x'); }}); const r=await sw.doFetch(nav(sw)); ok(r.res.status===503,'offline with nothing cached: friendly 503, not a crash'); }
-  { // hanging network: timeout falls back to the cache
-    const timers=[]; const sw=mkSW({setTimeout:(f,ms)=>{ timers.push([f,ms]); return timers.length; }});
-    sw.state.net=async()=>new Response('cached',{status:200}); await sw.doFetch(nav(sw));
+  const page_=(v,files)=>'<html>'+(files||['styles.css','js/config.js','js/main.js']).map(f=>`<script src="${f}?v=${v}" defer></script>`).join('')+'</html>';
+  { const sw=mkSW(); let body='v1'; sw.state.net=async()=>new Response(body,{status:200});
+    let r=await sw.doFetch(nav(sw)); ok(r.handled&&await r.res.text()==='v1','first visit (nothing saved): served from the network');
+    ok(sw.calls.fetch[0].init&&sw.calls.fetch[0].init.cache==='no-cache','navigation fetch revalidates (bypasses the HTTP cache)');
+    ok(await (await caches_get(sw)).text()==='v1','first visit: page saved to the cache');
+    body='v2'; r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v1','saved copy is served at once (no waiting on the network)');
+    await r.wait; ok(await (await caches_get(sw)).text()==='v2','background refresh saved the newer page');
+    r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2','the next open gets the newer page');
+    await r.wait;
     sw.state.net=()=>new Promise(()=>{});
-    const p=sw.doFetch(nav(sw)); await sleep(10); timers[timers.length-1][0]();
-    const r=await p; ok(await r.res.text()==='cached'&&timers[timers.length-1][1]>=3000&&timers[timers.length-1][1]<=10000,'slow network: after a few seconds the cached page is used'); }
+    const t0=Date.now(); r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2'&&Date.now()-t0<500,'hung network: saved page served immediately (no timeout wait)');
+    sw.state.net=async()=>{ throw new TypeError('Failed to fetch'); };
+    r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()==='v2'&&await (await caches_get(sw)).text()==='v2','offline: saved page served and kept');
+    r=await sw.doFetch(sw.req(SCOPE+'index.html?x=1',{mode:'navigate'})); ok(await r.res.text()==='v2','offline navigation to index.html?x=1 also gets the shell');
+    sw.state.net=async()=>new Response('boom',{status:503}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()==='v2'&&await (await caches_get(sw)).text()==='v2','server error 503: saved page used and kept');
+    sw.state.net=async()=>new Response('nf',{status:404}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await (await caches_get(sw)).text()==='v2','a 404 never replaces the saved page');
+  }
+  { const sw=mkSW({net:async()=>{ throw new Error('x'); }}); const r=await sw.doFetch(nav(sw)); ok(r.res.status===503,'offline with nothing cached: friendly 503, not a crash'); }
+  { const sw=mkSW({net:async()=>new Response('nf',{status:404})}); const r=await sw.doFetch(nav(sw)); ok(r.res.status===404&&!sw.cacheKeys(NAME).includes(SCOPE),'first visit 404: passed through, not saved'); }
+  { // a new release: the refreshed page is saved only once every ?v= file it names is saved too (opens offline)
+    const sw=mkSW(); let updates=0; const fetched=[];
+    sw.state.net=async()=>new Response(page_(appVer),{status:200}); await sw.doFetch(nav(sw));
+    const newPage=page_('99.0.0'); let failMain=true;
+    sw.state.net=async req=>{ const u=typeof req==='string'?req:req.url; fetched.push(u);
+      if(u===SCOPE) return new Response(newPage,{status:200});
+      if(failMain&&u.includes('js/main.js')) return new Response('nf',{status:404});
+      return new Response('file '+u,{status:200}); };
+    const reg=sw.selfRef.registration; reg.update=()=>{ updates++; return Promise.resolve(); };
+    let r=await sw.doFetch(nav(sw)); ok((await r.res.text()).includes('?v='+appVer),'new release online: this open still shows the saved page at once'); await r.wait;
+    ok((await (await caches_get(sw)).text()).includes('?v='+appVer),'a file of the new page failed: the saved page is NOT replaced (no half-saved release)');
+    ok(updates>=1,'a page from a newer release asks the browser to check sw.js now');
+    failMain=false; r=await sw.doFetch(nav(sw)); await r.wait;
+    ok(await (await caches_get(sw)).text()===newPage,'all files saved: the new release is saved for the next open');
+    ok(['styles.css','js/config.js','js/main.js'].every(f=>sw.cacheKeys(NAME).includes(SCOPE+f+'?v=99.0.0')),'its ?v= files are saved before the page, so it opens offline');
+    sw.state.net=async()=>{ throw new Error('offline'); };
+    r=await sw.doFetch(nav(sw)); ok(await r.res.text()===newPage,'next open (even offline) is on the new release');
+    for(const f of ['styles.css','js/main.js']){ const x=await sw.doFetch(sw.req(SCOPE+f+'?v=99.0.0')); ok(x.handled&&x.res.ok,'offline: new release file served from cache: '+f); }
+  }
+  { // same release: refresh needs no file downloads
+    const sw=mkSW(); sw.state.net=async()=>new Response(page_(appVer),{status:200});
+    await sw.fire('install',{}); const n0=sw.calls.fetch.length;
+    const r=await sw.doFetch(nav(sw)); await r.wait;
+    ok(sw.calls.fetch.length-n0===1,'refresh of an unchanged release fetches only the page (its files are already saved)'); }
+  { // install reuses app files an older cache already saved (same ?v= URL = same file)
+    const sw=mkSW(); const u=SCOPE+'js/config.js?v='+appVer; sw.caches_['horizon-v0.0.1']=new Map([[u,new Response('old-cache copy',{status:200})]]);
+    await sw.fire('install',{}); ok(!sw.calls.fetch.some(c=>c.url===u)&&await sw.caches_[NAME].get(u).clone().text()==='old-cache copy','install: a file the page refresh already saved is not downloaded again');
+    ok(['fonts/inter-latin.woff2','fonts/fraunces-latin.woff2','fonts/ibm-plex-mono-500-latin.woff2'].every(f=>sw.cacheKeys(NAME).includes(SCOPE+f)),'install: the self-hosted fonts are precached');
+    for(const f of ['fonts/inter-latin.woff2','fonts/fraunces-latin.woff2','fonts/ibm-plex-mono-500-latin.woff2']) ok(fs.existsSync(SRC+f),'font file exists: '+f); }
+  { const sw=mkSW(); sw.state.net=async()=>new Response('font',{status:200}); const u=SCOPE+'fonts/inter-latin.woff2';
+    let r=await sw.doFetch(sw.req(u)); await sleep(5); sw.state.net=async()=>{ throw new Error('offline'); };
+    r=await sw.doFetch(sw.req(u)); ok(r.handled&&await r.res.text()==='font','fonts: served from the cache (works offline)'); }
   // never cache Firestore
   { const sw=mkSW();
     const urls=['https://firestore.googleapis.com/google.firestore.v1.Firestore/Listen/channel?VER=8','https://firestore.googleapis.com/v1/projects/x/databases/(default)/documents/households/ABC','https://fonts.googleapis.com/css2?family=Inter','https://identitytoolkit.googleapis.com/v1/accounts:lookup',SCOPE+'api/data.json'];

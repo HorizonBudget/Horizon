@@ -21,7 +21,8 @@ if not re.fullmatch(r'\d+\.\d+\.\d+', new):
 
 cfg_t = ver_re.sub(lambda m: m.group(1) + new + m.group(3), cfg.read_text())
 html = idx.read_text()
-asset = re.compile(r'(<link rel="stylesheet" href="styles\.css|<script src="js/[A-Za-z0-9_.-]+?\.js)(?:\?v=[^"]*)?(">)')
+# script tags look like <script src="js/x.js?v=1.2.3" defer></script>; only the ?v= part is rewritten
+asset = re.compile(r'(<link rel="stylesheet" href="styles\.css|<script src="js/[A-Za-z0-9_.-]+?\.js)(?:\?v=[^"]*)?(")')
 html_t = asset.sub(lambda m: m.group(1) + '?v=' + new + m.group(2), html)
 files = ['styles.css'] + re.findall(r'<script src="(js/[^"?]+)', html_t)
 sw_t = sw.read_text()

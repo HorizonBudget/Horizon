@@ -9,7 +9,7 @@ function buildApp(root) {
   let html = fs.readFileSync(path.join(root, 'index.html'), 'utf8');
   const css = /<link rel="stylesheet" href="([^"?]+)(?:\?[^"]*)?">/;
   html = html.replace(css, (m, href) => '<style>\n' + fs.readFileSync(path.join(root, href), 'utf8') + '</style>');
-  const tags = html.match(/<script src="[^"]+"><\/script>/g) || [];
+  const tags = html.match(/<script src="[^"]+"(?: defer)?><\/script>/g) || [];
   const code = tags.map(t => {
     const src = t.match(/src="([^"?]+)/)[1];
     return fs.readFileSync(path.join(root, src), 'utf8');

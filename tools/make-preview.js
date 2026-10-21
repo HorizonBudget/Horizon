@@ -18,6 +18,8 @@ const fragment = args.includes('--fragment');
 const out = path.resolve(args.filter(a => !a.startsWith('--'))[0] || path.join(ROOT, 'preview', 'horizon-preview.html'));
 
 let html = buildApp();
+// The app's own fonts (fonts/*.woff2), inlined so the preview shows them from any folder or as an Artifact.
+html = html.replace(/url\((fonts\/[A-Za-z0-9_.-]+\.woff2)\)/g, (m, f) => 'url(data:font/woff2;base64,' + fs.readFileSync(path.join(ROOT, f)).toString('base64') + ')');
 
 // 1. Blank the Firebase key (must happen, or we stop).
 const before = html;

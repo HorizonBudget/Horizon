@@ -119,7 +119,7 @@ const w = dom.window, d = w.document, root = d.documentElement, $ = id => d.getE
   ok(/html\.dialog-open\.had-scrollbar\s*\{[^}]*scrollbar-gutter:\s*stable/.test(sec), 'CSS: a page that had a scrollbar keeps its gutter (nothing jumps sideways)');
   ok(/\.overlay\s*\{[^}]*overscroll-behavior:\s*contain/.test(sec) && /\.modal\s*\{[^}]*overscroll-behavior:\s*contain/.test(sec), 'CSS: .overlay and .modal contain their overscroll');
   ok(!/body[^{}]*\{[^}]*overflow\s*:\s*hidden/.test(sec) && !/position:\s*fixed/.test(sec), 'CSS: no overflow:hidden on body and no position:fixed body (either would break the sticky headers / lose the scroll position)');
-  ok(/<script src="js\/scroll-lock\.js\?v=[^"]+"><\/script>\s*<script src="js\/main\.js/.test(idx), 'index.html loads scroll-lock.js immediately before main.js');
+  ok(/<script src="js\/scroll-lock\.js\?v=[^"]+"(?: defer)?><\/script>\s*<script src="js\/main\.js/.test(idx), 'index.html loads scroll-lock.js immediately before main.js');
   ok(/initScrollLock\(\);/.test(main) && main.indexOf('initScrollLock') < main.indexOf('resumeSession'), 'main.js calls initScrollLock() before the session resumes');
   const sw = fs.readFileSync(path.join(ROOT, 'sw.js'), 'utf8'); ok(sw.includes("'js/scroll-lock.js'"), 'sw.js caches scroll-lock.js for offline use');
   console.log(`\n${pass} passed, ${fails} failed`); process.exit(fails ? 1 : 0);

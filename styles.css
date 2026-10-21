@@ -1,3 +1,8 @@
+  /* Fonts are served from this site (fonts/, precached by sw.js), never from Google, so a slow or blocked
+     font request can't hold up the first paint. font-display:swap draws text at once in a fallback font. */
+  @font-face{font-family:'Inter'; font-style:normal; font-weight:400 700; font-display:swap; src:url(fonts/inter-latin.woff2) format('woff2');}
+  @font-face{font-family:'Fraunces'; font-style:normal; font-weight:400 700; font-display:swap; src:url(fonts/fraunces-latin.woff2) format('woff2');}
+  @font-face{font-family:'IBM Plex Mono'; font-style:normal; font-weight:500; font-display:swap; src:url(fonts/ibm-plex-mono-500-latin.woff2) format('woff2');}
   :root{
     color-scheme:light;
     --on-accent:#fff;
