@@ -75,31 +75,42 @@ const pngSize=f=>{ const b=fs.readFileSync(f); if(b.readUInt32BE(0)!==0x89504e47
     const bad=mkSW({net:async()=>{ throw new Error('offline'); }}); let threw=false; try{ await bad.fire('install',{}); }catch(e){ threw=true; }
     ok(!threw,'install: a failed precache never blocks the update'); }
   // activate
-  { const sw=mkSW(); sw.caches_['horizon-v2.9.0']=new Map(); sw.caches_['horizon-v2.8.0']=new Map(); sw.caches_[NAME]=new Map(); sw.caches_['someone-elses']=new Map();
+  { const sw=mkSW(); sw.caches_['horizon-v2.9.0']=new Map(); sw.caches_['horizon-v2.10.0']=new Map(); sw.caches_['horizon-v2.8.0']=new Map(); sw.caches_[NAME]=new Map(); sw.caches_['someone-elses']=new Map(); sw.caches_['horizon-v999.0.0']=new Map();
     await sw.fire('activate',{});
-    ok(!sw.caches_['horizon-v2.9.0']&&!sw.caches_['horizon-v2.8.0'],'activate: old Horizon caches deleted');
+    ok(!sw.caches_['horizon-v2.9.0']&&!sw.caches_['horizon-v2.8.0']&&!sw.caches_['horizon-v999.0.0'],'activate: older Horizon caches (and stray newer ones) deleted');
+    ok(!!sw.caches_['horizon-v2.10.0'],'activate: the previous version\'s cache is kept one more release (numeric order, 2.10 > 2.9)');
     ok(!!sw.caches_[NAME]&&!!sw.caches_['someone-elses'],'activate: current cache and unrelated caches kept');
-    ok(sw.calls.claim===1,'activate: clients.claim'); }
+    ok(sw.calls.claim===1,'activate: clients.claim');
+    // an old page opened just before the new worker took over still gets its files from the kept cache
+    const u=SCOPE+'js/main.js?v=2.10.0'; sw.caches_['horizon-v2.10.0'].set(u,new Response('old main',{status:200})); sw.state.net=async()=>{ throw new Error('offline'); };
+    const r=await sw.doFetch(sw.req(u)); ok(r.handled&&await r.res.text()==='old main','previous version\'s ?v= file served from its kept cache'); }
   // navigation: saved page first, refreshed in the background (stale-while-revalidate)
   async function caches_get(sw){ return sw.caches_[NAME].get(SCOPE).clone(); }
   const page_=(v,files)=>'<html>'+(files||['styles.css','js/config.js','js/main.js']).map(f=>`<script src="${f}?v=${v}" defer></script>`).join('')+'</html>';
-  { const sw=mkSW(); let body='v1'; sw.state.net=async()=>new Response(body,{status:200});
-    let r=await sw.doFetch(nav(sw)); ok(r.handled&&await r.res.text()==='v1','first visit (nothing saved): served from the network');
+  { const sw=mkSW(); const P1=page_(appVer)+'v1', P2=page_(appVer)+'v2'; let body=P1;
+    sw.state.net=async req=>{ const u=typeof req==='string'?req:req.url; return new Response(u===SCOPE||u.includes('index.html')?body:'file',{status:200}); };
+    let r=await sw.doFetch(nav(sw)); ok(r.handled&&await r.res.text()===P1,'first visit (nothing saved): served from the network');
     ok(sw.calls.fetch[0].init&&sw.calls.fetch[0].init.cache==='no-cache','navigation fetch revalidates (bypasses the HTTP cache)');
-    ok(await (await caches_get(sw)).text()==='v1','first visit: page saved to the cache');
-    body='v2'; r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v1','saved copy is served at once (no waiting on the network)');
-    await r.wait; ok(await (await caches_get(sw)).text()==='v2','background refresh saved the newer page');
-    r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2','the next open gets the newer page');
+    ok(await (await caches_get(sw)).text()===P1,'first visit: page saved to the cache');
+    body=P2; r=await sw.doFetch(nav(sw)); ok(await r.res.text()===P1,'saved copy is served at once (no waiting on the network)');
+    await r.wait; ok(await (await caches_get(sw)).text()===P2,'background refresh saved the newer page');
+    r=await sw.doFetch(nav(sw)); ok(await r.res.text()===P2,'the next open gets the newer page');
     await r.wait;
     sw.state.net=()=>new Promise(()=>{});
-    const t0=Date.now(); r=await sw.doFetch(nav(sw)); ok(await r.res.text()==='v2'&&Date.now()-t0<500,'hung network: saved page served immediately (no timeout wait)');
+    const t0=Date.now(); r=await sw.doFetch(nav(sw)); ok(await r.res.text()===P2&&Date.now()-t0<500,'hung network: saved page served immediately (no timeout wait)');
     sw.state.net=async()=>{ throw new TypeError('Failed to fetch'); };
-    r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()==='v2'&&await (await caches_get(sw)).text()==='v2','offline: saved page served and kept');
-    r=await sw.doFetch(sw.req(SCOPE+'index.html?x=1',{mode:'navigate'})); ok(await r.res.text()==='v2','offline navigation to index.html?x=1 also gets the shell');
-    sw.state.net=async()=>new Response('boom',{status:503}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()==='v2'&&await (await caches_get(sw)).text()==='v2','server error 503: saved page used and kept');
-    sw.state.net=async()=>new Response('nf',{status:404}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await (await caches_get(sw)).text()==='v2','a 404 never replaces the saved page');
+    r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()===P2&&await (await caches_get(sw)).text()===P2,'offline: saved page served and kept');
+    r=await sw.doFetch(sw.req(SCOPE+'index.html?x=1',{mode:'navigate'})); ok(await r.res.text()===P2,'offline navigation to index.html?x=1 also gets the shell');
+    sw.state.net=async()=>new Response('boom',{status:503}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await r.res.text()===P2&&await (await caches_get(sw)).text()===P2,'server error 503: saved page used and kept');
+    sw.state.net=async()=>new Response('nf',{status:404}); r=await sw.doFetch(nav(sw)); await r.wait; ok(await (await caches_get(sw)).text()===P2,'a 404 never replaces the saved page');
   }
   { const sw=mkSW({net:async()=>{ throw new Error('x'); }}); const r=await sw.doFetch(nav(sw)); ok(r.res.status===503,'offline with nothing cached: friendly 503, not a crash'); }
+  { const sw=mkSW({net:async()=>new Response('Copyright … SIL Open Font License',{status:200})});
+    const r=await sw.doFetch(sw.req(SCOPE+'fonts/LICENSE.txt',{mode:'navigate'})); await r.wait;
+    ok(r.res.ok&&!sw.cacheKeys(NAME).includes(SCOPE),'first visit to a non-app page (fonts/LICENSE.txt): shown, never saved as the app');
+    sw.caches_[NAME].set(SCOPE,new Response(page_(appVer),{status:200}));
+    const r2=await sw.doFetch(sw.req(SCOPE+'fonts/LICENSE.txt',{mode:'navigate'})); await r2.wait;
+    ok((await (await caches_get(sw)).text()).includes('?v='+appVer),'background refresh of a non-app page never replaces the saved app'); }
   { const sw=mkSW({net:async()=>new Response('nf',{status:404})}); const r=await sw.doFetch(nav(sw)); ok(r.res.status===404&&!sw.cacheKeys(NAME).includes(SCOPE),'first visit 404: passed through, not saved'); }
   { // a new release: the refreshed page is saved only once every ?v= file it names is saved too (opens offline)
     const sw=mkSW(); let updates=0; const fetched=[];

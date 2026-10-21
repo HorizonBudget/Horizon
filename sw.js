@@ -80,11 +80,23 @@ self.addEventListener('install', event => {
 
 self.addEventListener('activate', event => {
   event.waitUntil((async () => {
-    const names = await caches.keys();
-    await Promise.all(names.filter(n => n.indexOf(CACHE_PREFIX) === 0 && n !== CACHE_NAME).map(n => caches.delete(n)));
+    // Keep the previous version's cache for one more release: a page opened from it just before this worker took
+    // over still finds its ?v= files. Anything older goes.
+    const names = (await caches.keys()).filter(n => n.indexOf(CACHE_PREFIX + 'v') === 0 && n !== CACHE_NAME);
+    const older = names.filter(n => versionOrder(n.slice(CACHE_PREFIX.length + 1), SW_VERSION) < 0)
+      .sort((a, b) => versionOrder(b.slice(CACHE_PREFIX.length + 1), a.slice(CACHE_PREFIX.length + 1)));
+    const keep = older[0];
+    await Promise.all(names.filter(n => n !== keep).map(n => caches.delete(n)));
     await self.clients.claim();
   })());
 });
+
+// numeric X.Y.Z compare (negative when a is older than b)
+function versionOrder(a, b){
+  const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number);
+  for(let i = 0; i < 3; i++){ const d = (x[i] || 0) - (y[i] || 0); if(d) return d; }
+  return 0;
+}
 
 function isShellRequest(req, url){
   return req.mode === 'navigate' && url.origin === self.location.origin;
@@ -116,7 +128,7 @@ async function refreshShell(req, cache){
     if(await cache.match(url)) return true;
     try { const r = await fetch(url); if(!r || !r.ok) return false; await cache.put(url, r); return true; } catch(e) { return false; }
   }));
-  if(files.every(Boolean)) await cache.put(shellKey(), res);
+  if(files.length && files.every(Boolean)) await cache.put(shellKey(), res);   // only a real app page (it names ?v= files)
   // a page from a newer release: ask the browser to check sw.js now (it usually does anyway)
   if(html.indexOf('?v=' + SW_VERSION + '"') < 0){ try { self.registration.update().catch(() => {}); } catch(e) {} }
 }
@@ -135,7 +147,10 @@ async function shellRequest(event){
   try {
     const res = await fetch(req, { cache: 'no-cache' });
     if(res && res.status >= 500) throw new Error('server error');
-    if(res && res.ok){ try { await cache.put(shellKey(), res.clone()); } catch(e) {} }
+    if(res && res.ok){
+      // only a real app page (it names ?v= files) is saved as the app; e.g. fonts/LICENSE.txt never is
+      try { if(pageAppFiles(await res.clone().text()).length) await cache.put(shellKey(), res.clone()); } catch(e) {}
+    }
     return res;
   } catch(e) {
     return new Response('Horizon is offline and has no saved copy yet. Open it once while online.', { status: 503, headers: { 'Content-Type': 'text/plain; charset=utf-8' } });
@@ -143,9 +158,10 @@ async function shellRequest(event){
 }
 
 // The URL names its version, so a saved copy can never be the wrong one: use it, else fetch and keep it.
+// Any Horizon cache may answer (the previous version's is kept one release for pages opened from it).
 async function cacheFirst(req){
   const cache = await caches.open(CACHE_NAME);
-  const hit = await cache.match(req);
+  const hit = await caches.match(req);
   if(hit) return hit;
   const res = await fetch(req);
   if(cacheable(res)){ try { await cache.put(req, res.clone()); } catch(e) {} }
