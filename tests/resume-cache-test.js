@@ -2,11 +2,11 @@
 // Firestore. Edits made before the first answer are kept and merged, never written over newer server data.
 const {JSDOM}=require('jsdom');
 const html=require('./lib/build-app').buildApp();
-let store={}, listeners={}, held=false, queued=[], pushes=0;
+let store={}, listeners={}, held=false, queued=[], pushes=0, pushFail=false;
 function deliver(code,cb){ cb(store[code]?JSON.parse(JSON.stringify(store[code])):null,false); }
 function fakeFactory(){ return {
-  subscribe(code,cb){ (listeners[code]=listeners[code]||[]).push(cb); if(held) queued.push(()=>deliver(code,cb)); else setTimeout(()=>deliver(code,cb),5); return ()=>{ listeners[code]=(listeners[code]||[]).filter(f=>f!==cb); }; },
-  push(code,data){ pushes++; store[code]=JSON.parse(JSON.stringify(data)); return new Promise(r=>setTimeout(()=>{ (listeners[code]||[]).forEach(cb=>cb(JSON.parse(JSON.stringify(store[code])),false)); r(); },5)); }
+  subscribe(code,cb){ (listeners[code]=listeners[code]||[]).push(cb); if(held) queued.push({code,cb,err:arguments[2]}); else setTimeout(()=>deliver(code,cb),5); return ()=>{ listeners[code]=(listeners[code]||[]).filter(f=>f!==cb); }; },
+  push(code,data){ pushes++; if(pushFail) return Promise.reject(new Error('offline')); store[code]=JSON.parse(JSON.stringify(data)); return new Promise(r=>setTimeout(()=>{ (listeners[code]||[]).forEach(cb=>cb(JSON.parse(JSON.stringify(store[code])),false)); r(); },5)); }
 };}
 function boot(ls){
   const dom=new JSDOM(html,{runScripts:'dangerously',pretendToBeVisual:true,url:'http://localhost/',beforeParse(w){
@@ -64,8 +64,16 @@ const names=w=>w.eval('liveItems().map(i=>i.name).sort().join(",")');
   const c2=JSON.parse(B.localStorage.getItem('horizonBoardCache'));
   ok(c2.local && c2.local.items.length===3 && c2.base.items.length===2,'held edits kept in the copy on this device');
 
+  // ---------- 2b. the phone's own (stale) Firestore copy answers first: display only, nothing merged or saved ----------
+  const stale=JSON.parse(saved.horizonBoardCache).base; stale.clientId='old';
+  queued.forEach(q=>q.cb(JSON.parse(JSON.stringify(stale)),true));
+  await sleep(600);
+  ok(pushes===0 && !store[CODE].items.some(i=>i.name==='Camp'),'stale cached snapshot does not release saves');
+  ok(/Updating/.test($(B,'syncPill').textContent) && B.eval('cloud.held'),'still waiting for the server after a cached snapshot');
+  ok(B.eval('liveItems().length')===3,'held edits still on screen');
+
   // ---------- 3. first answer arrives: merged, nothing lost, nothing overwritten ----------
-  held=false; queued.forEach(f=>f()); queued=[];
+  held=false; queued.forEach(q=>deliver(q.code,q.cb)); queued=[];
   await sleep(700);
   ok(names(B)==='Camp,Dentist,Gutters,Tires','server item and held item both present ('+names(B)+')');
   ok(B.eval("items.find(i=>i.name==='Tires').cost")===650,'newer server change kept (Tires 650)');
@@ -84,7 +92,7 @@ const names=w=>w.eval('liveItems().map(i=>i.name).sort().join(",")');
   held=true; queued=[]; pushes=0;
   const C=boot(saved2); await sleep(40);
   ok(names(C)==='Camp,Dentist,Gutters,Tires','C shows its copy first');
-  held=false; queued.forEach(f=>f()); queued=[]; await sleep(600);
+  held=false; queued.forEach(q=>deliver(q.code,q.cb)); queued=[]; await sleep(600);
   ok(names(C)==='Dentist,Gutters,Tires','first answer replaces the copy (Camp removed elsewhere)');
   ok(pushes===0,'nothing pushed when nothing changed here');
 
@@ -93,7 +101,7 @@ const names=w=>w.eval('liveItems().map(i=>i.name).sort().join(",")');
   held=true; queued=[];
   const D=boot(other); await sleep(40);
   ok($(D,'app').style.display!=='block' && $(D,'gateBtn').textContent==='Connecting…','other household code: normal sign-in, no stale board');
-  held=false; queued.forEach(f=>f()); queued=[]; await sleep(300);
+  held=false; queued.forEach(q=>deliver(q.code,q.cb)); queued=[]; await sleep(300);
 
   // ---------- 6. leaving clears the copy ----------
   C.leaveHousehold(); await sleep(30); $(C,'confirmOk').click(); await sleep(30);
@@ -105,17 +113,62 @@ const names=w=>w.eval('liveItems().map(i=>i.name).sort().join(",")');
   const c7=JSON.parse(B.localStorage.getItem('horizonBoardCache'));
   ok(c7 && !c7.base.people.some(p=>p.photo),'big photo left out of the copy');
   ok(store[CODE].people.some(p=>p.photo===big),'photo still synced to the server');
-  B.eval("Storage.prototype.setItem=function(){ throw new Error('QuotaExceededError'); }");
+  B.eval("window.__origSet=Storage.prototype.setItem; Storage.prototype.setItem=function(){ throw new Error('QuotaExceededError'); }");
   let threw=false; try { addItem(B,'Shoes',80); await sleep(700); } catch(e){ threw=true; }
   ok(!threw && store[CODE].items.some(i=>i.name==='Shoes'),'quota error does not break saving');
+  B.eval("Storage.prototype.setItem=window.__origSet");
 
   // ---------- 8. merge helper: deletes elsewhere stay deleted unless edited here ----------
   const m=A.mergeHeldState(
     {items:[{id:'a',n:1},{id:'b',n:1}],people:[],activity:[],categories:['X'],subcategories:{}},
     {items:[{id:'a',n:1},{id:'b',n:2},{id:'c',n:1}],people:[],activity:[{text:'t',time:'z'}],categories:['X','Y'],subcategories:{}},
     {items:[{id:'a',n:5,deletedAt:9}],people:[],activity:[],categories:['X','Z'],subcategories:{}});
+  ok(m.categories.join()==='X,Y,Z','categories merged, this device order kept');
+  const r=A.mergeHeldState({items:[],people:[],activity:[],categories:['A','B','C'],subcategories:{}},
+    {items:[],people:[],activity:[],categories:['C','A','B'],subcategories:{}},
+    {items:[],people:[],activity:[],categories:['A','B','C','D'],subcategories:{}});
+  ok(r.categories.join()==='C,A,B,D','category reorder made while held survives the merge ('+r.categories.join()+')');
   ok(JSON.stringify(m.items)==='[{"id":"a","n":5,"deletedAt":9},{"id":"b","n":2},{"id":"c","n":1}]','three-way item merge '+JSON.stringify(m.items));
-  ok(m.categories.join()==='X,Z,Y' && m.activity.length===1,'categories and activity merged');
+  ok(m.activity.length===1,'activity merged');
+
+  // ---------- 9. a failed save is not recorded as what the server has; the edit stays in the copy ----------
+  pushFail=true;
+  addItem(B,'Boots',90); await sleep(700);
+  const c9=JSON.parse(B.localStorage.getItem('horizonBoardCache'));
+  ok(c9 && !c9.base.items.some(i=>i.name==='Boots') && c9.local && c9.local.items.some(i=>i.name==='Boots'),'unconfirmed save kept as an edit, not as server data');
+  pushFail=false; await sleep(5500);
+  const c9b=JSON.parse(B.localStorage.getItem('horizonBoardCache'));
+  ok(store[CODE].items.some(i=>i.name==='Boots') && c9b.base.items.some(i=>i.name==='Boots') && !c9b.local,'after the retry succeeds the copy is confirmed');
+
+  // ---------- 10. the server refuses, or the household is gone: stop, say so, keep edits ----------
+  for(const kind of ['permission','gone']){
+    const lsB=lsOf(B); held=true; queued=[]; pushes=0;
+    const E=boot(lsB); await sleep(40);
+    addItem(E,'Kept '+kind,10); await sleep(500);
+    const q=queued[queued.length-1];
+    if(kind==='permission') q.err({code:'permission-denied'}); else q.cb(null,false);
+    await sleep(300);
+    ok(/Not synced/.test($(E,'syncPill').textContent) && /kept on this device/.test(E.document.body.textContent),kind+': plain message shown');
+    ok(E.eval('cloud.retry')===null && E.eval('cloud.unsub')===null,kind+': stops retrying');
+    addItem(E,'More '+kind,10); await sleep(500);
+    const ce=JSON.parse(E.localStorage.getItem('horizonBoardCache'));
+    ok(pushes===0 && ce.local.items.some(i=>i.name==='Kept '+kind) && ce.local.items.some(i=>i.name==='More '+kind),kind+': edits kept on this device, nothing saved');
+    held=false;
+  }
+
+  // ---------- 11. profile gone from the copy but edits unsent: open anyway, ask after the server answers ----------
+  {
+    const ls=lsOf(B); const rec=JSON.parse(ls.horizonBoardCache);
+    rec.local=JSON.parse(JSON.stringify(rec.base)); rec.local.items.push({id:'held-x',name:'Held edit',category:'Home',cost:5,month:'No date yet',owner:'',completed:false});
+    ls.horizonBoardCache=JSON.stringify(rec);
+    ls.ledgerHousehold=JSON.stringify({code:CODE,name:'Nobody',personId:'no-such-id'});
+    held=true; queued=[]; pushes=0;
+    const F=boot(ls); await sleep(40);
+    ok($(F,'app').style.display==='block' && F.eval("liveItems().some(i=>i.name==='Held edit')"),'unknown profile with held edits: copy still shown');
+    held=false; queued.forEach(q=>deliver(q.code,q.cb)); queued=[]; await sleep(300);
+    ok($(F,'chooseOverlay').style.display==='flex','asks who this is after the server answers');
+    ok(F.eval("liveItems().some(i=>i.name==='Held edit')"),'held edit kept through the profile question');
+  }
 
   console.log(`${pass} passed, ${fails} failed`); process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(2)});

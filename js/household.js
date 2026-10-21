@@ -108,13 +108,16 @@ function resumeFromCache(saved){
   const n = String(saved.name).trim().toLowerCase();
   const person = (saved.personId != null && st.people.find(p => samePid(p.id, saved.personId)))
     || st.people.find(p => String(p.name).trim().toLowerCase() === n);
-  if(!person) return false;   // renamed or removed elsewhere: the normal sign-in asks who this is
-  household = { code: saved.code, name: person.name, personId: person.id };
+  // renamed or removed elsewhere: with nothing unsent, the normal sign-in asks who this is. With unsent edits,
+  // open the copy anyway so they aren't lost; reconcileIdentity asks once the server has answered.
+  if(!person && !rec.local) return false;
+  household = person ? { code: saved.code, name: person.name, personId: person.id }
+    : { code: saved.code, name: saved.name, personId: saved.personId == null ? null : saved.personId };
   applyState(st);
   cloud.mode = 'cloud';
   cloud.held = true;
   cloud.heldBase = JSON.parse(JSON.stringify(rec.base));
-  document.getElementById('yourName').value = person.name;
+  document.getElementById('yourName').value = household.name;
   saveSession();
   document.getElementById('gate').style.display = 'none';
   document.getElementById('app').style.display = 'block';

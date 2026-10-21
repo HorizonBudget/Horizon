@@ -4,7 +4,8 @@
 // ============================================================
 const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
-  held: false, heldBase: null, gen: 0, retry: null, cachedJson: '' };
+  held: false, heldBase: null, gen: 0, retry: null, inflight: '',
+  confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '' };
 
 function cloudConfigured(){
   return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -92,7 +93,8 @@ function cloudDisconnect(){
   try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
   cloud.unsub = null; cloud.ready = false; cloud.adapter = null; cloud.lastJson = '';
   clearTimeout(cloud.timer); cloud.timer = null;
-  cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.cachedJson = '';
+  cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.inflight = '';
+  cloud.confirmedJson = ''; cloud.confirmedState = null; cloud.cacheBase = ''; cloud.cacheCur = '';
   clearTimeout(cloud.retry); cloud.retry = null;
 }
 function friendlyCloudError(e){
@@ -113,7 +115,7 @@ function cloudApplyRemote(data){
   clearTimeout(cloud.timer); cloud.timer = null;
   applyState(remote);
   cloud.lastJson = remote.idsAssigned ? '' : stableJson(snapshotState());
-  cacheConfirmedBoard(cloud.lastJson);
+  if(cloud.lastJson){ markConfirmed(cloud.lastJson, snapshotState()); refreshBoardCache(); }
   reconcileIdentity();   // follow a rename made on another device, or ask if this profile is gone
   if(purgeTrash() || remote.idsAssigned){ render(); return; }   // expired deleted items / new ids are saved back
   renderCore();
@@ -128,8 +130,10 @@ function cloudSchedulePush(){
     return;
   }
   if(!cloud.ready) return;
-  const now = stableJson(snapshotState());
-  if(now === cloud.lastJson){ cacheConfirmedBoard(now); return; }
+  const cur = snapshotState(), now = stableJson(cur);
+  if(now === cloud.lastJson && !cloud.inflight) markConfirmed(now, cur);
+  refreshBoardCache(cur, now);
+  if(now === cloud.lastJson) return;
   setCloudStatus('saving');
   clearTimeout(cloud.timer);
   cloud.timer = setTimeout(cloudFlush, 400);
@@ -141,11 +145,17 @@ function cloudFlush(){
   const j = stableJson(state);
   if(j === cloud.lastJson){ setCloudStatus('ok'); return; }
   cloud.lastJson = j;
-  cacheConfirmedBoard(j, state);
+  cloud.inflight = j;   // not "what the server has" until the save is confirmed
   const payload = JSON.parse(JSON.stringify(Object.assign({}, state, { clientId, updatedAt: new Date().toISOString() })));
   Promise.resolve(cloud.adapter.push(household.code, payload))
-    .then(() => { if(!cloud.timer) setCloudStatus('ok'); })
+    .then(() => {
+      if(cloud.inflight === j) cloud.inflight = '';
+      if(!cloud.ready) return;
+      markConfirmed(j, state); refreshBoardCache();
+      if(!cloud.timer) setCloudStatus('ok');
+    })
     .catch(() => {
+      if(cloud.inflight === j) cloud.inflight = '';
       cloud.lastJson = '';
       setCloudStatus('err');
       clearTimeout(cloud.timer);
@@ -158,10 +168,10 @@ function setCloudStatus(kind){
   if(!el) return;
   // with no connection nothing can be "Synced". Edits are kept on this device and sent when it's back.
   if(kind !== 'local' && navigator.onLine === false) kind = 'offline';
-  const text = { updating: 'Updating…', ok: '● Synced', saving: 'Saving…', err: 'Not saved — retrying', local: 'This device only', offline: 'Offline — changes will sync later' }[kind] || '';
+  const text = { updating: 'Updating…', blocked: 'Not synced — changes kept here', ok: '● Synced', saving: 'Saving…', err: 'Not saved — retrying', local: 'This device only', offline: 'Offline — changes will sync later' }[kind] || '';
   el.textContent = text;
-  el.className = 'sync-pill' + (kind === 'ok' ? ' ok' : kind === 'err' ? ' err' : '');
-  el.title = kind === 'local' ? 'Sharing isn’t set up yet. See the setup guide.' : kind === 'offline' ? 'You’re offline. Horizon keeps your changes on this device and sends them when you’re back online.' : '';
+  el.className = 'sync-pill' + (kind === 'ok' ? ' ok' : (kind === 'err' || kind === 'blocked') ? ' err' : '');
+  el.title = kind === 'blocked' ? (cloud.blockedMsg || '') : kind === 'local' ? 'Sharing isn’t set up yet. See the setup guide.' : kind === 'offline' ? 'You’re offline. Horizon keeps your changes on this device and sends them when you’re back online.' : '';
 }
 
 window.addEventListener('online', () => { if(cloud.ready) cloudFlush(); else if(cloud.held && cloud.retry) cloudResumeHeld(household.code); });
@@ -205,11 +215,19 @@ function loadBoardCache(code){
   } catch(e){ return null; }
 }
 function clearBoardCache(){ try { localStorage.removeItem(BOARD_CACHE_KEY); } catch(e) {} }
-// What the server has now matches this device: remember it as the copy to open next time.
-function cacheConfirmedBoard(json, state){
-  if(!cloud.ready || cloud.mode !== 'cloud' || !household.code || !json || json === cloud.cachedJson) return;
-  cloud.cachedJson = json;
-  saveBoardCache(household.code, state || snapshotState(), null);
+// `state` is what the server has (received, or sent and confirmed): the base of the copy on this device.
+function markConfirmed(json, state){
+  if(!json || !state) return;
+  cloud.confirmedJson = json; cloud.confirmedState = state;
+}
+// Saves the copy: the confirmed base, plus this device's unconfirmed edits (merged in on the next resume).
+function refreshBoardCache(cur, curJson){
+  if(!cloud.ready || cloud.mode !== 'cloud' || !household.code || !cloud.confirmedState) return;
+  cur = cur || snapshotState();
+  curJson = curJson || stableJson(cur);
+  if(cloud.cacheBase === cloud.confirmedJson && cloud.cacheCur === curJson) return;
+  cloud.cacheBase = cloud.confirmedJson; cloud.cacheCur = curJson;
+  saveBoardCache(household.code, cloud.confirmedState, curJson === cloud.confirmedJson ? null : cur);
 }
 
 // ---- three-way merge of the first server answer with edits made on the cached copy ----
@@ -243,8 +261,9 @@ function mergeById(base, local, remote){
 }
 function mergeList(base, local, remote){
   const has = (arr, v) => arr.some(x => stableJson(x) === stableJson(v));
-  const out = remote.filter(v => !(has(base, v) && !has(local, v)));
-  local.forEach(v => { if(!has(base, v) && !has(out, v)) out.push(v); });
+  // this device's order wins (so a reorder made here survives); drop what was removed elsewhere, add what was added there
+  const out = local.filter(v => !(has(base, v) && !has(remote, v)));
+  remote.forEach(v => { if(!has(base, v) && !has(out, v)) out.push(v); });
   return out;
 }
 function mergeHeldState(base, local, remote){
@@ -256,7 +275,7 @@ function mergeHeldState(base, local, remote){
   const added = (local.activity || []).filter(a => !(base.activity || []).some(x => stableJson(x) === stableJson(a)));
   res.activity = added.concat(remote.activity || []).slice(0, 6);
   const bc = base.categories || [], lc = local.categories || [], rc = remote.categories || bc;
-  res.categories = stableJson(lc) === stableJson(bc) ? rc : mergeList(bc, lc, rc);
+  res.categories = stableJson(lc) === stableJson(bc) ? rc : stableJson(rc) === stableJson(bc) ? lc : mergeList(bc, lc, rc);
   const bs = base.subcategories || {}, ls = local.subcategories || {}, rs = remote.subcategories || bs;
   if(stableJson(ls) === stableJson(bs)) res.subcategories = rs;
   else {
@@ -286,14 +305,34 @@ function cloudResumeHeld(code){
     cloud.adapter = adapter;
     cloud.unsub = adapter.subscribe(code, (data, fromCache) => {
       if(gen !== cloud.gen) return;
+      if(first){
+        // Firestore's own offline copy on this phone may be older than the server: only a server answer
+        // (which already includes any of this device's not-yet-sent writes) may be merged and release saves.
+        if(fromCache) return;
+        if(!data){ cloudHeldBlocked('gone'); return; }
+        first = false; cloudFinishHeld(data); return;
+      }
       if(!data && fromCache) return;
-      if(first){ first = false; cloudFinishHeld(data); return; }
       if(data && data.clientId !== clientId) cloudApplyRemote(data);
     }, err => {
       if(gen !== cloud.gen) return;
-      if(first) retry(); else setCloudStatus('err');
+      if(!first){ setCloudStatus('err'); return; }
+      const c = err && err.code;
+      if(c === 'permission-denied' || c === 'not-found' || c === 'unauthenticated' || c === 'invalid-argument') cloudHeldBlocked(err);
+      else retry();
     });
   }).catch(retry);
+}
+// The server refused or the household is gone: stop trying, keep edits on this device (still held) and say so.
+function cloudHeldBlocked(err){
+  try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
+  cloud.unsub = null; cloud.gen++;
+  clearTimeout(cloud.retry); cloud.retry = null;
+  cloud.blockedMsg = (err === 'gone'
+    ? 'This household wasn’t found in the shared database. Check the household code with your family.'
+    : friendlyCloudError(err)) + ' Your changes are kept on this device and nothing was overwritten.';
+  setCloudStatus('blocked');
+  if(typeof showToast === 'function') showToast(cloud.blockedMsg);
 }
 function cloudFinishHeld(data){
   const base = cloud.heldBase, local = snapshotState();
@@ -309,7 +348,7 @@ function cloudFinishHeld(data){
   }
   cloud.lastJson = remoteJson;
   cloud.ready = true;
-  if(remoteJson) cacheConfirmedBoard(remoteJson, remoteSnap);
+  markConfirmed(remoteJson, remoteSnap);
   reconcileIdentity();
   purgeTrash();
   setCloudStatus('ok');
