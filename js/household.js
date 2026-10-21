@@ -75,6 +75,7 @@ function leaveHousehold(){
   }).then(ok => {
     if(!ok) return false;
     try { localStorage.removeItem('ledgerHousehold'); } catch(e) {}
+    clearBoardCache();
     cloudDisconnect();
     location.reload();
     return true;
@@ -93,5 +94,37 @@ function resumeSession(){
   if(!cloudConfigured()){
     document.getElementById('gateHint').textContent = 'Sharing isn’t switched on yet, so this board stays on this device and is lost when you close the page. Follow the setup guide to turn it on.';
   }
-  if(!m && saved && saved.code && saved.name && cloudConfigured()) enterApp({ personId: saved.personId == null ? null : saved.personId });
+  if(!m && saved && saved.code && saved.name && cloudConfigured()){
+    if(!resumeFromCache(saved)) enterApp({ personId: saved.personId == null ? null : saved.personId });
+  } else if(!saved || !saved.code) clearBoardCache();   // signed out on this device: no copy of any board stays behind
+}
+
+// Signed in before and this device has a copy of the board: show it now and catch up in the background
+// (js/cloud.js cloudResumeHeld). Returns false when there is no usable copy, so the normal sign-in runs.
+function resumeFromCache(saved){
+  const rec = loadBoardCache(saved.code);
+  if(!rec) return false;
+  const st = stateFromDoc(rec.local || rec.base);
+  const n = String(saved.name).trim().toLowerCase();
+  const person = (saved.personId != null && st.people.find(p => samePid(p.id, saved.personId)))
+    || st.people.find(p => String(p.name).trim().toLowerCase() === n);
+  // renamed or removed elsewhere: with nothing unsent, the normal sign-in asks who this is. With unsent edits,
+  // open the copy anyway so they aren't lost; reconcileIdentity asks once the server has answered.
+  if(!person && !rec.local) return false;
+  household = person ? { code: saved.code, name: person.name, personId: person.id }
+    : { code: saved.code, name: saved.name, personId: saved.personId == null ? null : saved.personId };
+  applyState(st);
+  cloud.mode = 'cloud';
+  cloud.held = true;
+  cloud.heldBase = JSON.parse(JSON.stringify(rec.base));
+  document.getElementById('yourName').value = household.name;
+  saveSession();
+  document.getElementById('gate').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  setCloudStatus('updating');
+  render();
+  maybeShowInstallHint();
+  checkWhatsNew(true);
+  cloudResumeHeld(saved.code);
+  return true;
 }
