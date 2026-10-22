@@ -13,7 +13,7 @@ const clone=x=>x==null?null:JSON.parse(JSON.stringify(x));
 const server={}, serverVer={};
 let serverPushes=0, setDocCalls=0, retries=0;
 // one "phone": its Firestore offline copy survives page reloads, like IndexedDB does
-function makeDevice(){ return { online:true, silent:false, fetchErr:null, fetchDelay:10, txDelay:10, beforeCommit:null, cache:{}, queue:[], fss:[] }; }
+function makeDevice(){ return { online:true, silent:false, fetchErr:null, fetchDelay:10, txDelay:10, beforeCommit:null, afterCommit:null, cache:{}, queue:[], fss:[] }; }
 const allFss=[];
 function makeModules(dev){
   const listeners=new Set();
@@ -82,6 +82,7 @@ function makeModules(dev){
           server[write.code]=write.data; serverVer[write.code]=(serverVer[write.code]||0)+1; serverPushes++;
           allFss.forEach(f=>f.serverChanged(write.code));
         }
+        if(dev.afterCommit){ const f=dev.afterCommit; dev.afterCommit=null; await f(); }   // the answer is slow to come back
         return;
       }
       throw { code:'aborted' };
@@ -327,5 +328,86 @@ function quit(w){ try { w.eval('cloudDisconnect()'); } catch(e) {} w.close(); }
     phone.queue=[]; phone.online=true; quit(D);   // drop it (this test only checks the pending flag)
   }
 
+  {
+  // three live devices for the rest
+  const signed=async(dev,name)=>{ const w=boot(dev); await sleep(30); $(w,'householdCode').value=CODE; $(w,'yourName').value=name; await w.enterApp(); await sleep(600); return w; };
+  const pA=makeDevice(), pC=makeDevice(), pD=makeDevice();
+  const A=await signed(pA,'Ann'), C=await signed(pC,'Cal'), D=await signed(pD,'Dee');
+
+  // ---------- 15. a newer copy arrives while a save's answer is still on its way ----------
+  {
+    // C's change reaches A before A's save answers; then D's change reaches the server but not A (yet)
+    pA.afterCommit=async()=>{ await sleep(100); setCost(C,'Tires',20); await sleep(800); pA.silent=true; setCost(D,'Tires',30); await sleep(700); };
+    setCost(A,'Gutters',182); await sleep(2500);
+    ok(costOn(A,'Tires')===20 && it('Gutters').cost===182,'15: A saved; C\'s change shown on A');
+    setCost(A,'Camp',445); await sleep(1500);
+    pA.silent=false; A.__fs.unsilence(); await sleep(1000);
+    ok(it('Tires').cost===30,'15: A\'s next save did not write C\'s old $20 over D\'s $30 ('+it('Tires').cost+')');
+    ok(costOn(A,'Tires')===30 && costOn(C,'Tires')===30 && it('Camp').cost===445,'15: every board shows $30');
+  }
+
+  // ---------- 16. activity from devices saving at the same time: each line once, newest first, 6 kept ----------
+  {
+    for(let k=0;k<4;k++){ A.eval(`logActivity('Ann ${k}'); render();`); C.eval(`logActivity('Cal ${k}'); render();`); await sleep(120); }
+    await sleep(2000);
+    const acts=server[CODE].activity.map(a=>a.text);
+    ok(new Set(acts).size===acts.length,'16: no duplicate lines '+JSON.stringify(acts));
+    ok(acts.length===6 && acts.includes('Ann 3') && acts.includes('Cal 3'),'16: the newest lines from both kept');
+    const times=server[CODE].activity.map(a=>Date.parse(a.time));
+    ok(times.every((t,i)=>!i||times[i-1]>=t),'16: newest first');
+    ok(JSON.stringify(A.eval('activity.map(a=>a.text)'))===JSON.stringify(C.eval('activity.map(a=>a.text)')),'16: devices agree');
+  }
+
+  // ---------- 17. rename on one device while another adds an item for the old name ----------
+  {
+    const did=D.eval("people.find(p=>p.name==='Dee').id");
+    pD.beforeCommit=async()=>{ C.eval(`items.push({id:7777,name:'For Dee',category:'Home',cost:5,month:'No date yet',owner:'Dee',completed:false}); render();`); await sleep(800); };
+    ok(D.eval(`renamePerson(${JSON.stringify(did)},'Deanna').ok`),'17: Dee renames herself'); await sleep(2500);
+    ok(it('For Dee') && it('For Dee').owner==='Deanna','17: the new item follows the rename ('+(it('For Dee')||{}).owner+')');
+    ok(C.eval("items.find(i=>i.id===7777).owner")==='Deanna','17: shown with the new name');
+  }
+
+  // ---------- 18. restore from backup replaces the whole board, even with newer changes elsewhere ----------
+  {
+    const bk={ app:'household-forecast', version:1, people:[{id:'p1',name:'Ann'}], items:[{id:1,name:'Only this',category:'Home',cost:1,month:'No date yet',owner:'',completed:false}], activity:[], categories:['Home'] };
+    pA.beforeCommit=async()=>{ addItem(C,'Added elsewhere',9); await sleep(800); };
+    A.onRestoreFileChosen({ files:[new A.File([JSON.stringify(bk)],'b.json')], value:'x' }); await sleep(200);
+    $(A,'confirmOk').click(); await sleep(2500);
+    ok(server[CODE].items.map(i=>i.name).join()==='Only this','18: server holds exactly the backup ('+server[CODE].items.map(i=>i.name)+')');
+    ok(names(C)==='Only this' && names(A)==='Only this','18: every board replaced');
+    ok(!A.eval('cloud.replaceNext'),'18: later saves merge again');
+  }
+  quit(A); quit(C); quit(D);
+
+  // ---------- 19. storage full: offline edits kept in a small record, sent after reopening ----------
+  {
+    const pE=makeDevice(); const E=await signed(pE,'Eve');
+    addItem(E,'Base item 1',1); addItem(E,'Base item 2',2);
+    E.eval(`for(let i=0;i<10;i++) items.push({id:5000+i,name:'Filler '+i,category:'Home',cost:1,month:'No date yet',owner:'',note:'${'n'.repeat(1000)}',completed:false}); render();`);
+    await sleep(800);
+    const keep=lsOf(E); quit(E);
+    const capOf=lim=>w=>{ const St=w.Storage.prototype, orig=St.setItem; St.setItem=function(k,v){ if(k==='horizonBoardCache' && String(v).length>lim) throw new w.DOMException('full','QuotaExceededError'); return orig.call(this,k,v); }; };
+    const bootCapped=(dev,ls,lim)=>{ const w=boot(dev,ls); capOf(lim)(w); return w; };
+    const full=JSON.parse(keep.horizonBoardCache);
+    const lim=JSON.stringify(full).length-200;   // the full copy no longer fits
+    const F=bootCapped(pE,keep,lim); await sleep(1200);
+    pE.online=false; F.dispatchEvent(new F.Event('offline'));
+    setCost(F,'Base item 1',111); await sleep(800);
+    const rec=JSON.parse(F.localStorage.getItem('horizonBoardCache')||'null');
+    ok(rec && rec.compact && rec.local.items.length===1,'19: storage full: just the unsent edit kept ('+(rec&&rec.local.items.length)+' item)');
+    const left=lsOf(F); quit(F);
+    pE.online=true;
+    const G=bootCapped(pE,left,lim); await sleep(2000);
+    ok($(G,'app').style.display==='block' && it('Base item 1').cost===111 && it('Base item 2'),'19: reopened online: the kept edit reached the household');
+    const left2=lsOf(G); quit(G);
+    // nothing fits at all: say so while offline
+    const H=bootCapped(pE,left2,60); await sleep(1200);
+    pE.online=false; H.dispatchEvent(new H.Event('offline'));
+    setCost(H,'Base item 2',222); await sleep(800);
+    ok(/storage is full/.test(H.document.getElementById('toastRegion').textContent),'19: told plainly when edits can\'t be kept');
+    pE.online=true; quit(H);
+  }
+
+  }
   console.log(`${pass} passed, ${fails} failed`); process.exit(fails?1:0);
 })().catch(e=>{console.error(e);process.exit(2)});

@@ -5,7 +5,8 @@
 const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
   held: false, heldBase: null, gen: 0, retry: null, inflight: '', heldCheck: null, fb: null,
-  confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '', saveSeq: 0, tooBig: false, sizeWarned: false };
+  confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '', saveSeq: 0, tooBig: false, sizeWarned: false,
+  serverStamp: 0, replaceNext: false, pendingSend: false, storageWarned: false };
 
 function cloudConfigured(){
   return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -159,7 +160,14 @@ function cloudConnect(code){
     // what the server has is the base that later saves and incoming changes are merged against
     const answer = data => {
       if(settled) return;
-      if(data){ const r = docToSnap(data); markConfirmed(stableJson(r.snap), r.snap); }
+      if(data){ const r = docToSnap(data); markConfirmed(stableJson(r.snap), r.snap); noteStamp(stampOf(data)); }
+      // edits kept in the small "storage full" record (no quick-open copy): merged in and sent after sign-in
+      const rec = loadBoardCache(code);
+      if(rec && rec.compact && rec.local){
+        const merged = mergeHeldState(rec.base, rec.local, data ? docToSnap(data).snap : EMPTY_BASE);
+        data = Object.assign({}, data || {}, merged);
+        cloud.pendingSend = true;
+      }
       finish(resolve, data);
     };
     const t = setTimeout(() => finish(reject, new Error('timeout')), 12000);
@@ -195,7 +203,8 @@ function cloudDisconnect(){
   clearTimeout(cloud.timer); cloud.timer = null;
   cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.inflight = '';
   cloud.confirmedJson = ''; cloud.confirmedState = null; cloud.cacheBase = ''; cloud.cacheCur = '';
-  cloud.saveSeq++; cloud.tooBig = false; cloud.sizeWarned = false;   // a save still running is ignored when it ends
+  cloud.saveSeq++; cloud.tooBig = false; cloud.sizeWarned = false;
+  cloud.serverStamp = 0; cloud.replaceNext = false; cloud.pendingSend = false;   // a save still running is ignored when it ends
   clearTimeout(cloud.retry); cloud.retry = null;
   clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
 }
@@ -209,10 +218,15 @@ function friendlyCloudError(e){
 // A server copy arrived (another device saved, or the echo of this device's own save). Changes made here
 // that the server doesn't have yet are kept on top, field by field, and sent.
 function cloudApplyRemote(data){
+  const st = stampOf(data);
+  if(st && st < cloud.serverStamp) return;   // an older copy arriving late: a newer one is already the base
+  noteStamp(st);
   const r = docToSnap(data), remote = r.snap, rj = stableJson(remote);
   if(rj === cloud.confirmedJson && !r.assigned) return;   // nothing new
   const cur = snapshotState(), cj = stableJson(cur);
-  const next = cj === cloud.confirmedJson || cj === rj ? remote : mergeHeldState(cloud.confirmedState || EMPTY_BASE, cur, remote);
+  // a restored backup replaces the board: nothing from the server is mixed into it before it is sent
+  const next = cloud.replaceNext ? cur
+    : cj === cloud.confirmedJson || cj === rj ? remote : mergeHeldState(cloud.confirmedState || EMPTY_BASE, cur, remote);
   applyState(stateFromDoc(next));
   markConfirmed(rj, remote);
   cloud.lastJson = r.assigned ? '' : rj;   // new ids made up here are saved back for everyone
@@ -223,6 +237,13 @@ function cloudApplyRemote(data){
   renderCore();
   if(!cloud.inflight && !cloud.timer) setCloudStatus('ok');
 }
+
+// updatedAt doubles as an order: every save writes a time later than the copy it was merged into, so a
+// copy with an older updatedAt is an older copy (snapshots and save answers can arrive out of order).
+// Stamps are compared as times (ms); a missing or unreadable updatedAt is 0 and orders nothing.
+function stampOf(d){ const t = d && typeof d.updatedAt === 'string' ? Date.parse(d.updatedAt) : NaN; return isNaN(t) ? 0 : t; }
+function nextStamp(prev){ return new Date(Math.max(Date.now(), prev + 1)).toISOString(); }
+function noteStamp(st){ if(st > cloud.serverStamp) cloud.serverStamp = st; }
 
 // ---- size: Firestore refuses a document over 1 MiB (1,048,576 bytes) ----
 const DOC_MAX_BYTES = 1000000;   // stop below the real limit (estimate + document name overhead)
@@ -274,6 +295,7 @@ function cloudSchedulePush(){
     return;
   }
   if(!cloud.ready) return;
+  if(cloud.pendingSend){ cloud.pendingSend = false; cloud.lastJson = ''; }   // edits from the small record go out now
   const cur = snapshotState(), now = stableJson(cur);
   if(now === cloud.lastJson && !cloud.inflight) markConfirmed(now, cur);
   refreshBoardCache(cur, now);
@@ -295,20 +317,23 @@ function cloudFlush(){
   // offline: the edits wait in the copy on this device and go out on the 'online' event (or the slow retry)
   if(navigator.onLine === false){ setCloudStatus('offline'); cloud.timer = setTimeout(cloudFlush, 30000); return; }
   const base = cloud.confirmedState || EMPTY_BASE, seq = ++cloud.saveSeq, code = household.code;
+  const replace = cloud.replaceNext;   // a restored backup: write this board as it is
   cloud.lastJson = j;
   cloud.inflight = j;   // not "what the server has" until the save is confirmed
-  let written = state;
+  let written = state, writtenStamp = 0;
   const build = data => {
     let merged = state, remoteJson = '', repair = false;
     if(data){
       const r = docToSnap(data), remote = r.snap;
       repair = r.assigned;
       remoteJson = stableJson(remote);
-      if(remoteJson !== stableJson(base)) merged = JSON.parse(JSON.stringify(mergeHeldState(base, state, remote)));
+      if(!replace && remoteJson !== stableJson(base)) merged = JSON.parse(JSON.stringify(mergeHeldState(base, state, remote)));
     }
     written = merged;
-    if(remoteJson && !repair && stableJson(merged) === remoteJson) return null;   // the server already has all of it
-    const payload = JSON.parse(JSON.stringify(Object.assign({}, merged, { clientId, updatedAt: new Date().toISOString() })));
+    if(remoteJson && !repair && stableJson(merged) === remoteJson){ writtenStamp = stampOf(data); return null; }   // the server already has all of it
+    const updatedAt = nextStamp(stampOf(data));
+    writtenStamp = Date.parse(updatedAt);
+    const payload = JSON.parse(JSON.stringify(Object.assign({}, merged, { clientId, updatedAt })));
     if(docBytes(payload) + 100 > DOC_MAX_BYTES){ const e = new Error('too big'); e.code = 'too-big'; throw e; }
     return payload;
   };
@@ -331,6 +356,15 @@ function cloudFlush(){
       clearTimeout(giveUp);
       cloud.inflight = '';
       if(!cloud.ready) return;
+      if(replace) cloud.replaceNext = false;
+      if(writtenStamp && writtenStamp < cloud.serverStamp){
+        // a newer copy from another device came in while saving (it already holds this save, and it was merged
+        // into the board): it stays the base, so another device's change is never mistaken for one made here
+        cloudSchedulePush();
+        if(!cloud.timer) setCloudStatus('ok');
+        return;
+      }
+      noteStamp(writtenStamp);
       const wj = stableJson(written);
       markConfirmed(wj, written);
       cloud.lastJson = wj;
@@ -387,15 +421,47 @@ function stripCachePhotos(st, all){
     const q = Object.assign({}, p); delete q.photo; return q;
   }) });
 }
+// Only what changed here: the changed/removed items and people (with their base version), plus the small fields.
+// Merged the same way as the full copy (items untouched here are simply taken from the server).
+function compactEdits(base, local){
+  const pick = key => {
+    const id = o => String(o && o.id);
+    const bMap = new Map((base[key] || []).map(o => [id(o), o])), lMap = new Map((local[key] || []).map(o => [id(o), o]));
+    const b = [], l = [];
+    lMap.forEach((o, k) => { const bo = bMap.get(k); if(!bo || stableJson(bo) !== stableJson(o)){ l.push(o); if(bo) b.push(bo); } });
+    bMap.forEach((o, k) => { if(!lMap.has(k)) b.push(o); });
+    return { b, l };
+  };
+  const small = st => ({ activity: st.activity, categories: st.categories, subcategories: st.subcategories, householdName: st.householdName });
+  const it = pick('items'), pp = pick('people');
+  return { base: Object.assign(small(base), { items: it.b, people: pp.b }), local: Object.assign(small(local), { items: it.l, people: pp.l }) };
+}
+const STORAGE_FULL_MSG = 'This device’s storage is full, so changes made while offline can’t be kept if Horizon is closed. Keep Horizon open until you’re back online, or free up space on this device.';
+// Returns false when this device's unsent edits could not be stored at all.
 function saveBoardCache(code, base, local){
-  if(!code || !base) return;
-  try {
-    const rec = { code, savedAt: Date.now(), base, local: local || null };
-    let json = JSON.stringify(Object.assign({}, rec, { base: stripCachePhotos(base), local: local ? stripCachePhotos(local) : null }));
-    if(json.length > BOARD_CACHE_MAX) json = JSON.stringify(Object.assign({}, rec, { base: stripCachePhotos(base, true), local: local ? stripCachePhotos(local, true) : null }));
-    if(json.length > BOARD_CACHE_MAX){ clearBoardCache(); return; }
-    localStorage.setItem(BOARD_CACHE_KEY, json);
-  } catch(e){ clearBoardCache(); }   // full storage or private mode: just go without a copy
+  if(!code || !base) return true;
+  const put = rec => {
+    try {
+      const json = JSON.stringify(rec);
+      if(json.length > BOARD_CACHE_MAX) return false;
+      localStorage.setItem(BOARD_CACHE_KEY, json);
+      return true;
+    } catch(e){ return false; }
+  };
+  const full = all => ({ code, savedAt: Date.now(), base: stripCachePhotos(base, all), local: local ? stripCachePhotos(local, all) : null,
+    replace: !!(local && cloud.replaceNext) });   // a restore not sent yet still replaces the board after a restart
+  if(put(full(false)) || put(full(true))){ cloud.storageWarned = false; return true; }
+  clearBoardCache();   // full storage or private mode: the old copy goes first, to make room
+  if(local){
+    // keep the unsent edits before anything else: a small record without the rest of the board
+    const c = compactEdits(base, local);
+    const rec = all => ({ code, savedAt: Date.now(), compact: true, base: stripCachePhotos(c.base, true), local: stripCachePhotos(c.local, all) });
+    if(put(rec(false)) || put(rec(true))){ cloud.storageWarned = false; return true; }
+    if(!cloud.storageWarned && (navigator.onLine === false || cloud.held) && typeof showToast === 'function') showToast(STORAGE_FULL_MSG);
+    cloud.storageWarned = true;
+    return false;
+  }
+  return true;
 }
 function loadBoardCache(code){
   try {
@@ -462,8 +528,20 @@ function mergeHeldState(base, local, remote){
     people: mergeById(base.people || [], local.people || [], remote.people || []),
     householdName: local.householdName !== base.householdName ? local.householdName : remote.householdName
   };
-  const added = (local.activity || []).filter(a => !(base.activity || []).some(x => stableJson(x) === stableJson(a)));
-  res.activity = added.concat(remote.activity || []).slice(0, 6);
+  // owners are stored by name: a rename (same person id, new name) applies to items saved with the old name
+  const renames = new Map();
+  (base.people || []).forEach(b => {
+    const m = b && res.people.find(p => p && String(p.id) === String(b.id));
+    if(m && m.name !== b.name && !res.people.some(p => p && p.name === b.name)) renames.set(b.name, m.name);
+  });
+  if(renames.size) res.items = res.items.map(it => it && renames.has(it.owner) ? Object.assign({}, it, { owner: renames.get(it.owner) }) : it);
+  // activity: the server's lines plus lines added here, each once (same time and text), newest 6
+  const akey = a => (a && a.time) + '|' + (a && a.text);
+  const baseKeys = new Set((base.activity || []).map(akey)), seenA = new Set();
+  res.activity = (remote.activity || []).concat((local.activity || []).filter(a => !baseKeys.has(akey(a))))
+    .filter(a => a && !seenA.has(akey(a)) && seenA.add(akey(a)))
+    .sort((x, y) => (Date.parse(y.time) || 0) - (Date.parse(x.time) || 0))
+    .slice(0, 6);
   const bc = base.categories || [], lc = local.categories || [], rc = remote.categories || bc;
   res.categories = stableJson(lc) === stableJson(bc) ? rc : stableJson(rc) === stableJson(bc) ? lc : mergeList(bc, lc, rc);
   const bs = base.subcategories || {}, ls = local.subcategories || {}, rs = remote.subcategories || bs;
@@ -576,7 +654,8 @@ function cloudFinishHeld(data){
     applyState(remote);
     remoteSnap = snapshotState();
     remoteJson = stableJson(remoteSnap);
-    const merged = mergeHeldState(base, local, remoteSnap);
+    noteStamp(stampOf(data));
+    const merged = cloud.replaceNext ? local : mergeHeldState(base, local, remoteSnap);
     applyState(stateFromDoc(merged));
     if(remote.idsAssigned) remoteJson = '';   // new ids made up here are saved back for everyone
   }

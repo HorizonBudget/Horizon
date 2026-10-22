@@ -62,6 +62,8 @@ function onRestoreFileChosen(input){
       }).then(ok => {
         if(!ok) return;
         applyState(stateFromDoc(d));
+        // David's call: a restore replaces the whole board for everyone (the next save writes it as it is)
+        if(cloud.mode === 'cloud') cloud.replaceNext = true;
         reconcileIdentity();
         purgeTrash();
         logActivity(`${household.name} restored the board from a backup`);
@@ -115,7 +117,7 @@ function resumeSession(){
 // (js/cloud.js cloudResumeHeld). Returns false when there is no usable copy, so the normal sign-in runs.
 function resumeFromCache(saved){
   const rec = loadBoardCache(saved.code);
-  if(!rec) return false;
+  if(!rec || rec.compact) return false;   // only unsent edits were kept (storage full): normal sign-in merges them
   const st = stateFromDoc(rec.local || rec.base);
   const n = String(saved.name).trim().toLowerCase();
   const person = (saved.personId != null && st.people.find(p => samePid(p.id, saved.personId)))
@@ -129,6 +131,7 @@ function resumeFromCache(saved){
   cloud.mode = 'cloud';
   cloud.held = true;
   cloud.heldBase = JSON.parse(JSON.stringify(rec.base));
+  cloud.replaceNext = !!rec.replace;
   document.getElementById('yourName').value = household.name;
   saveSession();
   document.getElementById('gate').style.display = 'none';
