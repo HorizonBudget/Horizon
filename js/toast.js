@@ -35,16 +35,31 @@ function showToast(message, undoFn){
   startToastTimer();
 }
 // A toast also shows in front of an open dialog (David, 3.5.x: Undo after removing a person in People must be
-// tappable). html.toast-shown + --toast-room let the dialog scroll its last buttons clear of it ("dialogs" CSS section).
+// tappable). html.toast-shown + --toast-room let a dialog that scrolls move its last buttons clear of it ("dialogs" CSS
+// section). A dialog short enough not to scroll is left exactly as it is (no jump).
 function markToastRoom(t){
   const root = document.documentElement;
+  document.querySelectorAll('.modal.toast-room').forEach(m => m.classList.remove('toast-room'));
   if(!t){ root.classList.remove('toast-shown'); root.style.removeProperty('--toast-room'); return; }
+  document.querySelectorAll('.overlay').forEach(o => {
+    const m = o.style.display && o.style.display !== 'none' ? o.querySelector('.modal') : null;
+    if(m && m.scrollHeight > m.clientHeight + 1) m.classList.add('toast-room');
+  });
   // measured from the bottom of what is visible (above the iPhone keyboard when it is up)
   const vv = window.visualViewport, top = t.getBoundingClientRect().top;
   const h = vv && vv.height > 0 ? (Number(vv.offsetTop) || 0) + vv.height : (window.innerHeight || 0);
   if(top > 0 && h > top) root.style.setProperty('--toast-room', Math.ceil(h - top + 8) + 'px');
   else root.style.removeProperty('--toast-room');
   root.classList.add('toast-shown');
+}
+// the iPhone keyboard opening or closing moves the toast (it sits just above the keyboard): measure again once the
+// keyboard fit (js/scroll-lock.js) has caught up
+function remeasureToast(){
+  const t = document.getElementById('toast');
+  if(t) markToastRoom(t);
+}
+if(window.visualViewport && window.visualViewport.addEventListener){
+  window.visualViewport.addEventListener('resize', () => setTimeout(remeasureToast, 50));
 }
 function hideToast(){
   clearTimeout(toastTimer); toastTimer = null; toastUndoFn = null;

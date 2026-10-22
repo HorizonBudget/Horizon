@@ -1325,10 +1325,11 @@
   /* ---- Toasts in front of dialogs (3.5.x) ----
      A toast with Undo can arrive while a dialog is open (removing a person in People), so it sits above every dialog
      (50 to 80) but under the confirm question (90): a question's own buttons are never covered. While it shows, open
-     dialogs get room at the end (--toast-room, measured in js/toast.js) so their last buttons can scroll clear of it.
+     dialogs that scroll get room at the end (.toast-room + --toast-room, js/toast.js) so their last buttons can scroll
+     clear of it; a short dialog that does not scroll is left alone, so nothing jumps.
      With the iPhone keyboard up the bottom of the screen is hidden, so the toast sits just above the keyboard. */
   .toast-region{z-index:85;}
-  html.dialog-open.toast-shown .overlay .modal::after{content:""; display:block; height:var(--toast-room, calc(96px + env(safe-area-inset-bottom)));}
+  html.dialog-open.toast-shown .overlay .modal.toast-room::after{content:""; display:block; height:var(--toast-room, calc(96px + env(safe-area-inset-bottom)));}
   html.dialog-open.toast-shown #confirmOverlay .modal::after{content:none;}
   html.dialog-open.kb-open .toast-region{top:calc(var(--vv-top, 0px) + var(--vv-h, 100vh) - 8px); bottom:auto; transform:translateY(-100%);}
 

@@ -112,6 +112,14 @@ function withKeyboard(state){
   f.focus(); $(w,'itemOverlay').style.display='none'; await sleep(5); Object.assign(ks.vv,{height:450}); await sleep(350);
   ok(!kbOpen(w),'the delayed check after tapping a field runs after the dialog closed: no fit, no lock');
   ok(!locked(w),'(lock released)');
+  // the keyboard opening while a toast shows over a dialog: the room is measured again
+  $(w,'itemOverlay').style.display='flex'; await sleep(5);
+  kb(844); w.showToast('Saved',()=>{}); const tt=$(w,'toast'); let ttop=780; tt.getBoundingClientRect=()=>({top:ttop,bottom:ttop+56,left:0,right:390,width:390,height:56});
+  w.markToastRoom(tt); const room0=w.document.documentElement.style.getPropertyValue('--toast-room');
+  ttop=380; kb(450); await sleep(90);
+  const room1=w.document.documentElement.style.getPropertyValue('--toast-room');
+  ok(room0==='72px' && room1==='78px','keyboard opens while a toast shows: its room is measured again ('+room0+' -> '+room1+')');
+  w.hideToast(); $(w,'itemOverlay').style.display='none'; kb(844); await sleep(5);
 
   // ================= 5. askConfirm =================
   w=boot(); await sleep(10);
@@ -168,6 +176,13 @@ function withKeyboard(state){
   tap($(w,'toastUndo')); await sleep(5);
   ok(undone===1 && open(w,'peopleOverlay') && open(w,'settingsOverlay') && locked(w),'Undo over the People dialog works; both dialogs stay open and the page stays locked');
   ok(!w.document.documentElement.classList.contains('toast-shown') && !w.document.documentElement.style.getPropertyValue('--toast-room'),'once the toast is gone the extra room goes too');
+  // only a dialog that scrolls gets the extra room; a short one stays exactly as it is (no jump)
+  const pm=$(w,'peopleOverlay').querySelector('.modal'), sm2=$(w,'settingsOverlay').querySelector('.modal');
+  Object.defineProperty(sm2,'scrollHeight',{get:()=>2000,configurable:true}); Object.defineProperty(sm2,'clientHeight',{get:()=>600,configurable:true});
+  Object.defineProperty(pm,'scrollHeight',{get:()=>300,configurable:true}); Object.defineProperty(pm,'clientHeight',{get:()=>300,configurable:true});
+  w.showToast('Removed Jo',()=>{});
+  ok(sm2.classList.contains('toast-room') && !pm.classList.contains('toast-room'),'a toast gives room only to the dialog that scrolls (Settings), not the short one (People)');
+  w.hideToast(); ok(!sm2.classList.contains('toast-room'),'... and takes it away again');
   $(w,'peopleOverlay').style.display='none'; w.closeSettingsModal(); await sleep(5);
   w.openSearch(); await sleep(5); const searching=()=>!!w.eval('searchOpen');
   if(searching()){ w.showToast('x',()=>{}); tap($(w,'toast')); ok(searching(),'tapping a toast does not close the search (#toastRegion is excluded)'); w.closeSearch(); w.hideToast(); }
@@ -200,6 +215,11 @@ function withKeyboard(state){
   $(w,'confirmOk').click(); ok(await q===true,'... the question gets the real answer');
   await sleep(5); ok(notice(w) && /New thing/.test($(w,'confirmMsg').textContent),'... and the notice shows right after');
   $(w,'confirmOk').click(); await sleep(5); ok(!notice(w),'... and goes away with "Got it"');
+  // a notice waiting behind "Leave this household?" is dropped once the household is left
+  w=boot({ls:{horizonSeenVersion:'2.12.0'}}); w.eval("CHANGELOG[0].ui=['New thing.']; saveSession()");
+  const lq=w.askConfirm({title:'Leave this household?'}); w.eval('checkWhatsNew(false)');
+  lq.then(()=>w.localStorage.removeItem('ledgerHousehold')); $(w,'confirmOk').click(); await sleep(20);
+  ok(!notice(w),'leaving the household while the update notice waits: the notice is dropped');
   w=boot({ls:{horizonSeenVersion:'2.12.0'}}); w.eval("CHANGELOG[0].ui=['New thing.']");
   w.openSettingsModal(); w.eval('checkWhatsNew(false)'); await sleep(5);
   ok(notice(w) && open(w,'settingsOverlay'),'notice over an open Settings: both open, notice on top');
