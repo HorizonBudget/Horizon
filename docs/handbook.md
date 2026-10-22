@@ -72,7 +72,7 @@ On Windows use `python` or `py` where these notes say `python3`.
 
 Run:
 ```
-node tests/run-all.js            # all 25 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
+node tests/run-all.js            # all 26 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
 node tests/run-all.js undo       # only suites whose name contains "undo"
 python3 tests/browser-smoke.py   # files load, offline reload works
 python3 tests/overflow-audit.py  # sideways scroll at 7 phone/desktop sizes, incl. seasonal themes + patterns
@@ -129,6 +129,7 @@ Flow: area helper(s) in parallel -> `reviewer` on each branch -> fix rounds -> m
 - **3.2.0** (commit a913a15): red and white Christmas with 🎅, stronger patterns, frosted Active/Completed bar, README refresh.
 - After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide. Then (2026-10-17): four area helper agents plus a reviewer, `docs/agent-rules.md`, the `/preview` skill file (it was missing from the repo), and empty CSS section markers.
 - **3.3.0** (commit c8d6044): shared To-do side (js/todo.js), search in the top bar covering budget and to-dos (closes on tap-off), ⋯ on budget cards, "+ Budget item" / "+ To-do item". 22 jsdom suites now.
+- **3.5.1**: hotfix: `onSnapshot` now uses `includeMetadataChanges:true` (without it, a server copy equal to the cache never fired, so 3.5.0 sat on "Updating…" holding writes); `getDocFromServer` fallback after 6s online and on online/wake; tests/held-sync-test.js models the SDK rule.
 - **3.5.0**: faster start-up: self-hosted fonts, saved page opens at once, deferred scripts; board draws only the first 40 cards then batches, hidden side not built, photos as shared blob: URLs; signed-in devices open from a per-device copy (`horizonBoardCache` in localStorage) showing "Updating…", merge only on the first server snapshot (cached snapshots ignored while held), "Not synced — changes kept here" on refusal. Known gap: a whole-doc `setDoc` left in Firestore's write queue by a killed session can still overwrite newer changes (true before too; fix would be per-field `updateDoc`).
 - **3.4.0**: to-do website link (`url` field on the to-do, `todoUrl()`), "Budget item pair" label, tap anywhere on a budget card to open it (`.card-tap`).
 - **3.3.2**: iPhone keyboard fit for dialogs (js/scroll-lock.js `initKeyboardFit`, `html.dialog-open.kb-open`), outlined icons on to-do rows, update notice only for major bumps.
