@@ -61,7 +61,8 @@ function onCustomChange(which){
 }
 function setCustomMode(dark){
   const base = currentThemeColors();
-  customTheme = { dark, paper: dark === base.dark ? base.paper : (dark ? DEFAULT_PAPER.dark : DEFAULT_PAPER.light), accent: dark === base.dark ? base.accent : swatchForMode(base.accent, dark) };
+  const same = dark === themeInk(base).dark;   // the mode the page is really showing (a page color can force it)
+  customTheme = { dark, paper: same ? base.paper : (dark ? DEFAULT_PAPER.dark : DEFAULT_PAPER.light), accent: same ? base.accent : swatchForMode(base.accent, dark) };
   theme = 'custom';
   commitTheme();
 }
@@ -75,10 +76,12 @@ function syncCustomizer(){
   const c = currentThemeColors();
   const set = (id, v) => { const el = document.getElementById(id); if(el && el.value !== v) el.value = v; };
   set('ct_paper', c.paper); set('ct_accent', c.accent);
-  document.getElementById('ct_light').classList.toggle('active', !c.dark);
-  document.getElementById('ct_dark').classList.toggle('active', !!c.dark);
-  document.getElementById('accentSwatches').innerHTML = accentSwatches(themeInk(c).dark).map(h =>
-    `<button type="button" class="swatch${h.toLowerCase() === c.accent.toLowerCase() ? ' active' : ''}" style="background:${h}" title="${h}" aria-label="Accent ${h}" onclick="setCustomAccent('${h}')"></button>`).join('');
+  // Light/Dark show what the page really looks like: a very dark page picked in Light reads as Dark, and vice versa
+  const dark = themeInk(c).dark, sel = swatchIndex(c.accent);
+  document.getElementById('ct_light').classList.toggle('active', !dark);
+  document.getElementById('ct_dark').classList.toggle('active', dark);
+  document.getElementById('accentSwatches').innerHTML = accentSwatches(dark).map((h, i) =>
+    `<button type="button" class="swatch${i === sel ? ' active' : ''}" style="background:${h}" title="${h}" aria-label="Accent ${h}" onclick="setCustomAccent('${h}')"></button>`).join('');
 }
 function commitTheme(){
   applyTheme();

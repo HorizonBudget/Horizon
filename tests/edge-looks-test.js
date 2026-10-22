@@ -56,6 +56,16 @@ const hex = n => '#' + n.toString(16).padStart(6, '0');
   ok(w.eval('customTheme.accent') === '#91631F', 'and back to Light gives the Light shade');
   w.setCustomAccent('#123456'); w.setCustomMode(true);
   ok(w.eval('customTheme.accent') === '#123456', 'a hand-picked accent is kept when switching mode');
+  // an accent saved with an old swatch color still counts as that swatch
+  w.eval(`customTheme={dark:false,paper:'#EEF1ED',accent:'#7C6FB5'}; theme='custom'; commitTheme();`);
+  ok(d.querySelector('#accentSwatches .swatch.active').getAttribute('title') === '#6D629F', 'old purple swatch shows the purple swatch as picked');
+  w.setCustomMode(true);
+  ok(w.eval('customTheme.accent') === '#8E83BF', 'old purple swatch carries over to Dark purple');
+  // Light/Dark buttons show the mode the page really has
+  w.eval(`customTheme={dark:false,paper:'#000000',accent:'#3F6D64'}; theme='custom'; commitTheme();`);
+  ok(d.getElementById('ct_dark').classList.contains('active') && !d.getElementById('ct_light').classList.contains('active'), 'a black page picked in Light shows Dark as the mode in effect');
+  w.setCustomMode(false);
+  ok(w.eval('customTheme.paper') === '#EEF1ED' && !w.isDarkTheme() && d.getElementById('ct_light').classList.contains('active'), 'then tapping Light really switches to a light page');
   w.setTheme('light');
   ok(w.themeInk({ dark:false, paper:'#EEF1ED' }).ink === w.mixHex('#EEF1ED', '#000000', 0.88) && w.themeInk({ dark:true, paper:'#131719' }).ink === w.mixHex('#131719', '#ffffff', 0.9), 'normal custom pages keep the usual text color');
 

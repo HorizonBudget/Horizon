@@ -119,10 +119,21 @@ let customTheme = { dark:false, paper:'#EEF1ED', accent:'#3F6D64' };
 // page and card of that mode: darker shades for Light, lighter ones for Dark. Same order in both lists.
 const ACCENT_SWATCHES = ['#3F6D64','#2F6E9E','#A15638','#6D629F','#A74E66','#4E7533','#91631F','#496DA2'];
 const ACCENT_SWATCHES_DARK = ['#71938C','#6191B5','#BB7E65','#8E83BF','#C27489','#6C984D','#C98A2B','#6E8CB7'];
+// the single list used before 3.5.x; a saved accent with one of these counts as that swatch
+const ACCENT_SWATCHES_OLD = ['#3F6D64','#2F6E9E','#A85A3A','#7C6FB5','#B5556F','#5F8F3E','#C98A2B','#4A6FA5'];
 function accentSwatches(dark){ return dark ? ACCENT_SWATCHES_DARK : ACCENT_SWATCHES; }
-// switching Light/Dark takes a swatch accent to the same hue in the other mode's list; any other color stays
+// which of the eight swatches a color is (either mode, or an old one), or -1
+function swatchIndex(hex){
+  const k = String(hex).toLowerCase();
+  for(const list of [ACCENT_SWATCHES, ACCENT_SWATCHES_DARK, ACCENT_SWATCHES_OLD]){
+    const i = list.findIndex(h => h.toLowerCase() === k);
+    if(i !== -1) return i;
+  }
+  return -1;
+}
+// switching Light/Dark takes a swatch accent to the same hue in that mode's list; any other color stays
 function swatchForMode(hex, dark){
-  const i = accentSwatches(!dark).findIndex(h => h.toLowerCase() === String(hex).toLowerCase());
+  const i = swatchIndex(hex);
   return i === -1 ? hex : accentSwatches(dark)[i];
 }
 const DEFAULT_PAPER = { light:'#EEF1ED', dark:'#131719' };
