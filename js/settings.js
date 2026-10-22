@@ -7,7 +7,8 @@ const MAX_SAVED_THEMES = 12;
 
 function loadSettings(){
   try {
-    const saved = JSON.parse(localStorage.getItem('ledgerSettings') || '{}');
+    let saved = JSON.parse(localStorage.getItem('ledgerSettings') || '{}');
+    if(!saved || typeof saved !== 'object' || Array.isArray(saved)) saved = {};   // damaged settings: start fresh
     const okHex = v => typeof v === 'string' && /^#[0-9a-fA-F]{6}$/.test(v);
     if(saved.custom && okHex(saved.custom.paper) && okHex(saved.custom.accent)){
       customTheme = { dark: !!saved.custom.dark, paper: saved.custom.paper, accent: saved.custom.accent };
@@ -18,7 +19,7 @@ function loadSettings(){
       savedThemes = [];
       saved.savedThemes.forEach(t => {
         if(!t || typeof t.name !== 'string' || !okHex(t.paper) || !okHex(t.accent)) return;
-        const name = t.name.trim().slice(0, 24);
+        const name = clipThemeName(t.name);
         if(!name || savedThemes.length >= MAX_SAVED_THEMES) return;
         let id = (typeof t.id === 'string' && /^[a-z0-9]{1,24}$/i.test(t.id)) ? t.id : newThemeId();
         while(seen.has(id)) id = newThemeId();
@@ -51,7 +52,7 @@ function applyTheme(){
     const c = currentThemeColors();
     const v = customVars(c);
     Object.keys(v).forEach(k => root.style.setProperty(k, v[k]));
-    root.style.colorScheme = c.dark ? 'dark' : 'light';
+    root.style.colorScheme = themeInk(c).dark ? 'dark' : 'light';
   } else {
     root.style.removeProperty('color-scheme');
   }

@@ -123,7 +123,7 @@ function currentThemeColors(){
   return t.danger ? { dark: t.dark, paper: t.paper, accent: t.accent, danger: t.danger } : { dark: t.dark, paper: t.paper, accent: t.accent };
 }
 function isDarkTheme(){
-  if(theme === 'custom') return !!customTheme.dark;
+  if(theme === 'custom') return themeInk(customTheme).dark;
   const t = findTheme(theme); return !!(t && t.dark);
 }
 function relLuminance(hex){
@@ -152,12 +152,37 @@ function onAccentFor(accent, coral){
   });
   return best;
 }
+// Body text color for a page color. Normally light text in dark mode and dark text in light mode; but a custom page
+// color picked against its mode (black page in Light, white page in Dark) would make text vanish, so then the mode
+// that reads better wins (and pure black / white on a mid-gray page). Every preset and seasonal theme keeps its mode.
+function themeInk(c){
+  const paper = c.paper;
+  const darkInk = mixHex(paper, '#000000', 0.88), lightInk = mixHex(paper, '#ffffff', 0.9);
+  const mine = c.dark ? lightInk : darkInk;
+  if(contrastRatio(mine, paper) >= 7) return { dark: !!c.dark, ink: mine };
+  // score each choice on the page and on the card color that mode derives from it (most text sits on one of the two)
+  const score = (dark, ink) => Math.min(contrastRatio(ink, paper),
+    contrastRatio(ink, dark ? mixHex(paper, '#ffffff', 0.05) : mixHex(paper, '#ffffff', 0.55)));
+  return [[true, lightInk], [false, darkInk], [true, '#ffffff'], [false, '#000000']]
+    .map(([dark, ink]) => ({ dark, ink, r: score(dark, ink) }))
+    .sort((a, b) => b.r - a.r)
+    .map(({ dark, ink }) => ({ dark, ink }))[0];
+}
+// An accent picked (almost) the same as the page would hide links, tabs and buttons. Only then is it nudged toward
+// the text color until it stands out (3:1). Every preset, seasonal theme and offered swatch is far above that.
+function visibleAccent(accent, paper, card, ink){
+  let a = accent;
+  for(let amt = 0.1; amt <= 1 && Math.min(contrastRatio(a, paper), contrastRatio(a, card)) < 3; amt += 0.1) a = mixHex(accent, ink, Math.min(1, amt));
+  return a;
+}
+const ACCENT_MIN_CONTRAST = 1.5;   // below this against the page the accent counts as invisible
 function customVars(c){
-  const dark = c.dark, paper = c.paper, accent = c.accent;
-  const ink = dark ? mixHex(paper, '#ffffff', 0.9) : mixHex(paper, '#000000', 0.88);
-  const [r, g, b] = hexToRgb(ink), [ar, ag, ab] = hexToRgb(accent);
+  const paper = c.paper;
+  const { dark, ink } = themeInk(c);
   const card = dark ? mixHex(paper, '#ffffff', 0.05) : mixHex(paper, '#ffffff', 0.55);
   const field = dark ? mixHex(paper, '#ffffff', 0.1) : '#FFFFFF';
+  const accent = Math.min(contrastRatio(c.accent, paper), contrastRatio(c.accent, card)) < ACCENT_MIN_CONTRAST ? visibleAccent(c.accent, paper, card, ink) : c.accent;
+  const [r, g, b] = hexToRgb(ink), [ar, ag, ab] = hexToRgb(accent);
   const coral = /^#[0-9a-fA-F]{6}$/.test(c.danger || '') ? c.danger : (dark ? '#F4A098' : '#9E352F');
   const [cr, cg, cb] = hexToRgb(coral);
   return {
@@ -207,6 +232,10 @@ function savablePattern(){
 function sameThemeColors(a, b){
   return !!a.dark === !!b.dark && a.paper.toLowerCase() === b.paper.toLowerCase() && a.accent.toLowerCase() === b.accent.toLowerCase();
 }
+// saved theme names: at most 24 characters, never cutting an emoji in half
+function clipThemeName(s){ return Array.from(String(s || '').trim()).slice(0, 24).join('').trim(); }
+// text inside a quoted attribute (escapeHtml leaves quotes alone)
+function attrText(s){ return escapeHtml(s).replace(/"/g, '&quot;'); }
 function renderSavedThemes(){
   const sec = document.getElementById('savedThemesSection');
   const el = document.getElementById('savedThemes');
@@ -215,8 +244,8 @@ function renderSavedThemes(){
   const cur = currentThemeColors();
   const isCur = t => sameThemeColors(t, cur) && (!t.pattern || samePattern(t.pattern, bgPattern));
   el.innerHTML = savedThemes.map(t => `<div class="theme-opt saved-opt${isCur(t) ? ' active' : ''}" data-saved-id="${t.id}">
-    <button type="button" class="saved-apply" onclick="applySavedTheme('${t.id}')" title="Use “${escapeHtml(t.name)}”"><span class="theme-swatch" style="background:linear-gradient(135deg, ${t.paper} 0 45%, ${t.accent} 45% 100%)"></span><span class="saved-name">${escapeHtml(t.name)}</span></button>
-    <button type="button" class="saved-del" onclick="deleteSavedTheme('${t.id}')" aria-label="Delete ${escapeHtml(t.name)}" title="Delete">✕</button></div>`).join('');
+    <button type="button" class="saved-apply" onclick="applySavedTheme('${t.id}')" title="Use “${attrText(t.name)}”"><span class="theme-swatch" style="background:linear-gradient(135deg, ${t.paper} 0 45%, ${t.accent} 45% 100%)"></span><span class="saved-name">${escapeHtml(t.name)}</span></button>
+    <button type="button" class="saved-del" onclick="deleteSavedTheme('${t.id}')" aria-label="Delete ${attrText(t.name)}" title="Delete">✕</button></div>`).join('');
 }
 function setThemeMsg(text){
   const el = document.getElementById('ct_msg');
@@ -224,7 +253,7 @@ function setThemeMsg(text){
 }
 function saveCurrentTheme(){
   const input = document.getElementById('ct_name');
-  const name = (input.value || '').trim().slice(0, 24);
+  const name = clipThemeName(input.value);
   if(!name){ setThemeMsg('Type a name first.'); input.focus(); return; }
   const c = currentThemeColors();
   const key = name.toLowerCase();
@@ -301,7 +330,8 @@ function ownerColor(name){
 
 function initials(name){
   if(!name) return '?';
-  return name.trim().split(/\s+/).slice(0,2).map(w=>w[0].toUpperCase()).join('');
+  const parts = String(name).trim().split(/\s+/).filter(Boolean).slice(0,2);
+  return parts.length ? parts.map(w=>Array.from(w)[0].toUpperCase()).join('') : '?';   // Array.from: never half an emoji
 }
 
 function avatarHtml(name, size){
