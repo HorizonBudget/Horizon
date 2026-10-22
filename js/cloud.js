@@ -4,7 +4,7 @@
 // ============================================================
 const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
-  held: false, heldBase: null, gen: 0, retry: null, inflight: '',
+  held: false, heldBase: null, gen: 0, retry: null, inflight: '', heldCheck: null, fb: null,
   confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '' };
 
 function cloudConfigured(){
@@ -50,26 +50,35 @@ function applyState(s){
 }
 
 async function makeFirebaseAdapter(){
+  if(cloud.fb) return cloud.fb;   // one Firestore instance per page, also across retries
   const base = 'https://www.gstatic.com/firebasejs/10.12.2/';
-  const [appM, fsM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]);
+  // tests hand in a fake of the two Firebase modules (window.__firebaseModules); the real ones are never loaded there
+  const [appM, fsM] = window.__firebaseModules || await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-firestore.js')]);
   const app = appM.initializeApp(FIREBASE_CONFIG);
   let db;
   try {
     // keeps a local copy so the board still opens and accepts edits briefly offline
     db = fsM.initializeFirestore(app, { localCache: fsM.persistentLocalCache({ tabManager: fsM.persistentMultipleTabManager() }) });
   } catch(e){ db = fsM.getFirestore(app); }
-  return {
+  cloud.fb = {
+    // includeMetadataChanges: with the offline copy, a server answer that matches the copy only changes
+    // metadata.fromCache. Without this option Firestore sends no event for it, and a device waiting for the
+    // server (quick resume) would wait forever.
     subscribe(code, onData, onError){
-      return fsM.onSnapshot(fsM.doc(db, 'households', code),
+      return fsM.onSnapshot(fsM.doc(db, 'households', code), { includeMetadataChanges: true },
         snap => onData(snap.exists() ? snap.data() : null, snap.metadata.fromCache), onError);
     },
+    // one-off read straight from the server (fails when offline); the safety net for quick resume
+    fetch(code){ return fsM.getDocFromServer(fsM.doc(db, 'households', code)).then(snap => snap.exists() ? snap.data() : null); },
     push(code, data){ return fsM.setDoc(fsM.doc(db, 'households', code), data); }
   };
+  return cloud.fb;
 }
 function getAdapter(){
   return window.__cloudAdapterFactory ? Promise.resolve(window.__cloudAdapterFactory()) : makeFirebaseAdapter();
 }
 
+const CACHE_ANSWER_WAIT = 4000;   // ms the normal sign-in waits for the server before using the phone's copy
 function cloudConnect(code){
   return new Promise(async (resolve, reject) => {
     let settled = false;
@@ -77,10 +86,23 @@ function cloudConnect(code){
     const t = setTimeout(() => finish(reject, new Error('timeout')), 12000);
     try {
       cloud.adapter = await getAdapter();
+      let synced = false, cacheWait = null;
       cloud.unsub = cloud.adapter.subscribe(code, (data, fromCache) => {
-        // an empty answer from the local cache isn't proof the household is new; wait for the server
-        if(!data && fromCache) return;
-        if(!settled){ finish(resolve, data); return; }
+        if(!fromCache) synced = true;
+        if(!settled){
+          // an empty answer from the local cache isn't proof the household is new; wait for the server
+          if(!data && fromCache) return;
+          // the phone's own copy may be older than the server: use it only when offline, or when the
+          // server is slow to answer
+          if(fromCache && navigator.onLine !== false){
+            clearTimeout(cacheWait);
+            cacheWait = setTimeout(() => finish(resolve, data), CACHE_ANSWER_WAIT);
+            return;
+          }
+          clearTimeout(cacheWait);
+          finish(resolve, data); return;
+        }
+        if(fromCache && !synced) return;   // older copy from this phone; the server answer follows
         if(data && data.clientId !== clientId) cloudApplyRemote(data);
       }, err => {
         if(!settled) finish(reject, err);
@@ -96,6 +118,7 @@ function cloudDisconnect(){
   cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.inflight = '';
   cloud.confirmedJson = ''; cloud.confirmedState = null; cloud.cacheBase = ''; cloud.cacheCur = '';
   clearTimeout(cloud.retry); cloud.retry = null;
+  clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
 }
 function friendlyCloudError(e){
   const code = e && e.code;
@@ -174,9 +197,16 @@ function setCloudStatus(kind){
   el.title = kind === 'blocked' ? (cloud.blockedMsg || '') : kind === 'local' ? 'Sharing isn’t set up yet. See the setup guide.' : kind === 'offline' ? 'You’re offline. Horizon keeps your changes on this device and sends them when you’re back online.' : '';
 }
 
-window.addEventListener('online', () => { if(cloud.ready) cloudFlush(); else if(cloud.held && cloud.retry) cloudResumeHeld(household.code); });
+window.addEventListener('online', () => {
+  if(cloud.ready) cloudFlush();
+  else if(cloud.held && cloud.retry) cloudResumeHeld(household.code);
+  else if(cloud.held && cloud.heldCheck) scheduleHeldCheck(HELD_CHECK_SOON);
+});
 window.addEventListener('offline', () => { if(cloud.ready) setCloudStatus('offline'); });
-document.addEventListener('visibilitychange', () => { if(document.hidden && cloud.timer) cloudFlush(); });
+document.addEventListener('visibilitychange', () => {
+  if(document.hidden && cloud.timer) cloudFlush();
+  if(!document.hidden && cloud.held && cloud.heldCheck) scheduleHeldCheck(HELD_CHECK_SOON);   // phone woke up still waiting
+});
 window.addEventListener('pagehide', () => { if(cloud.timer) cloudFlush(); });
 
 // ============================================================
@@ -289,45 +319,83 @@ function mergeHeldState(base, local, remote){
 }
 
 // Connect in the background for a board already shown from the cached copy.
+// Saves stay held until the server has answered (a snapshot with fromCache false, or the safety-net read below).
+const HELD_CHECK_MS = 6000;      // no server answer by then while online: ask the server directly
+const HELD_CHECK_RETRY = 15000;
+const HELD_CHECK_SOON = 1500;    // after coming back online or waking up
 function cloudResumeHeld(code){
   clearTimeout(cloud.retry); cloud.retry = null;
   const gen = ++cloud.gen;
-  let first = true;
+  let synced = false;
   const retry = () => {
     if(gen !== cloud.gen) return;
     try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
     cloud.unsub = null;
+    clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
     setCloudStatus('updating');
     cloud.retry = setTimeout(() => cloudResumeHeld(code), 15000);
   };
   getAdapter().then(adapter => {
     if(gen !== cloud.gen) return;
     cloud.adapter = adapter;
+    cloud.heldCode = code;
+    scheduleHeldCheck(HELD_CHECK_MS);
     cloud.unsub = adapter.subscribe(code, (data, fromCache) => {
       if(gen !== cloud.gen) return;
-      if(first){
+      if(!fromCache) synced = true;
+      if(cloud.held){
         // Firestore's own offline copy on this phone may be older than the server: only a server answer
         // (which already includes any of this device's not-yet-sent writes) may be merged and release saves.
         if(fromCache) return;
         if(!data){ cloudHeldBlocked('gone'); return; }
-        first = false; cloudFinishHeld(data); return;
+        cloudFinishHeld(data); return;
       }
+      // released by the safety-net read: an older cached snapshot arriving now must not replace the merge
+      if(fromCache && !synced) return;
       if(!data && fromCache) return;
       if(data && data.clientId !== clientId) cloudApplyRemote(data);
     }, err => {
       if(gen !== cloud.gen) return;
-      if(!first){ setCloudStatus('err'); return; }
-      const c = err && err.code;
-      if(c === 'permission-denied' || c === 'not-found' || c === 'unauthenticated' || c === 'invalid-argument') cloudHeldBlocked(err);
+      if(!cloud.held){ setCloudStatus('err'); return; }
+      if(heldRefused(err)) cloudHeldBlocked(err);
       else retry();
     });
   }).catch(retry);
+}
+function heldRefused(err){
+  const c = err && err.code;
+  return c === 'permission-denied' || c === 'not-found' || c === 'unauthenticated' || c === 'invalid-argument';
+}
+// Safety net: if no server-confirmed snapshot has come while online, read the document from the server once
+// and merge that. Saves are only released against a real server answer, never against the phone's copy.
+function scheduleHeldCheck(ms){
+  clearTimeout(cloud.heldCheck);
+  const gen = cloud.gen;
+  cloud.heldCheck = setTimeout(() => heldServerCheck(gen), ms);
+}
+function heldServerCheck(gen){
+  cloud.heldCheck = null;
+  if(gen !== cloud.gen || !cloud.held || !cloud.adapter) return;
+  const again = () => { if(gen === cloud.gen && cloud.held) scheduleHeldCheck(HELD_CHECK_RETRY); };
+  if(typeof cloud.adapter.fetch !== 'function' || navigator.onLine === false){ again(); return; }
+  cloud.heldCheck = -1;   // marks a check in progress (so 'online' / wake-up can kick a new one later)
+  Promise.resolve().then(() => cloud.adapter.fetch(cloud.heldCode)).then(data => {
+    if(gen !== cloud.gen || !cloud.held) return;
+    cloud.heldCheck = null;
+    if(!data){ cloudHeldBlocked('gone'); return; }
+    cloudFinishHeld(data);
+  }, err => {
+    if(gen !== cloud.gen || !cloud.held) return;
+    cloud.heldCheck = null;
+    if(heldRefused(err)) cloudHeldBlocked(err); else again();
+  });
 }
 // The server refused or the household is gone: stop trying, keep edits on this device (still held) and say so.
 function cloudHeldBlocked(err){
   try { if(cloud.unsub) cloud.unsub(); } catch(e) {}
   cloud.unsub = null; cloud.gen++;
   clearTimeout(cloud.retry); cloud.retry = null;
+  clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
   cloud.blockedMsg = (err === 'gone'
     ? 'This household wasn’t found in the shared database. Check the household code with your family.'
     : friendlyCloudError(err)) + ' Your changes are kept on this device and nothing was overwritten.';
@@ -337,6 +405,7 @@ function cloudHeldBlocked(err){
 function cloudFinishHeld(data){
   const base = cloud.heldBase, local = snapshotState();
   cloud.held = false; cloud.heldBase = null;
+  clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
   let remoteJson = '', remoteSnap = null;
   if(data){
     const remote = stateFromDoc(data);
@@ -353,4 +422,5 @@ function cloudFinishHeld(data){
   purgeTrash();
   setCloudStatus('ok');
   render();   // anything changed here before the answer is saved now
+  if(cloud.timer) cloudFlush();   // send the merge at once, before any other snapshot can arrive
 }
