@@ -13,7 +13,7 @@
 //  - Firestore traffic (firestore.googleapis.com and every other request) is never touched here.
 //    Firestore's own on-device cache handles offline data.
 // Keep SW_VERSION equal to APP_VERSION in js/config.js: run tools/release.py (a test checks this).
-const SW_VERSION = '3.4.0';
+const SW_VERSION = '3.5.0';
 const CACHE_PREFIX = 'horizon-';
 const CACHE_NAME = CACHE_PREFIX + 'v' + SW_VERSION;
 // APP_FILES:BEGIN (written by tools/release.py)

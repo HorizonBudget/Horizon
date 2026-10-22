@@ -1,6 +1,6 @@
 # Horizon handbook
 
-Last updated at version **3.4.0**, 2026-10-19. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
+Last updated at version **3.5.0**, 2026-10-22. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
 
 ## 0. The owner's vision (read first)
 Horizon is a **shared to-do list for upcoming expenses**, not a money tracker. EveryDollar already tracks what the family actually spends and saves. Do NOT propose features that ask the user to keep numbers up to date (savings progress, set-aside amounts, budget-vs-actual reports, spending charts). Good ideas make the list easier to keep, share, see and tick off.
@@ -23,7 +23,7 @@ A shared "future expenses" planner for a household. Add the big things coming up
 | `index.html` | Markup only: sign-in screen, board, every dialog, and the `<script>` list. |
 | `styles.css` | All CSS. Has section markers like `/* ==== SECTION: seasonal-patterns ==== */`, `sticky-scroll`, `version-history`, `items-board`, `household-sync`, `dialogs`, `END OF FILE`. Add new CSS inside the right section so parallel agents do not collide. |
 | `js/*.js` | Classic (non-module) scripts sharing ONE global scope. Handlers like `onclick="..."` in `index.html` call global functions by name. |
-| `sw.js` | Service worker. Network-first for the page, cache-first for versioned app files (`?v=`). Precaches `APP_FILES`. Never touches Firestore traffic. |
+| `sw.js` | Service worker. Since 3.5.0 the page is stale-while-revalidate (saved page opens at once; the new page is saved only once all its `?v=` files are, and only pages that name `?v=` files count; so a release shows on the second open), cache-first for versioned app files across the current and previous version's caches. Precaches `APP_FILES` and the self-hosted fonts in `fonts/` (OFL). Scripts are `defer`. Never touches Firestore traffic. |
 | `manifest.webmanifest`, `*.png` | Install settings and icons. |
 | `tools/release.py` | Version stamper (see Releasing). |
 | `tools/make-preview.js` | Builds the safe preview (see Previewing). |
@@ -38,7 +38,7 @@ config, util, state, suggest, themes, profiles, crop, items, dialogs, trash, ite
 ## 3. Data rules (the ones that matter)
 - One Firestore doc per household: `households/{CODE}` with fields `items`, `people`, `activity`, `categories`, `subcategories`, `householdName`, `clientId`, `updatedAt`.
 - The Firestore security rules use `hasOnly`. **NEVER add a new top-level synced field.** New data goes inside an item or person object, or into per-device localStorage.
-- Per-device localStorage keys include `ledgerSettings` (theme, pattern, view settings), `horizonSeenVersion` (update notice), `lastBackupAt`.
+- Per-device localStorage keys include `horizonBoardCache` (3.5.0 quick-open copy), `ledgerSettings` (theme, pattern, view settings), `horizonSeenVersion` (update notice), `lastBackupAt`.
 - Removed items stay in `items` with a `deletedAt` for 30 days (trash).
 - To-dos (3.3.0) also live in `items`, marked `kind:'todo'` (fields: name, completed, completedAt, due 'YYYY-MM-DD', owner, notes, url, linkId, createdAt). `liveItems()`/`findLiveItem()` are budget items only; use `liveTodos()`/`findLiveTodo()` for to-dos. Per-device: `ledgerSettings.side`, `horizonCollapsedTodoGroups`.
 - Item owners are stored by name; people have stable ids. Renaming a person rewrites item owners.
@@ -72,7 +72,7 @@ On Windows use `python` or `py` where these notes say `python3`.
 
 Run:
 ```
-node tests/run-all.js            # all 21 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
+node tests/run-all.js            # all 25 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
 node tests/run-all.js undo       # only suites whose name contains "undo"
 python3 tests/browser-smoke.py   # files load, offline reload works
 python3 tests/overflow-audit.py  # sideways scroll at 7 phone/desktop sizes, incl. seasonal themes + patterns
@@ -129,6 +129,7 @@ Flow: area helper(s) in parallel -> `reviewer` on each branch -> fix rounds -> m
 - **3.2.0** (commit a913a15): red and white Christmas with 🎅, stronger patterns, frosted Active/Completed bar, README refresh.
 - After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide. Then (2026-10-17): four area helper agents plus a reviewer, `docs/agent-rules.md`, the `/preview` skill file (it was missing from the repo), and empty CSS section markers.
 - **3.3.0** (commit c8d6044): shared To-do side (js/todo.js), search in the top bar covering budget and to-dos (closes on tap-off), ⋯ on budget cards, "+ Budget item" / "+ To-do item". 22 jsdom suites now.
+- **3.5.0**: faster start-up: self-hosted fonts, saved page opens at once, deferred scripts; board draws only the first 40 cards then batches, hidden side not built, photos as shared blob: URLs; signed-in devices open from a per-device copy (`horizonBoardCache` in localStorage) showing "Updating…", merge only on the first server snapshot (cached snapshots ignored while held), "Not synced — changes kept here" on refusal. Known gap: a whole-doc `setDoc` left in Firestore's write queue by a killed session can still overwrite newer changes (true before too; fix would be per-field `updateDoc`).
 - **3.4.0**: to-do website link (`url` field on the to-do, `todoUrl()`), "Budget item pair" label, tap anywhere on a budget card to open it (`.card-tap`).
 - **3.3.2**: iPhone keyboard fit for dialogs (js/scroll-lock.js `initKeyboardFit`, `html.dialog-open.kb-open`), outlined icons on to-do rows, update notice only for major bumps.
 - **3.3.1**: the 💵 chip on a to-do jumps to the linked budget item (Budget side, month opened, card flashed). CLAUDE.md rule 10: a yes to a push covers what David adds in that round.
