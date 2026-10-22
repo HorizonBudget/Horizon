@@ -147,7 +147,8 @@ function updateFilterNote(){
 function fmtMoney(n){
   n = Math.round((Number(n) || 0) * 100) / 100;
   const cents = Math.abs(n % 1) > 0.0001;
-  return '$' + n.toLocaleString('en-US', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+  // a negative (old data could hold one) reads "-$12,500", like the short form "-$12.5k"
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
 }
 // Big amounts are shortened for display from $10k up ($12,500 -> $12.5k, $1,250,000 -> $1.25M, $1e9 -> $1B),
 // about three digits, no trailing ".0". Under $10k it is fmtMoney() unchanged. The data always keeps the exact amount.
@@ -157,11 +158,13 @@ function fmtMoneyShort(n){
   const abs = Math.abs(n);
   if(abs < MONEY_SHORT_FROM) return fmtMoney(n);
   const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
+  // about three digits: rounded in whole steps of the shown precision (so $9,995,000 -> $10M, not $9.99M),
+  // then a rounding that reaches 1000 moves on to the next unit ($999,950 -> $1M, not $1000k)
+  const roundIn = (unit, dec) => Math.round(abs / (unit / Math.pow(10, dec))) / Math.pow(10, dec);
+  const decFor = v => v < 10 ? 2 : v < 100 ? 1 : 0;
   let i = units.findIndex(u => abs >= u[0]);
-  let v = abs / units[i][0];
-  let dec = v < 10 ? 2 : v < 100 ? 1 : 0;
-  let r = Math.round(v * Math.pow(10, dec)) / Math.pow(10, dec);
-  if(r >= 1000 && i > 0){ i--; v = abs / units[i][0]; dec = 2; r = Math.round(v * 100) / 100; }   // $999,999 -> $1M, not $1000k
+  let r = roundIn(units[i][0], decFor(abs / units[i][0]));
+  if(r >= 1000 && i > 0){ i--; r = roundIn(units[i][0], 2); }
   return (n < 0 ? '-' : '') + '$' + String(r) + units[i][1];
 }
 // The amount as HTML: shortened on screen, the exact amount in the tooltip and for screen readers
