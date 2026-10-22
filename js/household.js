@@ -48,6 +48,12 @@ function onRestoreFileChosen(input){
     try {
       const d = JSON.parse(reader.result);
       if(!d || d.app !== 'household-forecast' || !Array.isArray(d.items) || !Array.isArray(d.people)) throw new Error('bad');
+      // the shared database holds at most about 1 MB per household: refuse before anything is replaced
+      if(cloud.mode === 'cloud' && boardBytes(docToSnap(d).snap) > DOC_MAX_BYTES){
+        msg.textContent = 'That backup is too big to share: it is over the size limit of the shared database. Nothing was changed.';
+        askAlert(msg.textContent);
+        return;
+      }
       const nItems = d.items.filter(i => !isDeleted(i) && !isTodo(i)).length, nTodos = d.items.filter(i => !isDeleted(i) && isTodo(i)).length;
       askConfirm({
         title: 'Restore from backup?',
@@ -87,7 +93,13 @@ function leaveHousehold(){
 function resumeSession(){
   let saved = null;
   try { saved = JSON.parse(localStorage.getItem('ledgerHousehold') || 'null'); } catch(e) {}
-  const m = /[#&]join=([A-Za-z0-9_-]{6,40})/.exec(location.hash || '');
+  let m = /[#&]join=([A-Za-z0-9_-]{6,40})/.exec(location.hash || '');
+  if(m){
+    // used once: take the invite out of the address bar so a reload doesn't bring the sign-in screen back
+    try { history.replaceState(null, '', location.href.split('#')[0]); } catch(e) {}
+    // an invite to the household this device is already signed in to: just open it
+    if(saved && saved.code && saved.code === m[1].toUpperCase()) m = null;
+  }
   if(m) document.getElementById('householdCode').value = m[1].toUpperCase();
   else if(saved && saved.code) document.getElementById('householdCode').value = saved.code;
   if(saved && saved.name) document.getElementById('yourName').value = saved.name;

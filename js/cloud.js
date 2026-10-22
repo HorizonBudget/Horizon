@@ -5,7 +5,7 @@
 const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
   held: false, heldBase: null, gen: 0, retry: null, inflight: '', heldCheck: null, fb: null,
-  confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '' };
+  confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '', saveSeq: 0, tooBig: false, sizeWarned: false };
 
 function cloudConfigured(){
   return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -27,22 +27,82 @@ function snapshotState(){
     householdName
   }));
 }
+// Reads a household document or a backup file. Damaged entries (an empty item, a bad date, junk categories)
+// are skipped or repaired so one bad entry never stops the rest of the board from loading.
+const isPlainObj = v => !!v && typeof v === 'object' && !Array.isArray(v);
+function cleanStrList(list){
+  const out = [];
+  (Array.isArray(list) ? list : []).forEach(v => {
+    if(typeof v !== 'string' || !v.trim() || out.includes(v)) return;
+    out.push(v);
+  });
+  return out;
+}
+function cleanItems(list){
+  let assigned = false;
+  const ids = new Set();
+  const raw = (Array.isArray(list) ? list : []).filter(isPlainObj);
+  if(Array.isArray(list) && raw.length !== list.length) assigned = true;   // damaged entries dropped: save the clean list back
+  raw.forEach(i => { if(i.id != null && i.id !== '') ids.add(String(i.id)); });
+  const out = raw.map((i, n) => {
+    let it = i;
+    if(typeof it.name !== 'string') it = Object.assign({}, it, { name: it.name == null ? '' : String(it.name) });
+    if(it.id == null || it.id === ''){
+      // the same id on every device (from the item's place in the list), so they agree when it is saved back
+      assigned = true;
+      let id = 900000000 + n;
+      while(ids.has(String(id))) id += 100000;
+      ids.add(String(id));
+      it = Object.assign({}, it, { id });
+    }
+    return it;
+  });
+  return { items: out, assigned };
+}
+function cleanActivity(list){
+  return (Array.isArray(list) ? list : [])
+    .filter(a => isPlainObj(a) && a.text != null && a.time != null && !isNaN(new Date(a.time).getTime()))
+    .map(a => ({ text: String(a.text), time: a.time }));
+}
+function cleanSubcategories(v){
+  if(!isPlainObj(v)) return null;
+  const out = {};
+  Object.keys(v).forEach(k => { if(Array.isArray(v[k])) out[k] = cleanStrList(v[k]); });
+  return out;
+}
 function stateFromDoc(d){
+  if(!isPlainObj(d)) d = {};
   const pl = ensurePersonIds(d.people);   // older data and old backups have people without ids
+  const it = cleanItems(d.items);
+  const cats = cleanStrList(d.categories);
   return {
-    idsAssigned: pl.assigned,
-    items: Array.isArray(d.items) ? d.items : [],
+    // true when the stored copy needs saving back (ids made up, damaged entries dropped)
+    idsAssigned: pl.assigned || it.assigned || (Array.isArray(d.people) && pl.people.length !== d.people.length),
+    items: it.items,
     people: pl.people,
-    activity: Array.isArray(d.activity) ? d.activity : [],
-    categories: Array.isArray(d.categories) ? d.categories : null,
-    subcategories: d.subcategories && typeof d.subcategories === 'object' ? d.subcategories : null,
+    activity: cleanActivity(d.activity),
+    categories: cats.length ? cats : null,
+    subcategories: cleanSubcategories(d.subcategories),
     householdName: typeof d.householdName === 'string' ? d.householdName : ''
   };
 }
+// A document as snapshotState() would give it once applied, without touching the board.
+function docToSnap(d){
+  const s = stateFromDoc(d);
+  const snap = JSON.parse(JSON.stringify({
+    items: s.items, people: s.people,
+    activity: s.activity.slice(0, 6).map(a => ({ text: a.text, time: new Date(a.time).toISOString() })),
+    categories: s.categories || CATEGORIES, subcategories: s.subcategories || SUBCATEGORIES,
+    householdName: s.householdName
+  }));
+  return { snap, assigned: s.idsAssigned };
+}
+const EMPTY_BASE = { items: [], people: [], activity: [], categories: [], subcategories: {}, householdName: '' };
 function applyState(s){
+  const act = s.activity.map(a => ({ text: a.text, time: new Date(a.time) })).slice(0, 6);   // everything checked before anything is replaced
   items = s.items;
   people = s.people;
-  activity = s.activity.map(a => ({ text: a.text, time: new Date(a.time) })).slice(0, 6);
+  activity = act;
   if(s.categories) CATEGORIES = s.categories;
   if(s.subcategories) SUBCATEGORIES = s.subcategories;
   householdName = s.householdName || '';
@@ -66,11 +126,23 @@ async function makeFirebaseAdapter(){
     // server (quick resume) would wait forever.
     subscribe(code, onData, onError){
       return fsM.onSnapshot(fsM.doc(db, 'households', code), { includeMetadataChanges: true },
-        snap => onData(snap.exists() ? snap.data() : null, snap.metadata.fromCache), onError);
+        snap => onData(snap.exists() ? snap.data() : null, snap.metadata.fromCache, !!snap.metadata.hasPendingWrites), onError);
     },
     // one-off read straight from the server (fails when offline); the safety net for quick resume
     fetch(code){ return fsM.getDocFromServer(fsM.doc(db, 'households', code)).then(snap => snap.exists() ? snap.data() : null); },
-    push(code, data){ return fsM.setDoc(fsM.doc(db, 'households', code), data); }
+    // Saves go through a transaction: read the server's document, merge this device's changes into it
+    // (build), write the result. Firestore retries it if another device saved in between. A transaction
+    // only runs online and is never kept in Firestore's offline write queue, so an old whole-board save can't
+    // be replayed later over newer changes. Offline edits wait in the copy on this device (horizonBoardCache).
+    // build returns null when there is nothing to write.
+    save(code, build){
+      const ref = fsM.doc(db, 'households', code);
+      return fsM.runTransaction(db, async tx => {
+        const snap = await tx.get(ref);
+        const payload = build(snap.exists() ? snap.data() : null);
+        if(payload) tx.set(ref, payload);
+      });
+    }
   };
   return cloud.fb;
 }
@@ -81,29 +153,35 @@ function getAdapter(){
 const CACHE_ANSWER_WAIT = 4000;   // ms the normal sign-in waits for the server before using the phone's copy
 function cloudConnect(code){
   return new Promise(async (resolve, reject) => {
+    let cacheWait = null;
     let settled = false;
-    const finish = (fn, v) => { if(!settled){ settled = true; clearTimeout(t); fn(v); } };
+    const finish = (fn, v) => { if(!settled){ settled = true; clearTimeout(t); clearTimeout(cacheWait); fn(v); } };
+    // what the server has is the base that later saves and incoming changes are merged against
+    const answer = data => {
+      if(settled) return;
+      if(data){ const r = docToSnap(data); markConfirmed(stableJson(r.snap), r.snap); }
+      finish(resolve, data);
+    };
     const t = setTimeout(() => finish(reject, new Error('timeout')), 12000);
     try {
       cloud.adapter = await getAdapter();
-      let synced = false, cacheWait = null;
-      cloud.unsub = cloud.adapter.subscribe(code, (data, fromCache) => {
+      let synced = false, cachedData = null;
+      cloud.unsub = cloud.adapter.subscribe(code, (data, fromCache, pending) => {
         if(!fromCache) synced = true;
         if(!settled){
           // an empty answer from the local cache isn't proof the household is new; wait for the server
           if(!data && fromCache) return;
           // the phone's own copy may be older than the server: use it only when offline, or when the
-          // server is slow to answer
+          // server is slow to answer (the wait starts once, at the first cached copy, and uses the newest one)
           if(fromCache && navigator.onLine !== false){
-            clearTimeout(cacheWait);
-            cacheWait = setTimeout(() => finish(resolve, data), CACHE_ANSWER_WAIT);
+            cachedData = data;
+            if(!cacheWait) cacheWait = setTimeout(() => answer(cachedData), CACHE_ANSWER_WAIT);
             return;
           }
-          clearTimeout(cacheWait);
-          finish(resolve, data); return;
+          answer(data); return;
         }
         if(fromCache && !synced) return;   // older copy from this phone; the server answer follows
-        if(data && data.clientId !== clientId) cloudApplyRemote(data);
+        if(data && !pending) cloudApplyRemote(data);
       }, err => {
         if(!settled) finish(reject, err);
         else setCloudStatus('err');
@@ -117,6 +195,7 @@ function cloudDisconnect(){
   clearTimeout(cloud.timer); cloud.timer = null;
   cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.inflight = '';
   cloud.confirmedJson = ''; cloud.confirmedState = null; cloud.cacheBase = ''; cloud.cacheCur = '';
+  cloud.saveSeq++; cloud.tooBig = false; cloud.sizeWarned = false;   // a save still running is ignored when it ends
   clearTimeout(cloud.retry); cloud.retry = null;
   clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
 }
@@ -127,22 +206,64 @@ function friendlyCloudError(e){
   return 'Couldn’t connect to the shared database' + (e && e.message ? ' (' + e.message + ')' : '') + '.';
 }
 
+// A server copy arrived (another device saved, or the echo of this device's own save). Changes made here
+// that the server doesn't have yet are kept on top, field by field, and sent.
 function cloudApplyRemote(data){
-  const remote = stateFromDoc(data);
-  const j = stableJson(JSON.parse(JSON.stringify({
-    items: remote.items, people: remote.people, activity: remote.activity,
-    categories: remote.categories || CATEGORIES, subcategories: remote.subcategories || SUBCATEGORIES,
-    householdName: remote.householdName
-  })));
-  if(j === cloud.lastJson && !remote.idsAssigned) return;
-  clearTimeout(cloud.timer); cloud.timer = null;
-  applyState(remote);
-  cloud.lastJson = remote.idsAssigned ? '' : stableJson(snapshotState());
-  if(cloud.lastJson){ markConfirmed(cloud.lastJson, snapshotState()); refreshBoardCache(); }
+  const r = docToSnap(data), remote = r.snap, rj = stableJson(remote);
+  if(rj === cloud.confirmedJson && !r.assigned) return;   // nothing new
+  const cur = snapshotState(), cj = stableJson(cur);
+  const next = cj === cloud.confirmedJson || cj === rj ? remote : mergeHeldState(cloud.confirmedState || EMPTY_BASE, cur, remote);
+  applyState(stateFromDoc(next));
+  markConfirmed(rj, remote);
+  cloud.lastJson = r.assigned ? '' : rj;   // new ids made up here are saved back for everyone
+  refreshBoardCache();
   reconcileIdentity();   // follow a rename made on another device, or ask if this profile is gone
-  if(purgeTrash() || remote.idsAssigned){ render(); return; }   // expired deleted items / new ids are saved back
+  // expired deleted items, new ids, or edits made here that the server doesn't have yet: render() saves them
+  if(purgeTrash() || r.assigned || stableJson(snapshotState()) !== rj){ render(); return; }
   renderCore();
-  setCloudStatus('ok');
+  if(!cloud.inflight && !cloud.timer) setCloudStatus('ok');
+}
+
+// ---- size: Firestore refuses a document over 1 MiB (1,048,576 bytes) ----
+const DOC_MAX_BYTES = 1000000;   // stop below the real limit (estimate + document name overhead)
+const DOC_WARN_BYTES = 800000;   // say early that the board is getting full
+function utf8Len(str){
+  let n = 0;
+  for(let i = 0; i < str.length; i++){
+    const c = str.charCodeAt(i);
+    if(c < 0x80) n += 1; else if(c < 0x800) n += 2;
+    else if(c >= 0xD800 && c < 0xDC00){ n += 4; i++; } else n += 3;
+  }
+  return n;
+}
+// Firestore's own size rules: strings are UTF-8 bytes + 1, numbers 8, true/false/null 1, field names + 1
+function docBytes(v){
+  if(v == null || typeof v === 'boolean') return 1;
+  if(typeof v === 'string') return utf8Len(v) + 1;
+  if(typeof v === 'number') return 8;
+  if(Array.isArray(v)) return v.reduce((n, x) => n + docBytes(x), 0);
+  if(typeof v === 'object') return Object.keys(v).reduce((n, k) => v[k] === undefined ? n : n + utf8Len(k) + 1 + docBytes(v[k]), 32);
+  return 1;
+}
+function boardBytes(state){ return docBytes(Object.assign({}, state, { clientId, updatedAt: new Date().toISOString() })) + 100; }
+const TOO_BIG_MSG = 'The shared board is full: it has reached the size limit of the shared database, so your latest changes can’t be sent. They are kept on this device and nothing was lost. Empty the trash, or remove old items or profile photos, and it will sync again.';
+const NEARLY_FULL_MSG = 'Your shared board is getting full. Emptying the trash or removing old items you no longer need keeps it syncing.';
+function showTooBig(){
+  cloud.blockedMsg = TOO_BIG_MSG;
+  setCloudStatus('blocked');
+  if(!cloud.tooBig && typeof showToast === 'function') showToast(TOO_BIG_MSG);
+  cloud.tooBig = true;
+}
+// false when the board is too big to save (the person is told once, the pill says so)
+function checkBoardSize(state){
+  const bytes = boardBytes(state);
+  if(bytes > DOC_MAX_BYTES){ showTooBig(); return false; }
+  cloud.tooBig = false;
+  if(bytes > DOC_WARN_BYTES){
+    if(!cloud.sizeWarned && typeof showToast === 'function') showToast(NEARLY_FULL_MSG);
+    cloud.sizeWarned = true;
+  } else cloud.sizeWarned = false;
+  return true;
 }
 
 function cloudSchedulePush(){
@@ -161,29 +282,68 @@ function cloudSchedulePush(){
   clearTimeout(cloud.timer);
   cloud.timer = setTimeout(cloudFlush, 400);
 }
+// Sends what changed here since the last copy the server confirmed (cloud.confirmedState), merged into the
+// server's current document, so changes other devices made meanwhile are never overwritten.
+const SAVE_GIVE_UP = 30000;   // a save with no answer by then is tried again (a late answer is harmless: it merges)
 function cloudFlush(){
   clearTimeout(cloud.timer); cloud.timer = null;
-  if(!cloud.ready) return;
+  if(!cloud.ready || cloud.inflight) return;   // one save at a time; when it ends, anything newer follows
   const state = snapshotState();
   const j = stableJson(state);
   if(j === cloud.lastJson){ setCloudStatus('ok'); return; }
+  if(!checkBoardSize(state)){ cloud.lastJson = ''; return; }
+  // offline: the edits wait in the copy on this device and go out on the 'online' event (or the slow retry)
+  if(navigator.onLine === false){ setCloudStatus('offline'); cloud.timer = setTimeout(cloudFlush, 30000); return; }
+  const base = cloud.confirmedState || EMPTY_BASE, seq = ++cloud.saveSeq, code = household.code;
   cloud.lastJson = j;
   cloud.inflight = j;   // not "what the server has" until the save is confirmed
-  const payload = JSON.parse(JSON.stringify(Object.assign({}, state, { clientId, updatedAt: new Date().toISOString() })));
-  Promise.resolve(cloud.adapter.push(household.code, payload))
+  let written = state;
+  const build = data => {
+    let merged = state, remoteJson = '', repair = false;
+    if(data){
+      const r = docToSnap(data), remote = r.snap;
+      repair = r.assigned;
+      remoteJson = stableJson(remote);
+      if(remoteJson !== stableJson(base)) merged = JSON.parse(JSON.stringify(mergeHeldState(base, state, remote)));
+    }
+    written = merged;
+    if(remoteJson && !repair && stableJson(merged) === remoteJson) return null;   // the server already has all of it
+    const payload = JSON.parse(JSON.stringify(Object.assign({}, merged, { clientId, updatedAt: new Date().toISOString() })));
+    if(docBytes(payload) + 100 > DOC_MAX_BYTES){ const e = new Error('too big'); e.code = 'too-big'; throw e; }
+    return payload;
+  };
+  const adapter = cloud.adapter;
+  const fail = e => {
+    if(seq !== cloud.saveSeq) return;
+    cloud.saveSeq++;
+    clearTimeout(giveUp);
+    cloud.inflight = ''; cloud.lastJson = '';
+    if(e && e.code === 'too-big'){ showTooBig(); return; }
+    setCloudStatus('err');
+    clearTimeout(cloud.timer);
+    cloud.timer = setTimeout(cloudFlush, 5000); // try again shortly
+  };
+  const giveUp = setTimeout(() => fail(new Error('timeout')), SAVE_GIVE_UP);
+  // test fakes with only push(): a plain write of this device's board
+  Promise.resolve().then(() => typeof adapter.save === 'function' ? adapter.save(code, build) : adapter.push(code, build(null)))
     .then(() => {
-      if(cloud.inflight === j) cloud.inflight = '';
+      if(seq !== cloud.saveSeq) return;
+      clearTimeout(giveUp);
+      cloud.inflight = '';
       if(!cloud.ready) return;
-      markConfirmed(j, state); refreshBoardCache();
+      const wj = stableJson(written);
+      markConfirmed(wj, written);
+      cloud.lastJson = wj;
+      if(wj !== j){
+        // the save brought in changes from other devices; keep anything edited here while it ran
+        const cur = snapshotState();
+        applyState(stateFromDoc(stableJson(cur) === j ? written : mergeHeldState(state, cur, written)));
+        reconcileIdentity();
+        renderCore();
+      }
+      cloudSchedulePush();   // edits made while saving go next
       if(!cloud.timer) setCloudStatus('ok');
-    })
-    .catch(() => {
-      if(cloud.inflight === j) cloud.inflight = '';
-      cloud.lastJson = '';
-      setCloudStatus('err');
-      clearTimeout(cloud.timer);
-      cloud.timer = setTimeout(cloudFlush, 5000); // try again shortly
-    });
+    }, fail);
 }
 
 function setCloudStatus(kind){
@@ -248,7 +408,7 @@ function clearBoardCache(){ try { localStorage.removeItem(BOARD_CACHE_KEY); } ca
 // `state` is what the server has (received, or sent and confirmed): the base of the copy on this device.
 function markConfirmed(json, state){
   if(!json || !state) return;
-  cloud.confirmedJson = json; cloud.confirmedState = state;
+  cloud.confirmedJson = json; cloud.confirmedState = JSON.parse(JSON.stringify(state));   // own copy: the board edits its objects in place
 }
 // Saves the copy: the confirmed base, plus this device's unconfirmed edits (merged in on the next resume).
 function refreshBoardCache(cur, curJson){
@@ -340,7 +500,7 @@ function cloudResumeHeld(code){
     cloud.adapter = adapter;
     cloud.heldCode = code;
     scheduleHeldCheck(HELD_CHECK_MS);
-    cloud.unsub = adapter.subscribe(code, (data, fromCache) => {
+    cloud.unsub = adapter.subscribe(code, (data, fromCache, pending) => {
       if(gen !== cloud.gen) return;
       if(!fromCache) synced = true;
       if(cloud.held){
@@ -353,7 +513,8 @@ function cloudResumeHeld(code){
       // released by the safety-net read: an older cached snapshot arriving now must not replace the merge
       if(fromCache && !synced) return;
       if(!data && fromCache) return;
-      if(data && data.clientId !== clientId) cloudApplyRemote(data);
+      // a server copy from before the merge was sent is merged too (never shown bare), see cloudApplyRemote
+      if(data && !pending) cloudApplyRemote(data);
     }, err => {
       if(gen !== cloud.gen) return;
       if(!cloud.held){ setCloudStatus('err'); return; }
@@ -379,15 +540,18 @@ function heldServerCheck(gen){
   const again = () => { if(gen === cloud.gen && cloud.held) scheduleHeldCheck(HELD_CHECK_RETRY); };
   if(typeof cloud.adapter.fetch !== 'function' || navigator.onLine === false){ again(); return; }
   cloud.heldCheck = -1;   // marks a check in progress (so 'online' / wake-up can kick a new one later)
+  // 'online' / wake-up during the read may already have set a new timer: keep that one, never leave a spare
+  const done = () => { if(cloud.heldCheck === -1) cloud.heldCheck = null; };
   Promise.resolve().then(() => cloud.adapter.fetch(cloud.heldCode)).then(data => {
     if(gen !== cloud.gen || !cloud.held) return;
-    cloud.heldCheck = null;
+    done();
     if(!data){ cloudHeldBlocked('gone'); return; }
     cloudFinishHeld(data);
   }, err => {
     if(gen !== cloud.gen || !cloud.held) return;
-    cloud.heldCheck = null;
-    if(heldRefused(err)) cloudHeldBlocked(err); else again();
+    done();
+    if(heldRefused(err)) cloudHeldBlocked(err);
+    else if(!cloud.heldCheck) again();
   });
 }
 // The server refused or the household is gone: stop trying, keep edits on this device (still held) and say so.
@@ -411,13 +575,14 @@ function cloudFinishHeld(data){
     const remote = stateFromDoc(data);
     applyState(remote);
     remoteSnap = snapshotState();
-    remoteJson = remote.idsAssigned ? '' : stableJson(remoteSnap);
+    remoteJson = stableJson(remoteSnap);
     const merged = mergeHeldState(base, local, remoteSnap);
     applyState(stateFromDoc(merged));
+    if(remote.idsAssigned) remoteJson = '';   // new ids made up here are saved back for everyone
   }
   cloud.lastJson = remoteJson;
   cloud.ready = true;
-  markConfirmed(remoteJson, remoteSnap);
+  if(remoteSnap) markConfirmed(stableJson(remoteSnap), remoteSnap);
   reconcileIdentity();
   purgeTrash();
   setCloudStatus('ok');
