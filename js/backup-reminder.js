@@ -4,9 +4,11 @@ function storedTime(v){
   if(v == null || v === '') return NaN;
   return /^\d+$/.test(v) ? Number(v) : Date.parse(v);
 }
-// First run on a device: start the clock now, so nobody is nagged on day one.
+// First run on a device: start the clock now, so nobody is nagged on day one. A date more than a day in the
+// future (the device clock was wrong when it was saved) would hold the reminder back for months: start again too.
 function initBackupReminder(){
-  if(Number.isNaN(storedTime(lsGet(BACKUP_KEY)))){
+  const t = storedTime(lsGet(BACKUP_KEY));
+  if(Number.isNaN(t) || t > Date.now() + DAY_MS){
     lsSet(BACKUP_KEY, String(Date.now()));
     lsSet(BACKUP_SEED_KEY, '1');
   }
@@ -21,7 +23,9 @@ function updateBackupBanner(){
   const now = Date.now();
   const days = backupDaysSince(now);
   const snoozedUntil = storedTime(lsGet(BACKUP_SNOOZE_KEY));
-  const show = days !== null && days >= BACKUP_REMIND_DAYS && !(snoozedUntil > now);
+  // a snooze can only ever be BACKUP_SNOOZE_DAYS long; one ending later than that (wrong clock) is ignored
+  const snoozed = snoozedUntil > now && snoozedUntil <= now + (BACKUP_SNOOZE_DAYS + 1) * DAY_MS;
+  const show = days !== null && days >= BACKUP_REMIND_DAYS && !snoozed;
   el.hidden = !show;
   if(show) document.getElementById('backupBannerText').textContent = `It’s been ${days} days since your last backup.`;
 }

@@ -47,6 +47,17 @@ function settleConfirm(v){
   const back = confirmReturnFocus; confirmReturnFocus = null;
   if(back && back.focus && document.contains(back)){ try { back.focus({ preventScroll:true }); } catch(e) {} }
   if(r) r(v);
+  if(confirmWaiting.length) setTimeout(runConfirmWaiting, 0);
+}
+// Runs fn now, or once no question is open any more (askConfirm replaces an open question and answers it "no",
+// so a notice that is not urgent waits its turn instead). Checked again after the answer's own follow-up has run.
+let confirmWaiting = [];
+function whenNoConfirm(fn){
+  if(confirmResolve) confirmWaiting.push(fn); else fn();
+}
+function runConfirmWaiting(){
+  const list = confirmWaiting; confirmWaiting = [];
+  list.forEach(fn => whenNoConfirm(fn));
 }
 // Reads the amount field. Returns null for empty, a number (cents) for a valid entry, or NaN when it can't be used.
 function readAmountField(inputEl){

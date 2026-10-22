@@ -1,4 +1,5 @@
 function showSettingsTab(name){
+  if(!['general', 'themes', 'advanced'].includes(name)) name = 'general';   // never a blank Settings
   ['general', 'themes', 'advanced'].forEach(n => {
     document.getElementById('settingsTab-' + n).classList.toggle('active', n === name);
     document.getElementById('settingsPane-' + n).classList.toggle('active', n === name);
