@@ -1317,6 +1317,9 @@
 
 /* ==== SECTION: items-board (cards, months, search, filters, trash, undo) - add new rules below this line ==== */
   .item-card.card-tap{cursor:pointer;}   /* a tap anywhere on a budget card opens it, like a to-do row */
+  /* a shortened big amount ($12.5k): the exact amount is read out by screen readers from this hidden copy */
+  .sr-only{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}
+  .money-short{position:relative;}
 
 /* ==== SECTION: household-sync (sign-in, household code, people/profiles, backups, install) - add new rules below this line ==== */
 

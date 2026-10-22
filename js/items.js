@@ -34,9 +34,11 @@ async function enterApp(resume){
   const btn = document.getElementById('gateBtn');
   setGateError('');
   const code = document.getElementById('householdCode').value.trim().toUpperCase().replace(/\s+/g, '-');
+  // a name made only of spaces or invisible characters (zero-width, fillers) is no name
   const name = document.getElementById('yourName').value.trim();
+  const visibleName = name.replace(/[\s\p{Cf}\p{Cc}\u115F\u1160\u3164\uFFA0\u2800]/gu, '');
   const typedHhName = document.getElementById('householdNameInput').value.trim();
-  if(!code || !name){
+  if(!code || !visibleName){
     setGateError('Add a household code and your name to continue.');
     return;
   }
@@ -151,8 +153,9 @@ function saveItem(){
   if(document.getElementById('itemOverlay').style.display !== 'flex') return;
   const name = document.getElementById('f_name').value.trim().slice(0, ITEM_NAME_MAX);
   let category = document.getElementById('f_category').value;
-  // same rules as the actual price: a real amount up to $1,000,000,000, in cents (text, "$" or Infinity count as empty)
-  const costRaw = readAmountField(document.getElementById('f_cost'));
+  // a real amount up to $1,000,000,000, in cents; "$" and thousands commas are fine ("$1,200.50")
+  const costText = document.getElementById('f_cost').value;
+  const costRaw = parseCostInput(costText);
   const cost = costRaw || 0;
   const month = document.getElementById('f_month').value || 'No date yet';
   const existing = editingId ? findLiveItem(editingId) : null;
@@ -160,8 +163,12 @@ function saveItem(){
   const owner = document.getElementById('f_owner').value;
   const note = document.getElementById('f_note').value.trim().slice(0, 500);
 
-  if(name && Number.isNaN(costRaw) && Number(document.getElementById('f_cost').value) < 0){
+  if(name && Number.isNaN(costRaw) && /^\s*\$?\s*-|^\s*-/.test(costText)){
     askAlert('The estimated cost must be more than $0.');
+    return;
+  }
+  if(name && Number.isNaN(costRaw)){
+    askAlert('Type the estimated cost as a number, like 1200 or $1,200.50 (up to $1,000,000,000).');
     return;
   }
   if(!name || !cost){

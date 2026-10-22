@@ -134,7 +134,7 @@ function renderBoard(){
         : 'nothing yet');
 
   const totalForecasted = visible.reduce((sum,i)=> sum + (Number(i.cost) || 0), 0);
-  document.getElementById('statNeeded').textContent = '$' + Math.round(totalForecasted).toLocaleString();
+  document.getElementById('statNeeded').innerHTML = moneyHtml(Math.round(totalForecasted));
   document.getElementById('statNeededSub').textContent = filterLabel ? `for ${filterLabel}` : 'across all future items';
 
   renderActivity();

@@ -117,11 +117,22 @@ const safe=(fn,dflt)=>{ try { return fn(); } catch(e){ console.log('  threw: '+e
   r=add('Too big','2000000000'); closeConfirm();
   ok(r.length===0,'a cost over $1,000,000,000 is refused');
   r=add('Billion','1000000000');
-  ok(r.length===1 && r[0].cost===1e9 && needed()==='$1,000,000,000','$1,000,000,000 is allowed and totals right');
-  r=add('Comma','1,200.50'); closeConfirm();
-  ok(r.length===0,'"1,200.50" (not a number in a number field) is refused, not saved as $1');
-  r=add('Dollar','$'); closeConfirm();
-  ok(r.length===0,'"$" is refused');
+  ok(r.length===1 && r[0].cost===1e9 && $('statNeeded').querySelector('.money-short').title==='$1,000,000,000' && $('statNeeded').querySelector('[aria-hidden]').textContent==='$1B','$1,000,000,000 is allowed and totals right ('+$('statNeeded').innerHTML+')');
+  raw([]);
+  r=add('Comma','$1,200.50');
+  ok(r.length===1 && r[0].cost===1200.5,'"$1,200.50" is read as 1200.50 ('+(r[0]&&r[0].cost)+')');
+  for(const [typed,expect] of [['1,200','1200'],[' $ 75 ','75'],['$1,000,000','1000000'],['.5','0.5'],['12.','12']]){
+    r=add('Typed',typed); closeConfirm();
+    ok(r.length===1 && r[0].cost===Number(expect),`"${typed}" -> ${expect} (${r[0]&&r[0].cost})`);
+  }
+  for(const typed of ['1,2','12,34.5','1.2.3','abc','12abc','$','$$5','1e3','0x10','Infinity','-$5','$-5']){
+    r=add('Bad',typed); const msg=confirmOpen(); closeConfirm();
+    ok(r.length===0 && msg,`"${typed}" is refused with a message`);
+  }
+  ok($('f_cost').type==='text' && $('f_cost').getAttribute('inputmode')==='decimal','cost field takes "$" and commas, phones show the number pad');
+  w.editItem(w.eval('items[0].id'));
+  ok($('f_cost').value==='1200.5','edit field shows the exact amount');
+  w.closeItemModal();
   r=add('Cents','12.345');
   ok(r.length===1 && r[0].cost===12.35,'cost rounds to cents ('+(r[0]&&r[0].cost)+')');
   r=add('Small','0.01');
@@ -264,6 +275,51 @@ const safe=(fn,dflt)=>{ try { return fn(); } catch(e){ console.log('  threw: '+e
   ok($('f_owner').value==='Pat','an owner no longer in the household stays selected when editing');
   w.saveItem();
   ok(item(1).owner==='Pat','saving keeps that owner');
+
+  // ---------- short big amounts ----------
+  const short=n=>w.eval(`fmtMoneyShort(${n})`);
+  const cases=[[9999,'$9,999'],[9999.5,'$9,999.50'],[10000,'$10k'],[12500,'$12.5k'],[12345,'$12.3k'],[99949,'$99.9k'],[99999,'$100k'],[123456,'$123k'],[999499,'$999k'],[999999,'$1M'],
+    [1000000,'$1M'],[1250000,'$1.25M'],[12345678,'$12.3M'],[999999999,'$1B'],[1000000000,'$1B'],[1500000000,'$1.5B'],[10050,'$10.1k'],[-25000,'-$25k'],[0,'$0']];
+  cases.forEach(([n,e])=>ok(short(n)===e,`${n} shows as ${e} (${short(n)})`));
+  setItems(w,[{id:1,name:'Big',month:M0,cost:12500},{id:2,name:'Bigger',month:M0,cost:1250000},{id:3,name:'Small',month:M1,cost:42}]);
+  const amt=id=>d.querySelector(`[data-item-id="${id}"] .item-amount-value`);
+  const vis=el=>{ const h=el.querySelector('[aria-hidden="true"]'); return h?h.textContent:el.textContent; };
+  ok(vis(amt(1))==='$12.5k' && amt(1).querySelector('.money-short').title==='$12,500' && amt(1).querySelector('.sr-only').textContent==='$12,500','card shows $12.5k, exact amount in title and for screen readers');
+  ok(vis(amt(2))==='$1.25M' && amt(3).textContent==='$42' && !amt(3).querySelector('.money-short'),'$1,250,000 -> $1.25M; small amounts unchanged');
+  ok(vis($('statNeeded'))==='$1.26M' && $('statNeeded').querySelector('.money-short').title==='$1,262,542','top total shortened with exact title');
+  ok(vis(d.querySelector('#itemsList .mg-total'))==='$1.26M','month total shortened');
+  w.eval('finishCompleting(1,{actualCost:13750})'); w.switchTab('completed');
+  ok(d.querySelector('[data-item-id="1"] .paid-line [aria-hidden]').textContent==='$13.8k' && d.querySelector('[data-item-id="1"] .paid-line .sr-only').textContent==='$13,750','paid line shortened, exact for screen readers');
+  ok(d.querySelector('[data-item-id="1"] .paid-diff').textContent==='$1,250 over','paid difference under $10k stays exact');
+  w.switchTab('active'); w.eval('items.find(i=>i.id===1).completed=false; delete items.find(i=>i.id===1).actualCost; render()');
+  for(const q of ['$12,500','12500','$12.5k','12.5k','$1.25M','1250000']){
+    w.eval(`searchOpen=true; searchQuery=${JSON.stringify(q)}; renderCore()`);
+    ok(!!d.querySelector('#searchBudget [data-item-id="1"]') || !!d.querySelector('#searchBudget [data-item-id="2"]') && /M|1250000/.test(q),`search "${q}" finds the item`);
+  }
+  w.eval(`searchOpen=false; searchQuery=''; renderCore()`);
+  w.deleteItem(2); w.renderTrashList();
+  ok(d.querySelector('#trashList .trash-item-cost [aria-hidden]').textContent==='$1.25M','Deleted items shows the short amount');
+  ok(w.eval('JSON.stringify(snapshotState())').includes('"cost":1250000'),'the saved data keeps the exact amount');
+
+  // ---------- the month picker after the month changes ----------
+  w.eval(`window.__RD=Date; window.__now=new Date(); window.__now.setDate(1); window.__now.setMonth(window.__now.getMonth()+1); Date=class extends __RD{ constructor(...a){ if(a.length) super(...a); else super(__now.getTime()); } static now(){ return __now.getTime(); } }`);
+  const nextM=w.eval('formatMonth(__now.getFullYear(), __now.getMonth())');
+  w.openItemModal();
+  ok(w.eval('FUTURE_MONTHS[0]')===nextM && $('f_month').options[1].textContent===nextM && ![...$('f_month').options].some(o=>o.textContent===M0),'month picker starts at the new month after the month changes ('+nextM+')');
+  w.closeItemModal();
+  setItems(w,[{id:1,name:'Last month',month:M0,cost:5}]);
+  w.editItem(1);
+  ok($('f_month').value===M0,'an item still in last month keeps it selectable');
+  w.closeItemModal();
+  w.eval('Date=__RD');
+
+  // ---------- sign-in name of invisible characters ----------
+  for(const nm of ['\u200B\u200B','\u3164','\u2800 ','\u200D\uFEFF\u2060']){
+    $('householdCode').value='EDGE-NAME-1234'; $('yourName').value=nm;
+    const pc=w.eval('people.length');
+    await w.enterApp();
+    ok(/Add a household code and your name/.test($('gateError').textContent) && w.eval('people.length')===pc,'sign-in refuses an invisible-only name '+JSON.stringify(nm));
+  }
 
   ok(errors.length===0,'no page errors overall '+errors.join(' | '));
   finish();

@@ -1,6 +1,7 @@
 function paidHtml(item){
   const d = actualDiff(item);
-  return `<div class="paid-line">Paid ${fmtMoney(item.actualCost)}</div><div class="paid-diff ${d.kind}">${escapeHtml(d.text)}</div>`;
+  const diff = d.amount != null ? `${moneyHtml(d.amount)} ${d.word}` : escapeHtml(d.text);
+  return `<div class="paid-line">Paid ${moneyHtml(item.actualCost)}</div><div class="paid-diff ${d.kind}">${diff}</div>`;
 }
 
 function buildItemCard(item, opts){
@@ -56,7 +57,7 @@ function buildItemCard(item, opts){
       </div>
     </div>
     <div class="item-amount">
-      <div class="item-amount-value">${fmtMoney(item.cost)}</div>
+      <div class="item-amount-value">${moneyHtml(item.cost)}</div>
       ${opts.completedView && hasActualCost(item) ? paidHtml(item) : ''}
     </div>
   `;

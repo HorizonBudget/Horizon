@@ -15,8 +15,8 @@ function textMatchesAll(parts, q){
 function itemMatchesSearch(it, q){
   if(!searchWords(q).length) return true;
   const parts = [it.name, it.category, it.subcategory, it.owner, itemNote(it), itemLink(it), typeof it.link === 'string' ? it.link : '',
-    it.month, fmtMoney(it.cost), String(Number(it.cost) || 0)];
-  if(hasActualCost(it)) parts.push(fmtMoney(it.actualCost), String(it.actualCost));
+    it.month, fmtMoney(it.cost), fmtMoneyShort(it.cost), String(Number(it.cost) || 0)];
+  if(hasActualCost(it)) parts.push(fmtMoney(it.actualCost), fmtMoneyShort(it.actualCost), String(it.actualCost));
   linkedTodosFor(it).forEach(t => parts.push(t.name));
   return textMatchesAll(parts, q);
 }
