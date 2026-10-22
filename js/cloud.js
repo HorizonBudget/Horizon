@@ -6,7 +6,7 @@ const clientId = Math.random().toString(36).slice(2) + Date.now().toString(36);
 const cloud = { mode: 'local', ready: false, adapter: null, unsub: null, timer: null, lastJson: '',
   held: false, heldBase: null, gen: 0, retry: null, inflight: '', heldCheck: null, fb: null,
   confirmedJson: '', confirmedState: null, cacheBase: '', cacheCur: '', saveSeq: 0, tooBig: false, sizeWarned: false,
-  serverStamp: 0, replaceNext: false, pendingSend: false, storageWarned: false };
+  remoteSeq: 0, echoSeen: false, flightStamps: [], awaitNext: false, awaitTimer: null, replaceNext: false, pendingSend: false, storageWarned: false };
 
 function cloudConfigured(){
   return !!window.__cloudAdapterFactory || !!(FIREBASE_CONFIG && FIREBASE_CONFIG.apiKey && FIREBASE_CONFIG.projectId);
@@ -160,7 +160,7 @@ function cloudConnect(code){
     // what the server has is the base that later saves and incoming changes are merged against
     const answer = data => {
       if(settled) return;
-      if(data){ const r = docToSnap(data); markConfirmed(stableJson(r.snap), r.snap); noteStamp(stampOf(data)); }
+      if(data){ const r = docToSnap(data); markConfirmed(stableJson(r.snap), r.snap); }
       // edits kept in the small "storage full" record (no quick-open copy): merged in and sent after sign-in
       const rec = loadBoardCache(code);
       if(rec && rec.compact && rec.local){
@@ -204,7 +204,7 @@ function cloudDisconnect(){
   cloud.gen++; cloud.held = false; cloud.heldBase = null; cloud.inflight = '';
   cloud.confirmedJson = ''; cloud.confirmedState = null; cloud.cacheBase = ''; cloud.cacheCur = '';
   cloud.saveSeq++; cloud.tooBig = false; cloud.sizeWarned = false;
-  cloud.serverStamp = 0; cloud.replaceNext = false; cloud.pendingSend = false;   // a save still running is ignored when it ends
+  cloud.awaitNext = false; clearTimeout(cloud.awaitTimer); cloud.replaceNext = false; cloud.pendingSend = false;   // a save still running is ignored when it ends
   clearTimeout(cloud.retry); cloud.retry = null;
   clearTimeout(cloud.heldCheck); cloud.heldCheck = null;
 }
@@ -218,11 +218,13 @@ function friendlyCloudError(e){
 // A server copy arrived (another device saved, or the echo of this device's own save). Changes made here
 // that the server doesn't have yet are kept on top, field by field, and sent.
 function cloudApplyRemote(data){
-  const st = stampOf(data);
-  if(st && st < cloud.serverStamp) return;   // an older copy arriving late: a newer one is already the base
-  noteStamp(st);
+  // Firestore's live listener delivers copies in order, so none is ever skipped
+  if(cloud.inflight && data.clientId === clientId && cloud.flightStamps.includes(data.updatedAt)) cloud.echoSeen = true;
+  const waited = cloud.awaitNext;
+  cloud.awaitNext = false; clearTimeout(cloud.awaitTimer);
   const r = docToSnap(data), remote = r.snap, rj = stableJson(remote);
-  if(rj === cloud.confirmedJson && !r.assigned) return;   // nothing new
+  if(rj === cloud.confirmedJson && !r.assigned){ if(waited) cloudSchedulePush(); return; }   // nothing new
+  cloud.remoteSeq++;
   const cur = snapshotState(), cj = stableJson(cur);
   // a restored backup replaces the board: nothing from the server is mixed into it before it is sent
   const next = cloud.replaceNext ? cur
@@ -237,13 +239,6 @@ function cloudApplyRemote(data){
   renderCore();
   if(!cloud.inflight && !cloud.timer) setCloudStatus('ok');
 }
-
-// updatedAt doubles as an order: every save writes a time later than the copy it was merged into, so a
-// copy with an older updatedAt is an older copy (snapshots and save answers can arrive out of order).
-// Stamps are compared as times (ms); a missing or unreadable updatedAt is 0 and orders nothing.
-function stampOf(d){ const t = d && typeof d.updatedAt === 'string' ? Date.parse(d.updatedAt) : NaN; return isNaN(t) ? 0 : t; }
-function nextStamp(prev){ return new Date(Math.max(Date.now(), prev + 1)).toISOString(); }
-function noteStamp(st){ if(st > cloud.serverStamp) cloud.serverStamp = st; }
 
 // ---- size: Firestore refuses a document over 1 MiB (1,048,576 bytes) ----
 const DOC_MAX_BYTES = 1000000;   // stop below the real limit (estimate + document name overhead)
@@ -309,7 +304,9 @@ function cloudSchedulePush(){
 const SAVE_GIVE_UP = 30000;   // a save with no answer by then is tried again (a late answer is harmless: it merges)
 function cloudFlush(){
   clearTimeout(cloud.timer); cloud.timer = null;
-  if(!cloud.ready || cloud.inflight) return;   // one save at a time; when it ends, anything newer follows
+  // one save at a time; when it ends, anything newer follows. After a save that crossed paths with a copy from
+  // another device, wait for the next copy (it holds that save) before saving again, see below.
+  if(!cloud.ready || cloud.inflight || cloud.awaitNext) return;
   const state = snapshotState();
   const j = stableJson(state);
   if(j === cloud.lastJson){ setCloudStatus('ok'); return; }
@@ -320,7 +317,9 @@ function cloudFlush(){
   const replace = cloud.replaceNext;   // a restored backup: write this board as it is
   cloud.lastJson = j;
   cloud.inflight = j;   // not "what the server has" until the save is confirmed
-  let written = state, writtenStamp = 0;
+  let written = state;
+  const seenAtStart = cloud.remoteSeq;
+  cloud.echoSeen = false; cloud.flightStamps = [];
   const build = data => {
     let merged = state, remoteJson = '', repair = false;
     if(data){
@@ -330,9 +329,9 @@ function cloudFlush(){
       if(!replace && remoteJson !== stableJson(base)) merged = JSON.parse(JSON.stringify(mergeHeldState(base, state, remote)));
     }
     written = merged;
-    if(remoteJson && !repair && stableJson(merged) === remoteJson){ writtenStamp = stampOf(data); return null; }   // the server already has all of it
-    const updatedAt = nextStamp(stampOf(data));
-    writtenStamp = Date.parse(updatedAt);
+    if(remoteJson && !repair && stableJson(merged) === remoteJson) return null;   // the server already has all of it
+    const updatedAt = new Date().toISOString();
+    cloud.flightStamps.push(updatedAt);   // to recognise this save when the listener sends it back
     const payload = JSON.parse(JSON.stringify(Object.assign({}, merged, { clientId, updatedAt })));
     if(docBytes(payload) + 100 > DOC_MAX_BYTES){ const e = new Error('too big'); e.code = 'too-big'; throw e; }
     return payload;
@@ -357,14 +356,22 @@ function cloudFlush(){
       cloud.inflight = '';
       if(!cloud.ready) return;
       if(replace) cloud.replaceNext = false;
-      if(writtenStamp && writtenStamp < cloud.serverStamp){
-        // a newer copy from another device came in while saving (it already holds this save, and it was merged
-        // into the board): it stays the base, so another device's change is never mistaken for one made here
+      const rec = loadBoardCache(code);
+      if(rec && rec.compact){ clearBoardCache(); cloud.cacheBase = ''; }   // the kept edits are on the server now: never merged twice
+      if(cloud.remoteSeq !== seenAtStart){
+        // A copy from another device came in while saving and was merged into the board. It may be newer than
+        // this save (then it already holds it) or older, so the save's own result must not become the base:
+        // another device's change could then look like one made here. The newest copy stays the base; when this
+        // save's own copy hasn't come back yet, the next save waits for the next copy (or 3 s).
+        if(!cloud.echoSeen){
+          cloud.awaitNext = true;
+          clearTimeout(cloud.awaitTimer);
+          cloud.awaitTimer = setTimeout(() => { cloud.awaitNext = false; cloudSchedulePush(); }, 3000);
+        }
         cloudSchedulePush();
         if(!cloud.timer) setCloudStatus('ok');
         return;
       }
-      noteStamp(writtenStamp);
       const wj = stableJson(written);
       markConfirmed(wj, written);
       cloud.lastJson = wj;
@@ -654,7 +661,6 @@ function cloudFinishHeld(data){
     applyState(remote);
     remoteSnap = snapshotState();
     remoteJson = stableJson(remoteSnap);
-    noteStamp(stampOf(data));
     const merged = cloud.replaceNext ? local : mergeHeldState(base, local, remoteSnap);
     applyState(stateFromDoc(merged));
     if(remote.idsAssigned) remoteJson = '';   // new ids made up here are saved back for everyone
