@@ -96,12 +96,15 @@ function cmpMonth(a, b){
   return na - nb;
 }
 
+// an item's category as filter text: old data may have none (null/missing), which must not break the board
+function catKey(c){ return c == null ? '' : String(c); }
+
 function renderCategoryFilter(){
   const wrap = document.getElementById('categoryFilter');
   wrap.innerHTML = '';
   const live = liveItems();
   const perCat = new Map();
-  live.forEach(i => perCat.set(i.category, (perCat.get(i.category) || 0) + 1));
+  live.forEach(i => { const k = catKey(i.category); perCat.set(k, (perCat.get(k) || 0) + 1); });
   const cats = [...perCat.keys()].sort((a,b) => a.localeCompare(b));
 
   if(!cats.includes(activeCategoryFilter) && activeCategoryFilter !== 'All'){
@@ -123,7 +126,7 @@ function renderCategoryFilter(){
     pill.style.background = isActive ? cc.solid : cc.bg;
     pill.style.borderColor = cc.border;
     pill.style.color = isActive ? '#fff' : cc.fg;
-    pill.innerHTML = `${escapeHtml(c)} <span class="count">${count}</span>`;
+    pill.innerHTML = `${escapeHtml(c || 'No category')} <span class="count">${count}</span>`;
     pill.onclick = () => { activeCategoryFilter = c; render(); };
     wrap.appendChild(pill);
   });

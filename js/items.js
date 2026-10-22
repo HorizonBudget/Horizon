@@ -145,16 +145,25 @@ function openItemModal(prefill){
 }
 function closeItemModal(){ document.getElementById('itemOverlay').style.display = 'none'; }
 
+const ITEM_NAME_MAX = 200;
 function saveItem(){
-  const name = document.getElementById('f_name').value.trim();
+  // a second tap on Save (the window already closed) must not add the item twice
+  if(document.getElementById('itemOverlay').style.display !== 'flex') return;
+  const name = document.getElementById('f_name').value.trim().slice(0, ITEM_NAME_MAX);
   let category = document.getElementById('f_category').value;
-  const cost = parseFloat(document.getElementById('f_cost').value) || 0;
+  // same rules as the actual price: a real amount up to $1,000,000,000, in cents (text, "$" or Infinity count as empty)
+  const costRaw = readAmountField(document.getElementById('f_cost'));
+  const cost = costRaw || 0;
   const month = document.getElementById('f_month').value || 'No date yet';
   const existing = editingId ? findLiveItem(editingId) : null;
   const saved = existing ? existing.saved : 0;
   const owner = document.getElementById('f_owner').value;
   const note = document.getElementById('f_note').value.trim().slice(0, 500);
 
+  if(name && Number.isNaN(costRaw) && Number(document.getElementById('f_cost').value) < 0){
+    askAlert('The estimated cost must be more than $0.');
+    return;
+  }
   if(!name || !cost){
     askAlert('Give the item a name and an estimated cost.');
     return;
@@ -222,6 +231,7 @@ function saveItem(){
     Object.assign(it,{ name, category, cost, month, saved, owner, link, note, subcategory });
     if(repeat) it.repeat = repeat; else delete it.repeat;
     if(actualCost !== undefined){ if(actualCost === null) delete it.actualCost; else it.actualCost = actualCost; }
+    const after = JSON.parse(JSON.stringify(it));
     logActivity(`${household.name} updated “${name}”`);
     closeItemModal();
     render();
@@ -229,8 +239,7 @@ function saveItem(){
     showToast(`Saved changes to “${truncText(name, 40)}”.`, () => {
       const cur = items.find(i => i.id === id);
       if(!cur) return;
-      Object.keys(cur).forEach(k => { delete cur[k]; });
-      Object.assign(cur, before);
+      undoFieldChanges(cur, before, after);
       logActivity(`${household.name} undid the changes to “${before.name}”`);
       render();
     });
@@ -243,6 +252,16 @@ function saveItem(){
   }
   closeItemModal();
   render();
+}
+
+// Undo of an edit: puts back only the fields this edit changed, and only where nobody changed them again since,
+// so a tick-off, removal or other change made meanwhile (on this or another phone) is kept.
+function undoFieldChanges(cur, before, after){
+  const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
+  new Set([...Object.keys(before), ...Object.keys(after)]).forEach(k => {
+    if(same(before[k], after[k]) || !same(cur[k], after[k])) return;
+    if(k in before) cur[k] = JSON.parse(JSON.stringify(before[k])); else delete cur[k];
+  });
 }
 
 // Soft delete: the item stays in the array, marked with when it was removed.
