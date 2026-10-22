@@ -80,6 +80,14 @@ const closeAlert=w=>{ if($(w,'confirmOverlay').style.display==='flex') $(w,'conf
     const long=w3.eval(`createPerson('${'z'.repeat(60)}').name.length`);
     ok(long===40,'createPerson caps a long name at 40');
     ok(w3.eval(`createPerson('${'😀'.repeat(30)}').name`)==='😀'.repeat(20),'cap never cuts an emoji in half');
+    const fam='👨‍👩‍👧';   // 8 UTF-16 units, one character on screen
+    const capped=w3.eval(`createPerson(${JSON.stringify('ab'+fam.repeat(5))}).name`);
+    ok(capped==='ab'+fam.repeat(4)&&capped.length<=40,'cap never splits a joined emoji like '+fam+': '+capped);
+    const hasSeg=w3.eval("typeof Intl.Segmenter==='function'");
+    w3.eval('window.__Seg=Intl.Segmenter; Intl.Segmenter=undefined');
+    const fb=w3.eval(`createPerson(${JSON.stringify('x'.repeat(39)+'😀')}).name`);
+    w3.eval('Intl.Segmenter=window.__Seg');
+    ok(hasSeg&&fb==='x'.repeat(39),'without Intl.Segmenter: falls back to whole code points (no half emoji): '+fb.length);
   }
   // ---------- legacy / duplicate people in synced data ----------
   {

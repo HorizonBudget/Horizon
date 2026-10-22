@@ -90,7 +90,10 @@ function checkPersonName(raw, exceptId){
 function createPerson(name){
   const t = tidyName(name);
   if(t){
-    const chars = Array.from(t);   // never cut an emoji in half
+    // never cut an emoji in half: whole characters as people see them (👨‍👩‍👧 is one), else code points
+    let chars;
+    try { chars = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(t), s => s.segment); }
+    catch(e) { chars = Array.from(t); }
     while(chars.join('').length > NAME_MAX) chars.pop();
     name = chars.join('').trim();
   } else name = String(name);
