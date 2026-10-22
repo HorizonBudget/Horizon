@@ -23,6 +23,12 @@ function boot(ls){
 const sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let fails=0,pass=0; const ok=(c,m)=>{ console.log((c?'PASS ':'FAIL ')+m); c?pass++:fails++; };
 const $=(w,id)=>w.document.getElementById(id);
+// Measures the longest stretch the page could not respond (a 5 ms ticker that runs late); call the result to stop.
+function freezeWatch(){
+  let last=Date.now(), worst=0;
+  const iv=setInterval(()=>{ const n=Date.now(); worst=Math.max(worst,n-last); last=n; },5);
+  return ()=>{ clearInterval(iv); return Math.max(worst,Date.now()-last); };
+}
 const dialogOpen=w=>$(w,'confirmOverlay').style.display==='flex';
 // Picks a backup file. answer: true = Replace board, false = Cancel, null = leave the question open.
 async function restore(w,content,answer){
@@ -147,14 +153,38 @@ const CODE='EDGE-BACKUP-1';
     ok(r.asked&&w.eval('items.length')===2&&w.eval("items[0].name")==='Café ☕'&&w.eval("items[0].note")==='a "quote" <b>'&&w.eval('householdName')==='The Smiths','round trip keeps everything, including accents, emoji, quotes and the household name');
     ok(w.eval(`Number(lsGet('lastBackupAt'))`)>Date.now()-5000&&w.eval(`lsGet('lastBackupSeeded')`)===null,'export records the backup time');
   }
-  // ---------- a very large backup ----------
+  // ---------- very large backups ----------
+  // The shared database holds about 1 MB per household, so a backup that cannot fit is refused
+  // up front (plain message, board untouched); a large one that fits restores without freezing.
   {
+    w.eval(`items=[${JSON.stringify(item(1,{name:'Keep me'}))}]; render()`); await sleep(600);
+    const before=w.eval('JSON.stringify(items)');
     const many=Array.from({length:10000},(_,i)=>item(1000+i));
-    const t0=Date.now();
-    const r=await restore(w,{app:'household-forecast',version:1,items:many,people:[{name:'Sam'}]},true);
-    await sleep(50);
-    ok(r.asked&&/10000 items/.test(r.question)&&w.eval('items.length')===10000,'10,000-item backup restores without freezing the page ('+(Date.now()-t0)+' ms)');
+    w.__many=many;
+    ok(w.eval('boardBytes(docToSnap({items:window.__many,people:[]}).snap)>DOC_MAX_BYTES'),'10,000-item backup really is over the size limit');
+    const watch=freezeWatch();
+    const r=await restore(w,{app:'household-forecast',version:1,items:many,people:[{name:'Sam'}]},null);
+    const ms=watch();
+    ok(r.asked&&/too big/i.test(r.question)&&/Nothing was changed/.test(r.question)&&!/Replace everything/.test(r.question)&&/too big/i.test(r.msg),'10,000-item backup is refused with a plain message (no "Replace board" question)');
+    if(dialogOpen(w)) $(w,'confirmOk').click();
+    await sleep(20);
+    ok(w.eval('JSON.stringify(items)')===before&&!w.eval('cloud.replaceNext'),'board unchanged after the refused backup');
+    ok(ms<1500,'refusing the 10,000-item backup does not freeze the page (longest pause '+ms+' ms)');
     ok(w.__errs.length===0,'no script errors with 10,000 items');
+  }
+  {
+    const many=Array.from({length:2000},(_,i)=>item(20000+i));
+    w.__many=many;
+    ok(w.eval('boardBytes(docToSnap({items:window.__many,people:[{name:"Sam"}]}).snap)<DOC_MAX_BYTES'),'2,000-item backup fits under the size limit');
+    const watch=freezeWatch();
+    const r=await restore(w,{app:'household-forecast',version:1,items:many,people:[{name:'Sam'}]},true);
+    await sleep(600);   // let the save and its echo run too
+    const ms=watch();
+    ok(r.asked&&/2000 items/.test(r.question)&&w.eval('items.length')===2000&&/restored/.test($(w,'backupMsg').textContent),'2,000-item backup restores');
+    // jsdom builds cards far slower than a real browser: a redraw after the first one builds every card at
+    // once (js/month-groups.js), about 3 s for 2,000 cards here, so this only catches a real hang
+    ok(ms<10000,'2,000-item restore does not freeze the page (longest pause '+ms+' ms)');
+    ok(w.__errs.length===0,'no script errors with 2,000 items');
   }
   // ---------- backup reminder data ----------
   {
