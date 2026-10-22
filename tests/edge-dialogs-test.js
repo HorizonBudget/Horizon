@@ -156,6 +156,22 @@ function withKeyboard(state){
   key(w,'Escape',$(w,'toast')); ok(!$(w,'toast'),'Escape on the toast hides it');
   w.showToast('x',()=>{}); w.askConfirm({title:'Over a toast'}); key(w,'Escape',$(w,'toastUndo'));
   ok(!open(w,'confirmOverlay') && w.document.getElementById('toast'),'Escape with a question open closes the question first, not the toast');
+  // toasts in front of dialogs (David, 3.5.x): tappable Undo, the dialog stays open, the question still on top
+  w.hideToast(); await sleep(5);
+  const zi=id=>Number(w.getComputedStyle($(w,id)).zIndex);
+  ok(zi('toastRegion')>Math.max(zi('peopleOverlay'),zi('settingsOverlay'),zi('cropOverlay'),zi('chooseOverlay')) && zi('toastRegion')<zi('confirmOverlay'),'toasts sit in front of every dialog but under the question ('+zi('toastRegion')+')');
+  w.openSettingsModal(); $(w,'peopleOverlay').style.display='flex'; await sleep(5);
+  let undone=0; w.showToast('Removed Jo from the household',()=>undone++);
+  ok(w.document.documentElement.classList.contains('toast-shown'),'a toast over a dialog marks the page so the dialog makes room at its end');
+  const tap=el=>['pointerdown','mousedown','pointerup','mouseup','click'].forEach(t=>el.dispatchEvent(new w.MouseEvent(t,{bubbles:true,cancelable:true})));
+  tap($(w,'toast')); ok(open(w,'peopleOverlay') && open(w,'settingsOverlay') && $(w,'toast'),'tapping the toast text does not close the dialog underneath');
+  tap($(w,'toastUndo')); await sleep(5);
+  ok(undone===1 && open(w,'peopleOverlay') && open(w,'settingsOverlay') && locked(w),'Undo over the People dialog works; both dialogs stay open and the page stays locked');
+  ok(!w.document.documentElement.classList.contains('toast-shown') && !w.document.documentElement.style.getPropertyValue('--toast-room'),'once the toast is gone the extra room goes too');
+  $(w,'peopleOverlay').style.display='none'; w.closeSettingsModal(); await sleep(5);
+  w.openSearch(); await sleep(5); const searching=()=>!!w.eval('searchOpen');
+  if(searching()){ w.showToast('x',()=>{}); tap($(w,'toast')); ok(searching(),'tapping a toast does not close the search (#toastRegion is excluded)'); w.closeSearch(); w.hideToast(); }
+  else ok(false,'search opened for the tap-off check');
   const reg=$(w,'toastRegion'); reg.remove(); threw=false; try{ w.showToast('no region'); w.hideToast(); }catch(e){ threw=true; } ok(!threw,'no toast area on the page: no crash');
 
   // ================= 7. update notice =================
