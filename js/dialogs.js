@@ -47,7 +47,26 @@ function settleConfirm(v){
   const back = confirmReturnFocus; confirmReturnFocus = null;
   if(back && back.focus && document.contains(back)){ try { back.focus({ preventScroll:true }); } catch(e) {} }
   if(r) r(v);
+  if(confirmWaiting.length) setTimeout(runConfirmWaiting, 0);
 }
+// Runs fn now, or once no question is open any more (askConfirm replaces an open question and answers it "no",
+// so a notice that is not urgent waits its turn instead). Checked again after the answer's own follow-up has run.
+// A waiting notice belongs to the household that was open when it was queued: leaving drops it ("Leave" forgets the
+// saved session before it reloads the page) and so does switching to another household code.
+let confirmWaiting = [];
+const confirmOwner = () => ((typeof household === 'object' && household && household.code) || '') + '|' + (lsGet('ledgerHousehold') ? 1 : 0);
+function whenNoConfirm(fn, owner){
+  if(owner === undefined) owner = confirmOwner();
+  if(owner !== confirmOwner()) return;
+  if(confirmResolve) confirmWaiting.push({ fn, owner }); else fn();
+}
+function runConfirmWaiting(){
+  const list = confirmWaiting; confirmWaiting = [];
+  list.forEach(w => whenNoConfirm(w.fn, w.owner));
+}
+function clearConfirmWaiting(){ confirmWaiting = []; }
+// "Leave this household" reloads the page: nothing queued may pop up on the way out
+window.addEventListener('pagehide', clearConfirmWaiting);
 // Reads the amount field. Returns null for empty, a number (cents) for a valid entry, or NaN when it can't be used.
 function readAmountField(inputEl){
   const raw = String(inputEl.value || '').trim();
