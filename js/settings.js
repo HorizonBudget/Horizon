@@ -88,3 +88,33 @@ function applyPattern(){
     root.style.removeProperty('--pat-image');
   }
 }
+
+// ---- Restore: a backup made in a different household asks first ----
+// Runs before the normal restore (js/household.js onRestoreFileChosen), which still checks the file and asks
+// "Replace board?". Backups record householdCode; very old ones that don't are not questioned (the normal
+// question already says everything will be replaced). Anything unreadable goes straight on for its usual message.
+function backupHouseholdCode(text){
+  try {
+    const d = JSON.parse(text);
+    return d && typeof d.householdCode === 'string' ? d.householdCode.trim().toUpperCase() : '';
+  } catch(e) { return ''; }
+}
+function onRestorePicked(input){
+  const file = input.files && input.files[0];
+  input.value = '';
+  if(!file) return;
+  const handOn = () => onRestoreFileChosen({ files: [file], value: '' });
+  const reader = new FileReader();
+  reader.onload = () => {
+    const from = backupHouseholdCode(String(reader.result || ''));
+    const here = String(household.code || '').trim().toUpperCase();
+    if(!from || !here || from === here){ handOn(); return; }
+    askConfirm({
+      title: 'Backup from another household',
+      message: `This backup is from another household (${from}). Restore it into this one anyway?`,
+      confirmLabel: 'Continue'
+    }).then(ok => { if(ok) handOn(); });
+  };
+  reader.onerror = handOn;
+  reader.readAsText(file);
+}

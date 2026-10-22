@@ -2,7 +2,7 @@
 // The picked image is shown behind a circular mask. The person drags it into place and zooms;
 // "Use photo" renders exactly the visible square to a 160x160 JPEG (the circle is its inscribed
 // disc), which is what gets stored. The math below is pure so it can be unit-tested.
-const CROP_VIEW = 240, CROP_OUT = 160, CROP_MAX_ZOOM = 4;
+const CROP_VIEW = 240, CROP_OUT = 160, CROP_MAX_ZOOM = 4, CROP_MAX_BYTES = 40000;
 const clampNum = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
 
 // Smallest scale at which the image still covers the whole view (so the circle is never empty).
@@ -38,7 +38,15 @@ function cropRender(img, iw, ih, st, view, out){
   ctx.fillStyle = '#fff'; ctx.fillRect(0, 0, out, out);   // transparent PNGs would otherwise turn black in a JPEG
   ctx.imageSmoothingQuality = 'high';
   ctx.drawImage(img, r.sx, r.sy, r.sw, r.sh, 0, 0, out, out);
-  return c.toDataURL('image/jpeg', 0.8);
+  // Every photo lives in the one shared household document (1 MB at most), so keep each one small.
+  // A browser that couldn't draw returns "data:," instead of an image; treat that as a failure.
+  let data = '';
+  for(const q of [0.8, 0.6, 0.4]){
+    data = c.toDataURL('image/jpeg', q);
+    if(!/^data:image\//.test(data)) throw new Error('canvas gave no image');
+    if(data.length <= CROP_MAX_BYTES) break;
+  }
+  return data;
 }
 
 const crop = { open:false, img:null, iw:0, ih:0, st:null, cb:null, onCancel:null, pointers:new Map(), last:null, wired:false };
@@ -122,6 +130,12 @@ function cropWire(){
 
 // img: a loaded image (naturalWidth/naturalHeight). cb(dataUrl) runs only if the person confirms.
 function openCropEditor(img, cb, onCancel){
+  // an image with no size (some SVGs, a broken file) would make every number below NaN
+  if(!((img.naturalWidth || img.width) > 0 && (img.naturalHeight || img.height) > 0)){
+    askAlert('Couldn’t read that image. Try a JPG or PNG.');
+    if(onCancel) onCancel();
+    return;
+  }
   cropWire();
   crop.img = img;
   crop.iw = img.naturalWidth || img.width;
@@ -163,6 +177,6 @@ function cropPhotoFile(file, cb, onCancel){
     img.onerror = () => { askAlert('Couldn’t read that image. Try a JPG or PNG.'); if(onCancel) onCancel(); };
     img.src = e.target.result;
   };
-  reader.onerror = () => { if(onCancel) onCancel(); };
+  reader.onerror = () => { askAlert('Couldn’t read that image. Try a JPG or PNG.'); if(onCancel) onCancel(); };
   reader.readAsDataURL(file);
 }

@@ -2,13 +2,15 @@
 // Android and desktop Chrome/Edge offer a real install prompt; iPhone and iPad need Share → Add to Home Screen.
 const INSTALL_HINT_KEY = 'horizonInstallHintShown';
 let deferredInstallPrompt = null;
+let installHintShownHere = false;   // also remembered in memory, for when this device can't store anything
 function isStandalone(){
   try { return (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) || navigator.standalone === true; } catch(e) { return false; }
 }
 function isIosSafari(){
   const ua = navigator.userAgent || '';
   const ios = /iPad|iPhone|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-  return ios && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS/.test(ua);
+  // other browsers and in-app browsers (Google app, Facebook, Instagram, ...) can't add to the Home Screen
+  return ios && /Safari/.test(ua) && !/CriOS|FxiOS|EdgiOS|OPiOS|GSA\/|FBAN|FBAV|Instagram|Line\/|Snapchat|LinkedInApp|Pinterest/.test(ua);
 }
 function updateInstallUi(){
   const txt = document.getElementById('installRowText'), btn = document.getElementById('installRowBtn');
@@ -28,7 +30,7 @@ function installHintVisible(){ const h = document.getElementById('installHint');
 function maybeShowInstallHint(){
   if(installHintVisible()) return;
   if(document.getElementById('app').style.display !== 'block' || !household.code) return;
-  if(isStandalone() || lsGet(INSTALL_HINT_KEY) === '1') return;
+  if(isStandalone() || installHintShownHere || lsGet(INSTALL_HINT_KEY) === '1') return;
   if(!deferredInstallPrompt && !isIosSafari()) return;
   const canPrompt = !!deferredInstallPrompt;
   document.getElementById('installHintText').textContent = canPrompt
@@ -37,6 +39,7 @@ function maybeShowInstallHint(){
   document.getElementById('installHintBtn').style.display = canPrompt ? '' : 'none';
   document.getElementById('installHintDismiss').textContent = canPrompt ? 'Not now' : 'Got it';
   document.getElementById('installHint').hidden = false;
+  installHintShownHere = true;
   lsSet(INSTALL_HINT_KEY, '1');   // shown once per device, whatever happens next
 }
 function dismissInstallHint(){

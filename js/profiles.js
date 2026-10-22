@@ -20,6 +20,22 @@ function legacyPersonId(name){
   for(let i = 0; i < t.length; i++) h = ((h * 33) ^ t.charCodeAt(i)) >>> 0;
   return 'p_' + h.toString(36);
 }
+// A stored photo goes straight into <img src="...">, so only an image data: URL (or an https address) is kept.
+// Anything else (a broken or hand-edited backup, junk from another device) is treated as "no photo".
+function cleanPhoto(v){
+  if(typeof v !== 'string') return null;
+  if(/^data:image\/[\w.+-]+(;[\w.+=-]+)*,[^"'<>\s`]*$/i.test(v)) return v;
+  if(/^https:\/\/[^"'<>\s`]+$/i.test(v)) return v;
+  return null;
+}
+// How names are compared: upper/lower case, extra spaces and Unicode spelling variants don't count.
+function nameKey(name){ return String(name == null ? '' : name).normalize('NFC').replace(/\s+/g, ' ').trim().toLowerCase(); }
+// Characters that take up no space. A name made only of these would look blank everywhere.
+const INVISIBLE_RE = /[\u0000-\u001F\u007F-\u009F\u00AD\u034F\u115F\u1160\u180E\u200B-\u200F\u202A-\u202E\u2060-\u206F\u3164\uFE00-\uFE0F\uFEFF]/g;
+// Tidies a typed name: no control characters, single spaces, NFC. Joiners inside emoji (like 👨‍👩‍👧) stay.
+function tidyName(raw){
+  return String(raw == null ? '' : raw).normalize('NFC').replace(/[\u0000-\u001F\u007F-\u009F]/g, ' ').replace(/\s+/g, ' ').trim();
+}
 // Returns { people: copies that all have a unique id, assigned: true if any id had to be made up }.
 function ensurePersonIds(list){
   const seen = new Set();
@@ -33,22 +49,24 @@ function ensurePersonIds(list){
       for(let n = 2; seen.has(String(id)); n++) id = base + '_' + n;
     }
     seen.add(String(id));
-    return Object.assign({}, p, { id });
+    const q = Object.assign({}, p, { id });
+    if('photo' in q) q.photo = cleanPhoto(q.photo);
+    return q;
   });
   return { people: out, assigned };
 }
 
 function personById(id){ return id == null ? null : (people.find(p => samePid(p.id, id)) || null); }
 function personByName(name){
-  const n = String(name || '').trim().toLowerCase();
-  return n ? (people.find(p => String(p.name).trim().toLowerCase() === n) || null) : null;
+  const n = nameKey(name);
+  return n ? (people.find(p => nameKey(p.name) === n) || null) : null;
 }
 function currentPerson(){ return personById(household.personId) || personByName(household.name); }
 // Is this person the one signed in on this device? By id when we have one, otherwise by name.
 function isMe(p){
   if(!p) return false;
   if(household.personId != null) return samePid(household.personId, p.id);
-  return !!household.name && String(p.name).trim().toLowerCase() === String(household.name).trim().toLowerCase();
+  return !!household.name && nameKey(p.name) === nameKey(household.name);
 }
 function canEditPerson(p){ return !!p && (isMe(p) || adminUnlocked()); }
 function firstName(n){ return String(n || '').trim().split(/\s+/)[0] || ''; }
@@ -60,15 +78,25 @@ function saveSession(){
 
 // Trim, require something, cap the length, and keep names unique (ignoring upper/lower case).
 function checkPersonName(raw, exceptId){
-  const name = String(raw == null ? '' : raw).replace(/\s+/g, ' ').trim();
-  if(!name) return { error: 'Type a name first.' };
+  const name = tidyName(raw);
+  if(!name || !name.replace(INVISIBLE_RE, '').replace(/[\s\u200D]/g, '')) return { error: 'Type a name first.' };
   if(name.length > NAME_MAX) return { error: `Names can be up to ${NAME_MAX} characters.` };
-  const clash = people.find(p => !samePid(p.id, exceptId) && String(p.name).trim().toLowerCase() === name.toLowerCase());
+  const clash = people.find(p => !samePid(p.id, exceptId) && nameKey(p.name) === nameKey(name));
   if(clash) return { error: `Someone in this household is already called “${clash.name}”. Pick a different name.` };
   return { name };
 }
 
+// Sign-in (js/items.js enterApp) passes the typed name straight here, so tidy it the same way and cap the length.
 function createPerson(name){
+  const t = tidyName(name);
+  if(t){
+    // never cut an emoji in half: whole characters as people see them (👨‍👩‍👧 is one), else code points
+    let chars;
+    try { chars = Array.from(new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(t), s => s.segment); }
+    catch(e) { chars = Array.from(t); }
+    while(chars.join('').length > NAME_MAX) chars.pop();
+    name = chars.join('').trim();
+  } else name = String(name);
   const p = { id: newPersonId(), name, photo: null };
   people.push(p);
   return p;
@@ -113,6 +141,7 @@ function setPersonPhoto(id, data){
   const p = personById(id);
   if(!p) return false;
   if(!canEditPerson(p)) return false;
+  if(data && !cleanPhoto(data)) return false;
   p.photo = data || null;
   logActivity(`${household.name} ${data ? 'updated' : 'removed'} ${p.name}'s photo`);
   render();
