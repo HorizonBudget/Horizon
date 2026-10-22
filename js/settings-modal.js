@@ -61,7 +61,7 @@ function onCustomChange(which){
 }
 function setCustomMode(dark){
   const base = currentThemeColors();
-  customTheme = { dark, paper: dark === base.dark ? base.paper : (dark ? DEFAULT_PAPER.dark : DEFAULT_PAPER.light), accent: base.accent };
+  customTheme = { dark, paper: dark === base.dark ? base.paper : (dark ? DEFAULT_PAPER.dark : DEFAULT_PAPER.light), accent: dark === base.dark ? base.accent : swatchForMode(base.accent, dark) };
   theme = 'custom';
   commitTheme();
 }
@@ -77,7 +77,7 @@ function syncCustomizer(){
   set('ct_paper', c.paper); set('ct_accent', c.accent);
   document.getElementById('ct_light').classList.toggle('active', !c.dark);
   document.getElementById('ct_dark').classList.toggle('active', !!c.dark);
-  document.getElementById('accentSwatches').innerHTML = ACCENT_SWATCHES.map(h =>
+  document.getElementById('accentSwatches').innerHTML = accentSwatches(themeInk(c).dark).map(h =>
     `<button type="button" class="swatch${h.toLowerCase() === c.accent.toLowerCase() ? ' active' : ''}" style="background:${h}" title="${h}" aria-label="Accent ${h}" onclick="setCustomAccent('${h}')"></button>`).join('');
 }
 function commitTheme(){

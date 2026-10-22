@@ -41,8 +41,22 @@ const hex = n => '#' + n.toString(16).padStart(6, '0');
   // presets, seasonal themes and every offered swatch must look exactly as before
   const seasonal = JSON.parse(w.eval('JSON.stringify(SEASONAL_THEMES)'));
   ok(seasonal.every(t => w.themeInk(t).dark === t.dark && w.customVars(t)['--teal'] === t.accent), 'seasonal themes keep their own mode and accent');
-  const swatches = JSON.parse(w.eval('JSON.stringify(ACCENT_SWATCHES)'));
-  ok([false, true].every(dark => swatches.every(a => w.customVars({ dark, paper: dark ? '#131719' : '#EEF1ED', accent: a })['--teal'] === a)), 'offered accent swatches are never changed (light and dark)');
+  // offered accent swatches: one list per mode, each AA as text on that mode's default page and card, and on its buttons
+  for(const dark of [false, true]){
+    const list = JSON.parse(w.eval(`JSON.stringify(accentSwatches(${dark}))`));
+    const paper = dark ? '#131719' : '#EEF1ED';
+    const rows = list.map(a => { const vars = w.customVars({ dark, paper, accent: a }); return { a, t: Math.min(ratio(a, paper), ratio(a, vars['--card'])), b: ratio(vars['--on-accent'], a), same: vars['--teal'] === a }; });
+    ok(list.length === 8 && rows.every(r => r.t >= 4.5 && r.b >= 4.5 && r.same), `${dark ? 'Dark' : 'Light'} swatches reach AA as text and button text: ` + rows.map(r => r.a + ' ' + r.t.toFixed(2) + '/' + r.b.toFixed(2)).join(', '));
+  }
+  w.openSettingsModal('themes');
+  w.setCustomAccent('#91631F'); w.setCustomMode(true);
+  const darkShown = [...d.querySelectorAll('#accentSwatches .swatch')].map(b => b.getAttribute('title'));
+  ok(w.eval('customTheme.accent') === '#C98A2B' && darkShown.join() === w.eval('ACCENT_SWATCHES_DARK.join()') && d.querySelector('#accentSwatches .swatch.active').getAttribute('title') === '#C98A2B', 'switching to Dark takes the mustard swatch to its Dark shade and shows the Dark swatches');
+  w.setCustomMode(false);
+  ok(w.eval('customTheme.accent') === '#91631F', 'and back to Light gives the Light shade');
+  w.setCustomAccent('#123456'); w.setCustomMode(true);
+  ok(w.eval('customTheme.accent') === '#123456', 'a hand-picked accent is kept when switching mode');
+  w.setTheme('light');
   ok(w.themeInk({ dark:false, paper:'#EEF1ED' }).ink === w.mixHex('#EEF1ED', '#000000', 0.88) && w.themeInk({ dark:true, paper:'#131719' }).ink === w.mixHex('#131719', '#ffffff', 0.9), 'normal custom pages keep the usual text color');
 
   const hard = [

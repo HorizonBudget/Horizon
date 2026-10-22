@@ -115,7 +115,16 @@ function samePattern(a, b){
   return !!a && !!b && a.type === b.type && (a.type === 'none' || (a.size === b.size && a.strength === b.strength && (a.type !== 'emoji' || a.emoji === b.emoji)));
 }
 let customTheme = { dark:false, paper:'#EEF1ED', accent:'#3F6D64' };
-const ACCENT_SWATCHES = ['#3F6D64','#2F6E9E','#A85A3A','#7C6FB5','#B5556F','#5F8F3E','#C98A2B','#4A6FA5'];
+// The same eight hues per mode, each tuned so accent text (links, "Collapse all") reaches WCAG AA 4.5:1 on the default
+// page and card of that mode: darker shades for Light, lighter ones for Dark. Same order in both lists.
+const ACCENT_SWATCHES = ['#3F6D64','#2F6E9E','#A15638','#6D629F','#A74E66','#4E7533','#91631F','#496DA2'];
+const ACCENT_SWATCHES_DARK = ['#71938C','#6191B5','#BB7E65','#8E83BF','#C27489','#6C984D','#C98A2B','#6E8CB7'];
+function accentSwatches(dark){ return dark ? ACCENT_SWATCHES_DARK : ACCENT_SWATCHES; }
+// switching Light/Dark takes a swatch accent to the same hue in the other mode's list; any other color stays
+function swatchForMode(hex, dark){
+  const i = accentSwatches(!dark).findIndex(h => h.toLowerCase() === String(hex).toLowerCase());
+  return i === -1 ? hex : accentSwatches(dark)[i];
+}
 const DEFAULT_PAPER = { light:'#EEF1ED', dark:'#131719' };
 function currentThemeColors(){
   if(theme === 'custom') return customTheme;   // may carry an optional danger color (from a saved seasonal theme)
