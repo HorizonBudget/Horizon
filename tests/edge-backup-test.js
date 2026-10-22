@@ -85,6 +85,32 @@ const CODE='EDGE-BACKUP-1';
     ok(r.asked&&w.eval('household.code')===CODE,'backup made in a different household restores into this one (code unchanged)');
     ok(!('extra' in store[CODE])&&!('settings' in store[CODE])&&!('householdCode' in store[CODE])&&!('exportedAt' in store[CODE]),'unknown backup fields are not saved to the shared document');
   }
+  // ---------- the file picker asks first when the backup is from another household ----------
+  {
+    ok(/onchange="onRestorePicked\(this\)"/.test(html),'restore file picker goes through the household check');
+    const pick=async (obj)=>{ const inp={files:[new w.File([typeof obj==='string'?obj:JSON.stringify(obj)],'b.json')],value:'x'}; w.onRestorePicked(inp); await sleep(60); return inp; };
+    const bk=code=>Object.assign({app:'household-forecast',version:1,items:[item(51)],people:[{name:'Sam'}]},code===undefined?{}:{householdCode:code});
+    w.eval(`items=[${JSON.stringify(item(1,{name:'Keep me'}))}]; render()`);
+    const inp=await pick(bk('SOMEONE-ELSE-9'));
+    ok(inp.value===''&&dialogOpen(w)&&/another household/.test($(w,'confirmMsg').textContent)&&/SOMEONE-ELSE-9/.test($(w,'confirmMsg').textContent),'other household: plain warning first: '+$(w,'confirmMsg').textContent);
+    $(w,'confirmCancel').click(); await sleep(60);
+    ok(!dialogOpen(w)&&keep(),'saying no to the warning stops there, board untouched');
+    await pick(bk('SOMEONE-ELSE-9')); $(w,'confirmOk').click(); await sleep(60);
+    ok(dialogOpen(w)&&/Replace everything/.test($(w,'confirmMsg').textContent),'saying yes goes on to the usual "Replace board?" question');
+    $(w,'confirmCancel').click(); await sleep(20);
+    ok(keep(),'and that one can still be cancelled');
+    for(const [label,code] of [['same household',CODE],['same household, other case/spaces',' '+CODE.toLowerCase()+' '],['old backup with no household recorded',undefined]]){
+      await pick(bk(code));
+      ok(dialogOpen(w)&&/Replace everything/.test($(w,'confirmMsg').textContent),label+': no extra warning');
+      $(w,'confirmCancel').click(); await sleep(20);
+    }
+    await pick('{"app":"household-forecast","items":[');
+    ok(!dialogOpen(w)&&/doesn’t look like/.test($(w,'backupMsg').textContent)&&keep(),'broken file through the picker: usual message, no warning');
+    await pick(bk('SOMEONE-ELSE-9')); $(w,'confirmOk').click(); await sleep(60); $(w,'confirmOk').click(); await sleep(30);
+    ok(w.eval('items.length')===1&&w.eval('items[0].id')===51&&w.eval('household.code')===CODE,'confirming both restores into this household');
+    lastBlob=null; w.exportBackup(); const exp=JSON.parse(await lastBlob.text());
+    ok(exp.householdCode===CODE,'new backups record the household code');
+  }
   // ---------- to-dos, trash, unsafe photo ----------
   {
     const now=Date.now();

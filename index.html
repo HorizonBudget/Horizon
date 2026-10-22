@@ -445,7 +445,7 @@
       <div class="guide-actions">
         <button class="btn btn-ghost" onclick="exportBackup()">Export backup</button>
         <button class="btn btn-ghost" onclick="document.getElementById('restoreFile').click()">Restore from backup…</button>
-        <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestoreFileChosen(this)">
+        <input type="file" id="restoreFile" accept="application/json,.json" style="display:none" onchange="onRestorePicked(this)">
       </div>
       <p class="guide-desc" id="lastBackupLabel"></p>
       <p class="guide-desc" id="backupMsg"></p>
