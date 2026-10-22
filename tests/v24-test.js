@@ -31,8 +31,8 @@ function mk(ls){return new JSDOM(html,{runScripts:'dangerously',pretendToBeVisua
  w.setTheme('light');
  const id=st.savedThemes[0].id;
  d.querySelector(`[data-saved-id="${id}"] .saved-apply`).click();
- ok(w.eval('theme')==='custom'&&w.eval('customTheme.accent')==='#A85A3A'&&w.eval('customTheme.dark')===true,'apply sets custom');
- ok(d.documentElement.style.getPropertyValue('--teal')==='#A85A3A','css var applied');
+ ok(w.eval('theme')==='custom'&&w.eval('customTheme.accent')===w.eval('ACCENT_SWATCHES_DARK[2]')&&w.eval('customTheme.dark')===true,'apply sets custom (the rust swatch, Dark shade)');
+ ok(d.documentElement.style.getPropertyValue('--teal')===w.eval('ACCENT_SWATCHES_DARK[2]'),'css var applied');
  // persistence
  const w2=mk(w.localStorage.getItem('ledgerSettings'));
  ok(w2.eval('savedThemes.length')===2&&w2.eval('theme')==='custom','persist across reload');
