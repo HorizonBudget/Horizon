@@ -356,6 +356,7 @@
     cursor:pointer;
     transition:all 0.12s ease;
     white-space:nowrap;
+    max-width:100%; overflow:hidden; text-overflow:ellipsis;   /* a very long category name must not push the page sideways */
   }
   .month-pill:hover{border-color:var(--mustard); color:var(--ink);}
   .month-pill.active{
