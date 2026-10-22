@@ -1,6 +1,6 @@
 # Horizon handbook
 
-Last updated at version **3.5.0**, 2026-10-22. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
+Last updated at version **3.6.0**, 2026-10-22. Moved from the claude.ai Project into the repo so Claude Code on David's computer can use it. Keep this file current: update it when you learn something a future session would need.
 
 ## 0. The owner's vision (read first)
 Horizon is a **shared to-do list for upcoming expenses**, not a money tracker. EveryDollar already tracks what the family actually spends and saves. Do NOT propose features that ask the user to keep numbers up to date (savings progress, set-aside amounts, budget-vs-actual reports, spending charts). Good ideas make the list easier to keep, share, see and tick off.
@@ -72,7 +72,7 @@ On Windows use `python` or `py` where these notes say `python3`.
 
 Run:
 ```
-node tests/run-all.js            # all 26 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
+node tests/run-all.js            # all 33 jsdom suites; exit 1 on any failure (run from the repo folder or tests/)
 node tests/run-all.js undo       # only suites whose name contains "undo"
 python3 tests/browser-smoke.py   # files load, offline reload works
 python3 tests/overflow-audit.py  # sideways scroll at 7 phone/desktop sizes, incl. seasonal themes + patterns
@@ -129,6 +129,7 @@ Flow: area helper(s) in parallel -> `reviewer` on each branch -> fix rounds -> m
 - **3.2.0** (commit a913a15): red and white Christmas with 🎅, stronger patterns, frosted Active/Completed bar, README refresh.
 - After 3.2.0 (no version bump, tooling only): moved to Claude Code: `CLAUDE.md`, this handbook, `.claude/` shortcuts and agent, `tools/make-preview.js`, setup guide. Then (2026-10-17): four area helper agents plus a reviewer, `docs/agent-rules.md`, the `/preview` skill file (it was missing from the repo), and empty CSS section markers.
 - **3.3.0** (commit c8d6044): shared To-do side (js/todo.js), search in the top bar covering budget and to-dos (closes on tap-off), ⋯ on budget cards, "+ Budget item" / "+ To-do item". 22 jsdom suites now.
+- **3.6.0**: edge-case sweep (new tests/edge-*-test.js) and safer sync: every save is a `runTransaction` that re-reads the server doc and merges only this device's changes (field by field, by item/person id; renames carried into owners); offline/unsent edits live in `horizonBoardCache` (not Firestore's write queue); listener copies are never skipped and no client clocks order anything; restore still replaces the whole board (David's call) and warns for another household's backup; 800 KB warning, ~1 MB stop; damaged docs repaired. Emulator scripts used in review: tests not in repo (scratch). Short money display from $10k (`fmtMoneyShort`), `$`/commas in costs, accent swatches re-shaded per mode (old hexes alias to swatches), Undo toasts above dialogs (z 85, confirm z 90). Known: a 3.5.x queued `setDoc` can still replay once after upgrading; same-field edits within ~3 s of a slow save can resolve last-writer-wins.
 - **3.5.1**: hotfix: `onSnapshot` now uses `includeMetadataChanges:true` (without it, a server copy equal to the cache never fired, so 3.5.0 sat on "Updating…" holding writes); `getDocFromServer` fallback after 6s online and on online/wake; tests/held-sync-test.js models the SDK rule.
 - **3.5.0**: faster start-up: self-hosted fonts, saved page opens at once, deferred scripts; board draws only the first 40 cards then batches, hidden side not built, photos as shared blob: URLs; signed-in devices open from a per-device copy (`horizonBoardCache` in localStorage) showing "Updating…", merge only on the first server snapshot (cached snapshots ignored while held), "Not synced — changes kept here" on refusal. Known gap: a whole-doc `setDoc` left in Firestore's write queue by a killed session can still overwrite newer changes (true before too; fix would be per-field `updateDoc`).
 - **3.4.0**: to-do website link (`url` field on the to-do, `todoUrl()`), "Budget item pair" label, tap anywhere on a budget card to open it (`.card-tap`).
