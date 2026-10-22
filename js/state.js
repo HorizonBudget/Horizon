@@ -190,7 +190,18 @@ const MONTH_OPTIONS = ['No date yet', ...FUTURE_MONTHS];
 const MONTHS_COLLAPSED_COUNT = 5;
 let monthListExpanded = false;
 
+// The list is built when the page loads; if the app stays open into a new month, rebuild it so the picker
+// starts at the current month again (a past month an item already has stays selectable, see below).
+function refreshMonthOptions(){
+  const fresh = buildMonthOptions();
+  if(fresh[0] === FUTURE_MONTHS[0]) return false;
+  FUTURE_MONTHS.splice(0, FUTURE_MONTHS.length, ...fresh);
+  MONTH_OPTIONS.splice(0, MONTH_OPTIONS.length, 'No date yet', ...fresh);
+  return true;
+}
+
 function populateMonthSelect(selected){
+  refreshMonthOptions();
   const sel = document.getElementById('f_month');
   // If the currently selected month isn't in the collapsed view, auto-expand so it stays visible.
   const selectedIsBeyondCollapsed = selected && selected !== 'No date yet'

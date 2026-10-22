@@ -77,7 +77,7 @@ function renderBoard(){
   list.innerHTML = '';
   const activeItems = liveItems().filter(i => !i.completed);
   let visible = activeItems;
-  if(activeCategoryFilter !== 'All') visible = visible.filter(i => i.category === activeCategoryFilter);
+  if(activeCategoryFilter !== 'All') visible = visible.filter(i => catKey(i.category) === activeCategoryFilter);
 
   // "sort by subcategory" only makes sense once a single category with subcategories is selected
   const catHasSub = activeCategoryFilter !== 'All'
@@ -130,11 +130,11 @@ function renderBoard(){
   document.getElementById('statCountSub').textContent = visible.length === 1
     ? (filterLabel ? `1 thing in ${filterLabel}` : '1 thing to plan for')
     : (visible.length
-        ? (filterLabel ? `in ${filterLabel}` : `across ${new Set(visible.map(i=>i.category)).size} categories`)
+        ? (filterLabel ? `in ${filterLabel}` : `across ${new Set(visible.map(i=>catKey(i.category))).size} categories`)
         : 'nothing yet');
 
-  const totalForecasted = visible.reduce((sum,i)=> sum + (i.cost || 0), 0);
-  document.getElementById('statNeeded').textContent = '$' + Math.round(totalForecasted).toLocaleString();
+  const totalForecasted = visible.reduce((sum,i)=> sum + (Number(i.cost) || 0), 0);
+  document.getElementById('statNeeded').innerHTML = moneyHtml(Math.round(totalForecasted));
   document.getElementById('statNeededSub').textContent = filterLabel ? `for ${filterLabel}` : 'across all future items';
 
   renderActivity();

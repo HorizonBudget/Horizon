@@ -143,6 +143,7 @@ function setTodoFilter(f){
 function renderTodos(){
   const list = document.getElementById('todoList');
   if(!list) return;
+  todoDrawnDay = todoDateStr(0);
   const all = liveTodos();
   const open = all.filter(t => !t.completed);
   const overdueAll = open.filter(t => todoGroupKey(t) === 'overdue').length;
@@ -233,6 +234,17 @@ function renderTodos(){
     doneWrap.appendChild(head); doneWrap.appendChild(body);
   }
 }
+
+// Today / This week / Overdue depend on the date: if the day has changed since the list was drawn (the app left
+// open past midnight, or opened again the next morning), draw it again
+let todoDrawnDay = '';
+function refreshTodosIfNewDay(){
+  if(!todoDrawnDay || todoDrawnDay === todoDateStr(0) || document.hidden) return;
+  const app = document.getElementById('app');
+  if(app && app.style.display === 'block') renderCore();
+}
+document.addEventListener('visibilitychange', refreshTodosIfNewDay);
+setInterval(refreshTodosIfNewDay, 60 * 1000);
 
 function toggleTodoGroup(key){
   if(collapsedTodoGroups.has(key)) collapsedTodoGroups.delete(key); else collapsedTodoGroups.add(key);
@@ -347,7 +359,7 @@ function goToBudgetItem(id){
   activeTab = it.completed ? 'completed' : 'active';
   if(!it.completed){
     if(collapsedMonths.delete(it.month || 'No date yet')) saveCollapsedMonths();
-    if(activeCategoryFilter !== 'All' && activeCategoryFilter !== it.category) activeCategoryFilter = 'All';
+    if(activeCategoryFilter !== 'All' && activeCategoryFilter !== catKey(it.category)) activeCategoryFilter = 'All';
   }
   setSide('budget');
   finishLaterCards();   // the card may be one that a first draw was still going to add
@@ -487,6 +499,8 @@ function closeTodoModal(){
   editingTodoId = null;
 }
 function saveTodoModal(){
+  // a second tap on Add/Save (or Enter) after the window closed must not add the to-do twice
+  if(document.getElementById('todoOverlay').style.display !== 'flex') return false;
   const name = cleanTodoName(document.getElementById('t_name').value);
   if(!name){
     document.getElementById('t_nameError').textContent = 'Give the to-do a name.';
@@ -519,14 +533,14 @@ function saveTodoModal(){
   if(linkId != null) t.linkId = linkId; else delete t.linkId;
   closeTodoModal();
   if(JSON.stringify(before) === JSON.stringify(t)) return true;   // nothing changed
+  const after = JSON.parse(JSON.stringify(t));
   logActivity(`${household.name} updated to-do “${name}”`);
   render();
   const id = t.id;
   showToast(`Saved changes to “${truncText(name, 40)}”.`, () => {
     const cur = items.find(i => i.id === id);
     if(!cur) return;
-    Object.keys(cur).forEach(k => { delete cur[k]; });
-    Object.assign(cur, before);
+    undoFieldChanges(cur, before, after);   // js/items.js: a tick-off or removal made since is kept
     logActivity(`${household.name} undid the changes to “${before.name}”`);
     render();
   });

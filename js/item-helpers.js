@@ -96,12 +96,15 @@ function cmpMonth(a, b){
   return na - nb;
 }
 
+// an item's category as filter text: old data may have none (null/missing), which must not break the board
+function catKey(c){ return c == null ? '' : String(c); }
+
 function renderCategoryFilter(){
   const wrap = document.getElementById('categoryFilter');
   wrap.innerHTML = '';
   const live = liveItems();
   const perCat = new Map();
-  live.forEach(i => perCat.set(i.category, (perCat.get(i.category) || 0) + 1));
+  live.forEach(i => { const k = catKey(i.category); perCat.set(k, (perCat.get(k) || 0) + 1); });
   const cats = [...perCat.keys()].sort((a,b) => a.localeCompare(b));
 
   if(!cats.includes(activeCategoryFilter) && activeCategoryFilter !== 'All'){
@@ -123,7 +126,7 @@ function renderCategoryFilter(){
     pill.style.background = isActive ? cc.solid : cc.bg;
     pill.style.borderColor = cc.border;
     pill.style.color = isActive ? '#fff' : cc.fg;
-    pill.innerHTML = `${escapeHtml(c)} <span class="count">${count}</span>`;
+    pill.innerHTML = `${escapeHtml(c || 'No category')} <span class="count">${count}</span>`;
     pill.onclick = () => { activeCategoryFilter = c; render(); };
     wrap.appendChild(pill);
   });
@@ -144,15 +147,54 @@ function updateFilterNote(){
 function fmtMoney(n){
   n = Math.round((Number(n) || 0) * 100) / 100;
   const cents = Math.abs(n % 1) > 0.0001;
-  return '$' + n.toLocaleString('en-US', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+  // a negative (old data could hold one) reads "-$12,500", like the short form "-$12.5k"
+  return (n < 0 ? '-$' : '$') + Math.abs(n).toLocaleString('en-US', cents ? { minimumFractionDigits: 2, maximumFractionDigits: 2 } : { maximumFractionDigits: 0 });
+}
+// Big amounts are shortened for display from $10k up ($12,500 -> $12.5k, $1,250,000 -> $1.25M, $1e9 -> $1B),
+// about three digits, no trailing ".0". Under $10k it is fmtMoney() unchanged. The data always keeps the exact amount.
+const MONEY_SHORT_FROM = 10000;
+function fmtMoneyShort(n){
+  n = Math.round((Number(n) || 0) * 100) / 100;
+  const abs = Math.abs(n);
+  if(abs < MONEY_SHORT_FROM) return fmtMoney(n);
+  const units = [[1e9, 'B'], [1e6, 'M'], [1e3, 'k']];
+  // about three digits: rounded in whole steps of the shown precision (so $9,995,000 -> $10M, not $9.99M),
+  // then a rounding that reaches 1000 moves on to the next unit ($999,950 -> $1M, not $1000k)
+  const roundIn = (unit, dec) => Math.round(abs / (unit / Math.pow(10, dec))) / Math.pow(10, dec);
+  const decFor = v => v < 10 ? 2 : v < 100 ? 1 : 0;
+  let i = units.findIndex(u => abs >= u[0]);
+  let r = roundIn(units[i][0], decFor(abs / units[i][0]));
+  if(r >= 1000 && i > 0){ i--; r = roundIn(units[i][0], 2); }
+  return (n < 0 ? '-' : '') + '$' + String(r) + units[i][1];
+}
+// The amount as HTML: shortened on screen, the exact amount in the tooltip and for screen readers
+function moneyHtml(n){
+  const full = fmtMoney(n), short = fmtMoneyShort(n);
+  if(short === full) return escapeHtml(full);
+  return `<span class="money-short" title="${escAttr(full)}"><span aria-hidden="true">${escapeHtml(short)}</span><span class="sr-only">${escapeHtml(full)}</span></span>`;
+}
+// Reads a typed estimated cost: "$1,200.50", "1200.5", " 75 " all work. Returns null when empty, the amount in
+// cents, or NaN for anything else (letters, a negative or over $1,000,000,000). Commas must group thousands.
+function parseCostInput(raw){
+  let t = String(raw == null ? '' : raw).replace(/\s+/g, '');
+  if(!t) return null;
+  t = t.replace(/^(-?)\$/, '$1');
+  if(t.includes(',')){
+    if(!/^-?\d{1,3}(,\d{3})+(\.\d*)?$/.test(t)) return NaN;
+    t = t.replace(/,/g, '');
+  }
+  if(!/^-?(\d+\.?\d*|\.\d+)$/.test(t)) return NaN;
+  const n = Number(t);
+  if(!isFinite(n) || n < 0 || n > 1e9) return NaN;
+  return Math.round(n * 100) / 100;
 }
 function hasActualCost(it){ return !!it && typeof it.actualCost === 'number' && isFinite(it.actualCost) && it.actualCost >= 0; }
 // "$120 under" / "$30 over" compared with the forecast; '' when there's no actual price
 function actualDiff(it){
   if(!hasActualCost(it)) return null;
   const d = Math.round(((Number(it.cost) || 0) - it.actualCost) * 100) / 100;
-  if(d > 0) return { kind: 'under', text: fmtMoney(d) + ' under' };
-  if(d < 0) return { kind: 'over', text: fmtMoney(-d) + ' over' };
+  if(d > 0) return { kind: 'under', text: fmtMoney(d) + ' under', amount: d, word: 'under' };
+  if(d < 0) return { kind: 'over', text: fmtMoney(-d) + ' over', amount: -d, word: 'over' };
   return { kind: 'even', text: 'on forecast' };
 }
 

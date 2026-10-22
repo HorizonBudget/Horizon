@@ -203,7 +203,7 @@
 
     <div class="gate-row">
       <label class="field-label">Item name</label>
-      <input type="text" id="f_name" placeholder="e.g. Car registration renewal" oninput="onNameInput()">
+      <input type="text" id="f_name" maxlength="200" placeholder="e.g. Car registration renewal" oninput="onNameInput()">
       <div class="name-hint" id="nameHint"></div>
     </div>
 
@@ -230,7 +230,7 @@
     <div class="grid-2 gate-row">
       <div>
         <label class="field-label">Estimated cost</label>
-        <input type="number" id="f_cost" placeholder="e.g. 150" oninput="onCostInput()">
+        <input type="text" id="f_cost" inputmode="decimal" autocomplete="off" placeholder="e.g. 150" oninput="onCostInput()">
       </div>
       <div>
         <label class="field-label">Target month</label>

@@ -84,7 +84,7 @@ function buildMonthGroup(g, index, fillCards){
   return buildGroupSection({
     data: { month: g.month }, bodyId: 'monthGroupBody' + index, collapsed: collapsedMonths.has(g.month),
     dot: monthColor(g.month).solid, name: g.month, count: `${n} item${n === 1 ? '' : 's'}`,
-    extraHtml: `<span class="mg-total mono" title="Total forecast for ${escAttr(g.month)}">${fmtMoney(total)}</span>`,
+    extraHtml: `<span class="mg-total mono" title="Total forecast for ${escAttr(g.month)}">${moneyHtml(total)}</span>`,
     onToggle: () => toggleMonthGroup(g.month),
     fill: body => fillCards ? fillCards(body, g.items) : g.items.forEach(item => body.appendChild(buildItemCard(item, { completedView: false })))
   });

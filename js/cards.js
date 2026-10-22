@@ -1,6 +1,7 @@
 function paidHtml(item){
   const d = actualDiff(item);
-  return `<div class="paid-line">Paid ${fmtMoney(item.actualCost)}</div><div class="paid-diff ${d.kind}">${escapeHtml(d.text)}</div>`;
+  const diff = d.amount != null ? `${moneyHtml(d.amount)} ${d.word}` : escapeHtml(d.text);
+  return `<div class="paid-line">Paid ${moneyHtml(item.actualCost)}</div><div class="paid-diff ${d.kind}">${diff}</div>`;
 }
 
 function buildItemCard(item, opts){
@@ -13,7 +14,8 @@ function buildItemCard(item, opts){
   card.className = 'item-card';
   card.setAttribute('data-cat', item.category);
   card.setAttribute('data-item-id', item.id);
-  card.style.setProperty('--cat-color', categoryColor(item.category).solid);
+  card.style.setProperty('--cat-color', categoryColor(catKey(item.category)).solid);
+  const idArg = escAttr(JSON.stringify(item.id));   // ids are numbers, but an old or odd one may be text
 
   let checkboxHtml;
   if(opts.preview && opts.completedView){
@@ -21,13 +23,13 @@ function buildItemCard(item, opts){
   } else if(opts.preview){
     checkboxHtml = `<input type="checkbox" class="complete-check" title="Try it: check to see the completion animation" onchange="demoComplete(this)">`;
   } else if(opts.completedView){
-    checkboxHtml = `<input type="checkbox" class="complete-check restore-check" checked title="Mark as not complete" onchange="onRestoreCheckboxChange(${item.id}, this)">`;
+    checkboxHtml = `<input type="checkbox" class="complete-check restore-check" checked title="Mark as not complete" onchange="onRestoreCheckboxChange(${idArg}, this)">`;
   } else {
-    checkboxHtml = `<input type="checkbox" class="complete-check" title="Mark complete" onchange="completeItem(${item.id})">`;
+    checkboxHtml = `<input type="checkbox" class="complete-check" title="Mark complete" onchange="completeItem(${idArg})">`;
   }
 
   // ⋯ (edit) sits just left of the checkbox, like on the to-do rows
-  const moreHtml = `<button type="button" class="todo-more card-more" aria-label="Edit ${escAttr(item.name)}" title="Edit" ${opts.preview ? 'disabled' : `onclick="editItem(${item.id})"`}>⋯</button>`;
+  const moreHtml = `<button type="button" class="todo-more card-more" aria-label="Edit ${escAttr(item.name)}" title="Edit" ${opts.preview ? 'disabled' : `onclick="editItem(${idArg})"`}>⋯</button>`;
 
   card.innerHTML = `
     ${checkboxHtml}
@@ -55,7 +57,7 @@ function buildItemCard(item, opts){
       </div>
     </div>
     <div class="item-amount">
-      <div class="item-amount-value">${fmtMoney(item.cost)}</div>
+      <div class="item-amount-value">${moneyHtml(item.cost)}</div>
       ${opts.completedView && hasActualCost(item) ? paidHtml(item) : ''}
     </div>
   `;
