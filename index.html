@@ -113,8 +113,8 @@
     <div class="view-tabs">
       <button class="view-tab budget-only" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
       <button class="view-tab budget-only" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
-      <button class="view-tab todo-only" id="todoTabAllBtn" onclick="setTodoFilter('all')">Everyone</button>
-      <button class="view-tab todo-only" id="todoTabMineBtn" onclick="setTodoFilter('mine')">Mine</button>
+      <!-- To-do side: All / Mine / one chip per category in use (js/todo.js renderTodoChips) -->
+      <div class="todo-filter-row todo-only" id="todoFilterRow" role="group" aria-label="Show to-dos for"></div>
       <div class="activity-wrap" id="activityWrap">
         <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
           <span class="act-recent">Recent </span>activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
@@ -301,6 +301,18 @@
       <p class="field-error" id="t_nameError" role="alert"></p>
     </div>
     <div class="gate-row">
+      <label class="field-label" for="t_category">Category <span class="opt">(optional)</span></label>
+      <div class="cat-select-wrap">
+        <span class="chip-dot" id="t_categoryDot" aria-hidden="true"></span>
+        <select id="t_category" onchange="onTodoCategoryChange()"></select>
+      </div>
+      <div class="new-cat-row" id="t_newCatRow">
+        <input type="text" id="t_newCategory" maxlength="60" placeholder="Name your new category..." autocomplete="off" oninput="document.getElementById('t_categoryError').textContent=''">
+      </div>
+      <p class="field-error" id="t_categoryError" role="alert"></p>
+      <p class="field-hint">The same categories as the Budget side. Pairing a budget item fills this in for you.</p>
+    </div>
+    <div class="gate-row">
       <label class="field-label" for="t_due">Due date <span class="opt">(optional)</span></label>
       <input type="date" id="t_due" oninput="updateTodoDueChips()" onchange="updateTodoDueChips()">
       <div class="chip-row todo-due-chips" id="todoDueChips">
@@ -316,7 +328,7 @@
     </div>
     <div class="gate-row">
       <label class="field-label" for="t_link">Budget item pair <span class="opt">(optional)</span></label>
-      <select id="t_link"></select>
+      <select id="t_link" onchange="onTodoLinkChange()"></select>
     </div>
     <div class="gate-row">
       <label class="field-label" for="t_url">Link <span class="opt">(optional)</span></label>

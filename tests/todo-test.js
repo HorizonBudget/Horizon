@@ -46,7 +46,7 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
   const today = A.eval('todoDateStr(0)'), yest = A.eval('todoDateStr(-1)'), in3 = A.eval('todoDateStr(3)'), in20 = A.eval('todoDateStr(20)');
   A.setSide('todo');
   ok($('app').dataset.side === 'todo' && A.getComputedStyle($('todoView')).display !== 'none' && A.getComputedStyle($('budgetView')).display === 'none', 'switching shows the To-do view and hides the budget view');
-  ok(A.getComputedStyle($('tabActiveBtn')).display === 'none' && A.getComputedStyle($('todoTabAllBtn')).display !== 'none', 'Active/Completed tabs swapped for Everyone/Mine');
+  ok(A.getComputedStyle($('tabActiveBtn')).display === 'none' && A.getComputedStyle($('todoFilterRow')).display !== 'none', 'Active/Completed tabs swapped for the All / Mine / category chips');
   ok(/Nothing on the list yet/.test($('todoList').textContent), 'friendly empty state');
   $('todoQuickInput').value = '  Call the plumber  ';
   $('todoAddForm').dispatchEvent(new A.Event('submit', { cancelable: true, bubbles: true }));
@@ -142,7 +142,7 @@ let fails = 0, pass = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL
 
   // ---------- Mine filter ----------
   A.setTodoFilter('mine');
-  ok(todoNames().join() === 'Pay school lunch' && $('todoTabMineBtn').classList.contains('active'), 'Mine shows only my to-dos: ' + todoNames());
+  ok(todoNames().join() === 'Pay school lunch' && d.querySelector('#todoFilterRow .todo-chip.selected').dataset.filter === 'mine', 'Mine shows only my to-dos: ' + todoNames());
   $('todoQuickInput').value = 'Mine quick'; A.quickAddTodo();
   ok(A.eval(`items.find(i=>i.name==='Mine quick').owner`) === 'Sam' && todoNames().includes('Mine quick'), 'quick add with Mine showing assigns it to me');
   A.setTodoFilter('all');

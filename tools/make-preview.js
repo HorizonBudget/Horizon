@@ -52,19 +52,22 @@ window.addEventListener('load', async () => {
     ];
     demo.forEach((d, i) => items.push({ id: Date.now() + i, name: d[0], category: d[1], subcategory: '', cost: d[2], month: M(d[3]), owner: '' }));
     items.push({ id: Date.now() + 99, name: 'Birthday party', category: 'Kids', cost: 90, month: M(0), owner: '', completed: true });
-    // demo to-dos (To-do side): one per group, a few owners, a note, two linked to budget items, one done
+    // demo to-dos (To-do side): one per group, a few owners, a note, two linked to budget items, one done; most in a
+    // category (the same demo categories as the budget items) so the chip row shows them, and one with none
     ['Alex', 'Jo'].forEach(n => { if(!people.some(p => p.name === n)) people.push({ id: 'demo-' + n, name: n, photo: null }); });
     const itemId = name => (items.find(i => i.name === name) || {}).id;
     const T = (name, days, extra) => Object.assign({ id: Date.now() + Math.random(), kind: 'todo', name, completed: false, owner: '', createdAt: Date.now() - 1000 * (100 - items.length) }, days === null ? {} : { due: todoDateStr(days) }, extra || {});
     items.push(
-      T('Renew the car registration online', -2, { owner: 'Preview', linkId: itemId('Car registration') }),
-      T('Call about soccer sign-ups', 0, { owner: 'Jo' }),
-      T('Send in the school picture form', 0),
-      T('Book the furnace service', 3, { linkId: itemId('Furnace service'), notes: 'Ask for the fall tune-up special. Number is on the fridge.' }),
-      T('Compare tire prices', 5, { owner: 'Alex', url: 'https://www.discounttire.com/' }),
-      T('Make the Christmas gift list', 24, { owner: 'Preview' }),
+      T('Renew the car registration online', -2, { owner: 'Preview', category: 'Vehicle', linkId: itemId('Car registration') }),
+      T('Call about soccer sign-ups', 0, { owner: 'Jo', category: 'Kids' }),
+      T('Send in the school picture form', 0, { category: 'Kids' }),
+      T('Book the furnace service', 3, { category: 'Home', linkId: itemId('Furnace service'), notes: 'Ask for the fall tune-up special. Number is on the fridge.' }),
+      T('Replace the furnace filter', 6, { owner: 'Jo', category: 'Home' }),
+      T('Compare tire prices', 5, { owner: 'Alex', category: 'Vehicle', url: 'https://www.discounttire.com/' }),
+      T('Make the Christmas gift list', 24, { owner: 'Preview', category: 'Holidays & Gifts' }),
+      T('Touch up the hallway paint', null, { category: 'Home' }),
       T('Return the library books', null),
-      T('Buy birthday candles', null, { completed: true, completedAt: Date.now() - 3600000 })
+      T('Buy birthday candles', null, { category: 'Kids', completed: true, completedAt: Date.now() - 3600000 })
     );
     render();
   } catch (e) { console.error('preview seed failed', e); }

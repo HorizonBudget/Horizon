@@ -20,11 +20,11 @@ function itemMatchesSearch(it, q){
   linkedTodosFor(it).forEach(t => parts.push(t.name));
   return textMatchesAll(parts, q);
 }
-// to-do: name, notes, owner, due date (as shown and as typed), linked budget item name
+// to-do: name, notes, owner, category, due date (as shown and as typed), linked budget item name
 function todoMatchesSearch(t, q){
   if(!searchWords(q).length) return true;
   const li = todoLinkedItem(t);
-  return textMatchesAll([t.name, t.notes, todoUrl(t), t.owner, t.due ? todoDueLabel(t.due) : '', t.due, li ? li.name : ''], q);
+  return textMatchesAll([t.name, t.notes, todoUrl(t), t.owner, todoCategory(t), t.due ? todoDueLabel(t.due) : '', t.due, li ? li.name : ''], q);
 }
 function searchShowing(){ return searchOpen && !!searchTerm(); }
 

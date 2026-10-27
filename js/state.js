@@ -74,6 +74,17 @@ function sortedCategoryList(){
   return [...CATEGORIES].sort((a,b) => a.localeCompare(b)).concat(['Other']);
 }
 
+// Adds a category typed in by someone (budget item or to-do dialog) to the shared list and returns the name to store.
+// A name that only differs in upper/lower case from an existing one reuses that one, so "home" files under Home.
+function addCategory(name){
+  name = String(name == null ? '' : name).replace(/\s+/g, ' ').trim();
+  if(!name) return '';
+  const same = CATEGORIES.find(c => typeof c === 'string' && c.toLowerCase() === name.toLowerCase());
+  if(same) return same;
+  CATEGORIES.push(name);
+  return name;
+}
+
 function populateCategorySelect(selected){
   const sel = document.getElementById('f_category');
   const list = sortedCategoryList();

@@ -205,8 +205,7 @@ function saveItem(){
       askAlert('Type a name for the new category, then hit Add.');
       return;
     }
-    if(!CATEGORIES.includes(newCat)) CATEGORIES.push(newCat);
-    category = newCat;
+    category = addCategory(newCat);   // js/state.js: shared with the to-do dialog
   }
 
   // subcategory: only read it if the person actually opened that field

@@ -1248,6 +1248,42 @@
   .todo-done-body[hidden]{display:none;}
   .todo-empty{line-height:1.6;}
   .todo-empty strong{color:var(--ink);}
+  .todo-show-all{margin-top:4px; font-size:14px;}
+
+  /* Chip row: All · Mine · categories · No category (one picked, dark like the budget's Filters pills). On the To-do
+     side the row takes the whole width of the tab row and Recent activity drops to its own small row under it. */
+  #app[data-side="todo"] .view-tabs{flex-wrap:wrap; align-items:center; border-bottom:none;}
+  #app[data-side="todo"] .view-tabs .activity-wrap{align-self:auto; padding:8px 0 0; margin-left:auto;}
+  .todo-filter-row{display:flex; flex-wrap:wrap; gap:8px; flex:1 1 100%; min-width:0; padding:12px 0; border-bottom:1px solid var(--line);}
+  .todo-chip{
+    display:inline-flex; align-items:center; gap:6px; min-height:36px; max-width:100%; min-width:0; box-sizing:border-box;
+    padding:0 12px; border-radius:18px; border:1px solid var(--line); background:var(--card); color:var(--ink-soft);
+    font-family:'Inter',sans-serif; font-size:13.5px; font-weight:600; cursor:pointer; white-space:nowrap;
+    transition:background .12s ease, color .12s ease, border-color .12s ease;
+  }
+  .todo-chip:hover{border-color:var(--ink-soft); color:var(--ink);}
+  .todo-chip .chip-label{min-width:0; overflow:hidden; text-overflow:ellipsis;}
+  .chip-dot{flex:none; display:inline-block; width:9px; height:9px; border-radius:50%;}
+  .todo-chip .chip-count{font-family:'IBM Plex Mono',monospace; font-weight:500; font-size:12px; opacity:.8;}
+  .todo-chip.selected{background:var(--ink); border-color:var(--ink); color:var(--paper);}
+  .todo-chip.selected .chip-dot{box-shadow:0 0 0 1.5px var(--paper);}
+  .todo-chip.is-mine{border-style:dashed;}
+  .todo-chip.is-mine.selected{border-style:solid;}
+  @media (max-width:360px){ .todo-chip{padding:0 10px; font-size:13px;} }
+
+  /* Category tag on a to-do row */
+  .todo-cat{
+    display:inline-flex; align-items:center; gap:5px; min-width:0; max-width:100%; box-sizing:border-box;
+    padding:2px 9px 2px 7px; border-radius:12px; background:var(--tint); color:var(--ink-soft); font-weight:600;
+  }
+  .todo-cat .chip-dot{width:8px; height:8px;}
+  .todo-cat-name{min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+
+  /* Dialog: category picker with the category's color dot inside the field */
+  .cat-select-wrap{position:relative;}
+  .cat-select-wrap .chip-dot{position:absolute; left:13px; top:50%; width:10px; height:10px; margin-top:-5px; pointer-events:none;}
+  .cat-select-wrap select{padding-left:32px;}
+  #todoOverlay .new-cat-row input{min-width:0;}
 
   /* Budget card tag: "☑ 1/3 to-dos" */
   .tag-todo{border:1px solid var(--line); background:var(--teal-light); color:var(--teal); cursor:pointer; font-family:inherit; text-transform:none; letter-spacing:.02em;}

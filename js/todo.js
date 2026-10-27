@@ -1,11 +1,11 @@
 // ---- To-do side: a simple shared to-do list next to the budget board ----
 // To-dos are stored inside the synced `items` array as { kind:'todo', ... } (the Firestore rules only allow the
 // existing top-level fields, so there is no separate list). Fields: id, kind, name, completed, completedAt (when
-// ticked off), due ('YYYY-MM-DD', optional), owner (person NAME, '' = anyone), notes, linkId (a budget item's id),
-// createdAt, deletedAt (Deleted items). The budget side never sees them: liveItems()/findLiveItem() skip kind:'todo'.
-// Which side is showing (uiSide) is remembered per device in ledgerSettings (js/settings.js), never synced.
+// ticked off), due ('YYYY-MM-DD', optional), owner (person NAME, '' = anyone), category (one of the shared budget
+// categories, optional), notes, url, linkId (a budget item's id), createdAt, deletedAt (Deleted items). The budget side never sees them: liveItems()/findLiveItem() skip kind:'todo'.
+// Which side is showing (uiSide) and the picked chip (todoFilter) are remembered per device in ledgerSettings
+// (js/settings.js), never synced.
 
-let todoFilter = 'all';       // 'all' (Everyone) or 'mine'; remembered only while the page is open
 let todoDoneOpen = false;     // the "Done (N)" section starts folded
 let editingTodoId = null;
 // collapsed due-date groups, remembered on this device like the budget's month groups (never synced)
@@ -92,6 +92,52 @@ function todoLinkedItem(t){
   return liveItems().find(i => String(i.id) === String(t.linkId)) || null;
 }
 function todoIsMine(t){ return !!t.owner && t.owner === household.name; }
+// a to-do's category, or '' (none). Old or damaged data may hold anything there; only real text counts.
+function todoCategory(t){ const c = t && t.category; return typeof c === 'string' && c.trim() ? c : ''; }
+
+// ---- The chip row: All · Mine · each category with to-dos · No category (only when some have none) ----
+function todoFilterCat(f){ return typeof f === 'string' && f.startsWith('cat:') ? f.slice(4) : null; }
+function todoMatchesFilter(t, f){
+  if(f === 'mine') return todoIsMine(t);
+  if(f === 'none') return !todoCategory(t);
+  const c = todoFilterCat(f);
+  return c === null ? true : todoCategory(t) === c;
+}
+// the chips for these to-dos (open and done), each with how many are still open
+function todoChips(all){
+  const open = all.filter(t => !t.completed);
+  const cats = [...new Set(all.map(todoCategory).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  const chips = [{ key: 'all', label: 'All' }, { key: 'mine', label: 'Mine', mine: true }];
+  cats.forEach(c => chips.push({ key: 'cat:' + c, label: c, dot: categoryColor(c).solid }));
+  if(all.some(t => !todoCategory(t))) chips.push({ key: 'none', label: 'No category', dot: 'var(--line)' });
+  chips.forEach(ch => { ch.count = open.filter(t => todoMatchesFilter(t, ch.key)).length; });
+  return chips;
+}
+// The picked chip, or All when it is gone (its last to-do removed, or the category renamed). While the list is
+// still empty (the board not loaded yet) the remembered pick is kept for later.
+function currentTodoFilter(chips, all){
+  if(chips.some(ch => ch.key === todoFilter)) return todoFilter;
+  if(all.length && todoFilter !== 'all'){ todoFilter = 'all'; saveSettings(); }
+  return 'all';
+}
+function renderTodoChips(chips, f){
+  const row = document.getElementById('todoFilterRow');
+  if(!row) return;
+  row.innerHTML = '';
+  chips.forEach(ch => {
+    const b = document.createElement('button');
+    const on = ch.key === f;
+    b.type = 'button';
+    b.className = 'todo-chip' + (on ? ' selected' : '') + (ch.mine ? ' is-mine' : '');
+    b.dataset.filter = ch.key;
+    b.setAttribute('aria-pressed', on ? 'true' : 'false');
+    b.innerHTML = (ch.dot ? `<span class="chip-dot" style="background:${escAttr(ch.dot)}" aria-hidden="true"></span>` : '')
+      + `<span class="chip-label">${escapeHtml(ch.label)}</span><span class="chip-count">${ch.count}</span>`;
+    b.title = `${ch.label}: ${ch.count} to do`;
+    b.addEventListener('click', () => setTodoFilter(ch.key));
+    row.appendChild(b);
+  });
+}
 function linkedTodosFor(item){
   const ix = currentLinkIndex();
   if(ix) return (ix.todosByItem.get(String(item.id)) || []).slice();
@@ -134,8 +180,10 @@ function openAddForSide(){
   if(uiSide === 'todo') openTodoModal();
   else openItemModal();
 }
+// f: 'all', 'mine', 'none' or 'cat:<name>'; remembered on this device
 function setTodoFilter(f){
-  todoFilter = f === 'mine' ? 'mine' : 'all';
+  todoFilter = cleanTodoFilter(f);
+  saveSettings();
   renderCore();
 }
 
@@ -156,10 +204,11 @@ function renderTodos(){
     badge.classList.toggle('has-overdue', overdueAll > 0);
     badge.title = open.length + ' to do' + (overdueAll ? ', ' + overdueAll + ' overdue' : '');
   }
-  document.getElementById('todoTabAllBtn').classList.toggle('active', todoFilter === 'all');
-  document.getElementById('todoTabMineBtn').classList.toggle('active', todoFilter === 'mine');
+  const chips = todoChips(all);
+  const f = currentTodoFilter(chips, all), fCat = todoFilterCat(f);
+  renderTodoChips(chips, f);
 
-  const shown = t => todoFilter !== 'mine' || todoIsMine(t);
+  const shown = t => todoMatchesFilter(t, f);
   const shownOpen = open.filter(shown);
   const shownDone = all.filter(t => t.completed && shown(t)).sort((a, b) => (Number(b.completedAt) || 0) - (Number(a.completedAt) || 0));
 
@@ -167,7 +216,8 @@ function renderTodos(){
   document.getElementById('todoCountNote').textContent = shownOpen.length
     ? `${shownOpen.length} to do${overdue ? ' · ' + overdue + ' overdue' : ''}`
     : '';
-  document.getElementById('todoTitle').textContent = todoFilter === 'mine' ? 'My to-dos' : 'To do';
+  document.getElementById('todoTitle').textContent = f === 'mine' ? 'My to-dos' : f === 'none' ? 'No category' : fCat !== null ? fCat + ' to-dos' : 'To do';
+  document.getElementById('todoQuickInput').placeholder = fCat !== null ? 'Quick add to ' + fCat : 'Quick add todo';
 
   list.innerHTML = '';
   shownTodoGroups = [];
@@ -178,8 +228,11 @@ function renderTodos(){
     let msg;
     if(!all.length) msg = '<strong>Nothing on the list yet.</strong><br>Add the little jobs that go with your plans, like “Book the furnace service” or “Call about the roof quote”.';
     else if(!open.length) msg = '<strong>All done!</strong> 🎉<br>Everything on the list is ticked off.';
-    else if(todoFilter === 'mine') msg = '<strong>Nothing on your plate.</strong><br>No open to-dos are assigned to you. Tap Everyone to see the whole list.';
+    else if(f === 'mine') msg = '<strong>Nothing on your plate.</strong><br>No open to-dos are assigned to you.';
+    else if(fCat !== null) msg = `<strong>No ${escapeHtml(fCat)} to-dos.</strong><br>${shownDone.length ? 'Everything in ' + escapeHtml(fCat) + ' is ticked off.' : 'Nothing open in this category.'}`;
+    else if(f === 'none') msg = '<strong>No to-dos without a category.</strong>';
     else msg = 'Nothing open here.';
+    if(f !== 'all') msg += '<br><button type="button" class="link-btn todo-show-all" onclick="setTodoFilter(\'all\')">Show all to-dos</button>';
     list.innerHTML = `<div class="empty todo-empty">${msg}</div>`;
   } else {
     const byGroup = {};
@@ -290,6 +343,8 @@ function buildTodoRow(t){
     meta.push(`<span class="todo-due${cls}"><span class="note-icon" aria-hidden="true">📅</span>${escapeHtml(todoDueLabel(t.due))}</span>`);
   }
   if(t.owner) meta.push(`<span class="todo-owner">${cardAvatarHtml(t.owner, 'sm')}<span class="todo-owner-name">${escapeHtml(t.owner)}</span></span>`);
+  const cat = todoCategory(t);
+  if(cat) meta.push(`<span class="todo-cat" title="Category: ${escAttr(cat)}"><span class="chip-dot" style="background:${categoryColor(cat).solid}" aria-hidden="true"></span><span class="todo-cat-name">${escapeHtml(cat)}</span></span>`);
   const li = todoLinkedItem(t);
   if(li) meta.push(`<span class="todo-link"><span class="note-icon" aria-hidden="true">💵</span><button type="button" class="todo-link-chip" title="Go to the budget item “${escAttr(li.name)}”"><span class="todo-link-name">${escapeHtml(li.name)}</span></button></span>`);
   const note = String(t.notes || '').trim();
@@ -334,6 +389,7 @@ function addTodo(f){
   const due = cleanTodoDue(f.due); if(due) t.due = due;
   const notes = String(f.notes || '').trim().slice(0, TODO_NOTES_MAX); if(notes) t.notes = notes;
   const url = normalizeLinkInput(f.url); if(url) t.url = url;
+  const cat = todoCategory(f); if(cat) t.category = cat;
   if(f.linkId != null) t.linkId = f.linkId;
   items.push(t);
   logActivity(`${household.name} added to-do “${name}”`);
@@ -344,8 +400,8 @@ function quickAddTodo(){
   const inp = document.getElementById('todoQuickInput');
   const name = cleanTodoName(inp.value);
   if(!name){ try { inp.focus(); } catch(e) {} return null; }
-  // with "Mine" showing, a quick add is yours, so it doesn't vanish from the list you're looking at
-  const t = addTodo({ name, owner: todoFilter === 'mine' ? household.name : '' });
+  // a quick add stays on the list you're looking at: with "Mine" picked it is yours, with a category picked it goes in it
+  const t = addTodo(todoFilterDefaults({ name }));
   inp.value = '';
   try { inp.focus({ preventScroll: true }); } catch(e) {}
   flashTodoRow(t && t.id);
@@ -368,6 +424,15 @@ function goToBudgetItem(id){
   card.classList.add('is-new');
   if(card.scrollIntoView) try { card.scrollIntoView({ block: 'center', behavior: 'smooth' }); } catch(e) {}
   setTimeout(() => card.classList.remove('is-new'), 1600);
+}
+// what a new to-do gets from the picked chip (the one showing, so a pick that fell back to All adds nothing)
+function todoFilterDefaults(f){
+  const all = liveTodos(), key = currentTodoFilter(todoChips(all), all);
+  f = Object.assign({ owner: '', category: '' }, f);
+  if(key === 'mine') f.owner = household.name;
+  const c = todoFilterCat(key);
+  if(c !== null) f.category = c;
+  return f;
 }
 function flashTodoRow(id){
   if(id == null) return;
@@ -426,9 +491,10 @@ function deleteTodo(id){
   });
   return true;
 }
-// moves the done to-dos that are showing (respecting Everyone / Mine) to Deleted items
+// moves the done to-dos that are showing (respecting the picked chip) to Deleted items
 function clearDoneTodos(){
-  const done = liveTodos().filter(t => t.completed && (todoFilter !== 'mine' || todoIsMine(t)));
+  const all = liveTodos(), f = currentTodoFilter(todoChips(all), all);
+  const done = all.filter(t => t.completed && todoMatchesFilter(t, f));
   if(!done.length) return 0;
   const now = Date.now(), ids = done.map(t => t.id);
   done.forEach(t => { t.deletedAt = now; });
@@ -452,6 +518,47 @@ function populateTodoOwnerSelect(selected){
   if(selected && !people.some(p => p.name === selected)) opts += `<option value="${escAttr(selected)}" selected>${escapeHtml(selected)}</option>`;
   sel.innerHTML = opts;
   sel.value = selected || '';
+}
+// Category picker: the shared categories (the same list as the budget dialog), plus "+ New category…"
+const TODO_NEW_CAT = '__new';
+function populateTodoCategorySelect(selected){
+  const sel = document.getElementById('t_category');
+  const list = [...new Set(CATEGORIES.filter(c => typeof c === 'string' && c.trim()))].sort((a, b) => a.localeCompare(b));
+  if(selected && !list.includes(selected)) list.push(selected);   // a category no longer on the list stays selectable
+  sel.innerHTML = '<option value="">No category</option>'
+    + list.map(c => `<option value="${escAttr(c)}">${escapeHtml(c)}</option>`).join('')
+    + `<option value="${TODO_NEW_CAT}">+ New category…</option>`;
+  sel.value = selected || '';
+  document.getElementById('t_newCatRow').classList.remove('show');
+  document.getElementById('t_newCategory').value = '';
+  document.getElementById('t_categoryError').textContent = '';
+  updateTodoCategoryDot();
+}
+function updateTodoCategoryDot(){
+  const v = document.getElementById('t_category').value;
+  document.getElementById('t_categoryDot').style.background = v && v !== TODO_NEW_CAT ? categoryColor(v).solid : 'var(--line)';
+}
+function onTodoCategoryChange(){
+  const isNew = document.getElementById('t_category').value === TODO_NEW_CAT;
+  document.getElementById('t_newCatRow').classList.toggle('show', isNew);
+  document.getElementById('t_categoryError').textContent = '';
+  updateTodoCategoryDot();
+  if(isNew) try { document.getElementById('t_newCategory').focus(); } catch(e) {}
+}
+// pairing a budget item fills in its category (it can still be changed afterwards)
+function onTodoLinkChange(){
+  const lv = document.getElementById('t_link').value;
+  const li = lv ? items.find(i => !isTodo(i) && String(i.id) === lv) : null;
+  const c = li ? todoCategory(li) : '';
+  if(!c) return;
+  const sel = document.getElementById('t_category');
+  if(![...sel.options].some(o => o.value === c)){
+    const o = document.createElement('option');
+    o.value = c; o.textContent = c;
+    sel.insertBefore(o, sel.options[sel.options.length - 1]);
+  }
+  sel.value = c;
+  onTodoCategoryChange();
 }
 function populateTodoLinkSelect(linkId){
   const sel = document.getElementById('t_link');
@@ -483,7 +590,9 @@ function openTodoModal(id){
   document.getElementById('t_name').value = t ? t.name : '';
   document.getElementById('t_nameError').textContent = '';
   document.getElementById('t_due').value = t ? cleanTodoDue(t.due) : '';
-  populateTodoOwnerSelect(t ? (t.owner || '') : (todoFilter === 'mine' ? household.name : ''));
+  const fresh = t ? null : todoFilterDefaults();   // a new to-do starts in the picked chip's category / as yours on Mine
+  populateTodoOwnerSelect(t ? (t.owner || '') : fresh.owner);
+  populateTodoCategorySelect(t ? todoCategory(t) : fresh.category);
   populateTodoLinkSelect(t ? t.linkId : null);
   document.getElementById('t_notes').value = t ? (t.notes || '') : '';
   document.getElementById('t_url').value = t ? todoUrl(t) : '';
@@ -516,6 +625,16 @@ function saveTodoModal(){
     try { document.getElementById('t_url').focus(); } catch(e) {}
     return false;
   }
+  let category = document.getElementById('t_category').value;
+  if(category === TODO_NEW_CAT){
+    const typed = document.getElementById('t_newCategory').value.replace(/\s+/g, ' ').trim();
+    if(!typed){
+      document.getElementById('t_categoryError').textContent = 'Type a name for the new category.';
+      try { document.getElementById('t_newCategory').focus(); } catch(e) {}
+      return false;
+    }
+    category = addCategory(typed);   // js/state.js: the shared list, so the Budget side gets it too
+  }
   const lv = document.getElementById('t_link').value;
   const li = lv ? items.find(i => !isTodo(i) && String(i.id) === lv) : null;
   const linkId = li ? li.id : null;
@@ -523,11 +642,12 @@ function saveTodoModal(){
   const t = editingTodoId != null ? findLiveTodo(editingTodoId) : null;
   if(!t){
     closeTodoModal();
-    return !!addTodo({ name, due, owner, notes, url, linkId });
+    return !!addTodo({ name, due, owner, category, notes, url, linkId });
   }
   const before = JSON.parse(JSON.stringify(t));
   t.name = name; t.owner = owner;
   if(due) t.due = due; else delete t.due;
+  if(category) t.category = category; else delete t.category;
   if(notes) t.notes = notes; else delete t.notes;
   if(url) t.url = url; else delete t.url;
   if(linkId != null) t.linkId = linkId; else delete t.linkId;

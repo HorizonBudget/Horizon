@@ -1,6 +1,8 @@
 // ---- Settings (theme + confirm-on-restore), remembered in this browser when storage is available ----
 let theme = 'light';
 let uiSide = 'budget';         // 'budget' or 'todo': which side of Horizon is showing. This device only.
+// To-do side chip: 'all', 'mine', 'none' (No category) or 'cat:<category name>'. This device only (js/todo.js).
+let todoFilter = 'all';
 let savedThemes = [];          // [{id, name, dark, paper, accent, danger?, pattern?}], this device only
 let bgPattern = defaultPattern();   // {type, size, strength, emoji, auto}; auto = it came with a seasonal theme and was not changed. This device only.
 const MAX_SAVED_THEMES = 12;
@@ -37,11 +39,17 @@ function loadSettings(){
     else if(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) theme = 'dark';
     if(typeof saved.confirmOnRestore === 'boolean') confirmOnRestore = saved.confirmOnRestore;
     uiSide = saved.side === 'todo' ? 'todo' : 'budget';
+    todoFilter = cleanTodoFilter(saved.todoFilter);
   } catch(e) { /* storage unavailable: fall back to defaults */ }
   applyTheme();
 }
 function saveSettings(){
-  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme, savedThemes, pattern: bgPattern, side: uiSide })); } catch(e) {}
+  try { localStorage.setItem('ledgerSettings', JSON.stringify({ theme, confirmOnRestore, custom: customTheme, savedThemes, pattern: bgPattern, side: uiSide, todoFilter })); } catch(e) {}
+}
+// a remembered To-do chip from storage: anything odd means All
+function cleanTodoFilter(f){
+  if(f === 'all' || f === 'mine' || f === 'none') return f;
+  return typeof f === 'string' && /^cat:./.test(f) && f.trim().length > 4 ? f : 'all';
 }
 function applyTheme(){
   const root = document.documentElement;
