@@ -113,8 +113,8 @@
     <div class="view-tabs">
       <button class="view-tab budget-only" id="tabActiveBtn" onclick="switchTab('active')">Active</button>
       <button class="view-tab budget-only" id="tabCompletedBtn" onclick="switchTab('completed')">Completed</button>
-      <!-- To-do side: All / Mine / one chip per category in use (js/todo.js renderTodoChips) -->
-      <div class="todo-filter-row todo-only" id="todoFilterRow" role="group" aria-label="Show to-dos for"></div>
+      <!-- To-do side: the picked chip (not All) stays in sight here while the chip row scrolls away; tap = All -->
+      <button type="button" class="todo-pick-pill todo-only" id="todoPickPill" onclick="setTodoFilter('all')" hidden></button>
       <div class="activity-wrap" id="activityWrap">
         <button type="button" class="activity-toggle" id="activityToggle" onclick="toggleActivity()" aria-haspopup="true" aria-expanded="false" aria-controls="activityPanel">
           <span class="act-recent">Recent </span>activity <span class="act-count" id="activityCount">0</span> <span class="caret">▼</span>
@@ -178,6 +178,8 @@
 
     <!-- To-do side (js/todo.js). To-dos are stored in items[] with kind:'todo'. -->
     <div id="todoView" class="todo-view todo-only">
+      <!-- All / Mine / one chip per category in use (js/todo.js renderTodoChips) -->
+      <div class="todo-filter-row" id="todoFilterRow" role="group" aria-label="Show to-dos for"></div>
       <form class="todo-add" id="todoAddForm" onsubmit="event.preventDefault(); quickAddTodo();">
         <input type="text" id="todoQuickInput" maxlength="200" placeholder="Quick add todo" aria-label="New to-do" autocomplete="off" enterkeyhint="done">
         <button type="submit" class="btn btn-primary todo-add-btn">Add</button>

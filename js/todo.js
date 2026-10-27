@@ -92,8 +92,14 @@ function todoLinkedItem(t){
   return liveItems().find(i => String(i.id) === String(t.linkId)) || null;
 }
 function todoIsMine(t){ return !!t.owner && t.owner === household.name; }
-// a to-do's category, or '' (none). Old or damaged data may hold anything there; only real text counts.
-function todoCategory(t){ const c = t && t.category; return typeof c === 'string' && c.trim() ? c : ''; }
+// a to-do's category, or '' (none). Old or damaged data may hold anything there; only real text counts. Upper/lower
+// case does not matter: "home" is shown (and grouped) as the shared list's "Home".
+function todoCategory(t){
+  const c = t && t.category;
+  if(typeof c !== 'string' || !c.trim()) return '';
+  const lc = c.toLowerCase();
+  return CATEGORIES.find(x => typeof x === 'string' && x.toLowerCase() === lc) || c;
+}
 
 // ---- The chip row: All · Mine · each category with to-dos · No category (only when some have none) ----
 function todoFilterCat(f){ return typeof f === 'string' && f.startsWith('cat:') ? f.slice(4) : null; }
@@ -101,12 +107,15 @@ function todoMatchesFilter(t, f){
   if(f === 'mine') return todoIsMine(t);
   if(f === 'none') return !todoCategory(t);
   const c = todoFilterCat(f);
-  return c === null ? true : todoCategory(t) === c;
+  return c === null ? true : todoCategory(t).toLowerCase() === c.toLowerCase();
 }
 // the chips for these to-dos (open and done), each with how many are still open
 function todoChips(all){
   const open = all.filter(t => !t.completed);
-  const cats = [...new Set(all.map(todoCategory).filter(Boolean))].sort((a, b) => a.localeCompare(b));
+  // one chip per category whatever the capitals ("Boat" and "BOAT" not on the shared list: the first one seen names it)
+  const byLower = new Map();
+  all.forEach(t => { const c = todoCategory(t); if(c && !byLower.has(c.toLowerCase())) byLower.set(c.toLowerCase(), c); });
+  const cats = [...byLower.values()].sort((a, b) => a.localeCompare(b));
   const chips = [{ key: 'all', label: 'All' }, { key: 'mine', label: 'Mine', mine: true }];
   cats.forEach(c => chips.push({ key: 'cat:' + c, label: c, dot: categoryColor(c).solid }));
   if(all.some(t => !todoCategory(t))) chips.push({ key: 'none', label: 'No category', dot: 'var(--line)' });
@@ -117,10 +126,24 @@ function todoChips(all){
 // still empty (the board not loaded yet) the remembered pick is kept for later.
 function currentTodoFilter(chips, all){
   if(chips.some(ch => ch.key === todoFilter)) return todoFilter;
+  const same = chips.find(ch => ch.key.toLowerCase() === String(todoFilter).toLowerCase());
+  if(same){ todoFilter = same.key; saveSettings(); return todoFilter; }   // the category's spelling changed
   if(all.length && todoFilter !== 'all'){ todoFilter = 'all'; saveSettings(); }
   return 'all';
 }
 function renderTodoChips(chips, f){
+  // the chip row scrolls away with the list; a small "Home ✕" in the pinned bar keeps the pick in sight
+  const pill = document.getElementById('todoPickPill');
+  const ch = f !== 'all' && chips.find(c => c.key === f);
+  if(pill){
+    pill.hidden = !ch;
+    if(ch){
+      pill.innerHTML = (ch.dot ? `<span class="chip-dot" style="background:${escAttr(ch.dot)}" aria-hidden="true"></span>` : '')
+        + `<span class="chip-label">${escapeHtml(ch.label)}</span><span class="pick-x" aria-hidden="true">✕</span>`;
+      pill.setAttribute('aria-label', `Showing ${ch.label}. Show all to-dos`);
+      pill.title = 'Show all to-dos';
+    }
+  }
   const row = document.getElementById('todoFilterRow');
   if(!row) return;
   row.innerHTML = '';
@@ -529,6 +552,7 @@ function populateTodoCategorySelect(selected){
     + list.map(c => `<option value="${escAttr(c)}">${escapeHtml(c)}</option>`).join('')
     + `<option value="${TODO_NEW_CAT}">+ New category…</option>`;
   sel.value = selected || '';
+  todoCatAuto = null;
   document.getElementById('t_newCatRow').classList.remove('show');
   document.getElementById('t_newCategory').value = '';
   document.getElementById('t_categoryError').textContent = '';
@@ -538,27 +562,35 @@ function updateTodoCategoryDot(){
   const v = document.getElementById('t_category').value;
   document.getElementById('t_categoryDot').style.background = v && v !== TODO_NEW_CAT ? categoryColor(v).solid : 'var(--line)';
 }
+// a hand pick in the picker (the select's onchange); a pick made by pairing a budget item goes through showTodoCategory
 function onTodoCategoryChange(){
+  todoCatAuto = null;
+  showTodoCategory();
+}
+function showTodoCategory(){
   const isNew = document.getElementById('t_category').value === TODO_NEW_CAT;
   document.getElementById('t_newCatRow').classList.toggle('show', isNew);
   document.getElementById('t_categoryError').textContent = '';
   updateTodoCategoryDot();
   if(isNew) try { document.getElementById('t_newCategory').focus(); } catch(e) {}
 }
-// pairing a budget item fills in its category (it can still be changed afterwards)
+// Pairing a budget item fills in its category when the field is empty or was filled in by an earlier pairing; a
+// category picked by hand is never replaced. It can still be changed afterwards.
+let todoCatAuto = null;   // the category the last pairing filled in, while it is still showing
 function onTodoLinkChange(){
   const lv = document.getElementById('t_link').value;
   const li = lv ? items.find(i => !isTodo(i) && String(i.id) === lv) : null;
   const c = li ? todoCategory(li) : '';
-  if(!c) return;
   const sel = document.getElementById('t_category');
+  if(!c || !(sel.value === '' || (todoCatAuto !== null && sel.value === todoCatAuto))) return;
   if(![...sel.options].some(o => o.value === c)){
     const o = document.createElement('option');
     o.value = c; o.textContent = c;
     sel.insertBefore(o, sel.options[sel.options.length - 1]);
   }
   sel.value = c;
-  onTodoCategoryChange();
+  todoCatAuto = c;
+  showTodoCategory();
 }
 function populateTodoLinkSelect(linkId){
   const sel = document.getElementById('t_link');
@@ -647,7 +679,9 @@ function saveTodoModal(){
   const before = JSON.parse(JSON.stringify(t));
   t.name = name; t.owner = owner;
   if(due) t.due = due; else delete t.due;
-  if(category) t.category = category; else delete t.category;
+  // only a real change is stored ("home" saved again as "Home" is not one)
+  if(!category) delete t.category;
+  else if(todoCategory(t) !== category) t.category = category;
   if(notes) t.notes = notes; else delete t.notes;
   if(url) t.url = url; else delete t.url;
   if(linkId != null) t.linkId = linkId; else delete t.linkId;

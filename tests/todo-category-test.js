@@ -32,7 +32,8 @@ const {sleep,ok,boot,mk,finish}=require('./lib/h.js');
   ok(picked()==='all' && chip('all').getAttribute('aria-pressed')==='true','All picked by default');
   ok(chip('cat:Home').querySelector('.chip-dot').style.background!=='' && !chip('all').querySelector('.chip-dot') && chip('mine').classList.contains('is-mine'),'category chips have a color dot; Mine is the dashed chip');
   ok($('todoTitle').textContent==='To do' && $('todoQuickInput').placeholder==='Quick add todo','All: title "To do", hint "Quick add todo"');
-  ok(d.querySelector('#todoFilterRow').closest('#boardSticky') && d.querySelector('#boardSticky #activityWrap'),'chips and Recent activity sit in the sticky bar');
+  ok(!d.querySelector('#todoFilterRow').closest('#boardSticky') && d.querySelector('#todoView #todoFilterRow') && d.querySelector('#boardSticky #activityWrap'),'chips scroll with the list (not pinned); Recent activity stays in the pinned bar');
+  ok($('todoPickPill').hidden,'no pick pill in the pinned bar while All is picked');
 
   chip('cat:Home').click();
   ok(picked()==='cat:Home' && rows().join()==='Fix gate,Measure nook,Paint hall','Home picked: only Home to-dos: '+rows());
@@ -40,6 +41,10 @@ const {sleep,ok,boot,mk,finish}=require('./lib/h.js');
   ok($('todoCountNote').textContent==='3 to do · 1 overdue','count follows the pick: '+$('todoCountNote').textContent);
   ok($('todoTitle').textContent==='Home to-dos' && $('todoQuickInput').placeholder==='Quick add to Home','title and quick add hint name the category');
   ok(settings().todoFilter==='cat:Home','pick saved in ledgerSettings.todoFilter');
+  ok(!$('todoPickPill').hidden && $('todoPickPill').closest('#boardSticky') && /Home/.test($('todoPickPill').textContent) && /✕/.test($('todoPickPill').textContent),'pinned bar shows "Home ✕" while Home is picked');
+  $('todoPickPill').click();
+  ok(picked()==='all' && $('todoPickPill').hidden,'tapping "Home ✕" goes back to All');
+  chip('cat:Home').click();
   ok(!w.eval('snapshotState().todoFilter') && !/todoFilter/.test(JSON.stringify(w.eval('snapshotState()'))),'pick is not synced');
   // Collapse all covers only the groups showing
   $('todoCollapseAllBtn').click();
@@ -68,8 +73,21 @@ const {sleep,ok,boot,mk,finish}=require('./lib/h.js');
   ok(rows().join()==='Mine quick,Library books' && $('todoTitle').textContent==='No category','No category: only uncategorized ones: '+rows());
   ok(!d.querySelector('#todoList .todo-cat'),'no category tag on uncategorized rows');
 
+  // ---------- upper/lower case: one chip, the shared list's spelling ----------
+  setAll([T({id:90,name:'Lower',category:'home'}),T({id:91,name:'Upper',category:'Home'}),T({id:92,name:'Odd',category:'Boat'}),T({id:93,name:'Odd2',category:'BOAT'})]);
+  ok(chips().join('|')==='All:4|Mine:0|Boat:2|Home:2','"home"/"Home" are one chip named Home; unlisted "Boat"/"BOAT" are one chip: '+chips().join('|'));
+  w.setTodoFilter('cat:Home');
+  ok(rows().sort().join()==='Lower,Upper' && d.querySelector('[data-todo-id="90"] .todo-cat-name').textContent==='Home','Home chip shows both, tag uses the shared spelling');
+  w.setTodoFilter('cat:home');
+  ok(picked()==='cat:Home','a pick saved with other capitals finds the chip');
+  w.openTodoModal(90);
+  ok($('t_category').value==='Home','dialog shows "home" as Home');
+  w.saveTodoModal();
+  ok(todo(90).category==='home','saving without a change does not rewrite the stored spelling');
+  w.setTodoFilter('all');
+
   // ---------- remembered per device; falls back to All ----------
-  w.setTodoFilter('cat:Vehicle');
+  setAll(board()); w.setTodoFilter('cat:Vehicle');
   const w2=boot({ls:{ledgerSettings:w.localStorage.getItem('ledgerSettings')}});
   w2.eval(`items=${JSON.stringify(board())}; uiSide='todo'; render();`);
   ok(w2.eval('todoFilter')==='cat:Vehicle' && w2.document.querySelector('#todoFilterRow .todo-chip.selected').dataset.filter==='cat:Vehicle','a reload remembers the picked chip');
@@ -132,8 +150,25 @@ const {sleep,ok,boot,mk,finish}=require('./lib/h.js');
   $('toastUndo').click();
   ok(!('category' in todo(50)),'undo of the edit takes the category off again');
 
-  // pairing a budget item fills in its category; you can still change it
+  // pairing a budget item fills in its category when empty or auto-filled; a hand pick is never replaced
+  w.eval(`items.push(${JSON.stringify(mk({id:3,name:'Odd item',category:'Other',month:M0}))}); render();`);
   w.openTodoModal(50);
+  $('t_link').value='1'; w.onTodoLinkChange();
+  ok($('t_category').value==='Home','empty category: pairing fills it in');
+  $('t_link').value='3'; w.onTodoLinkChange();
+  ok($('t_category').value==='Other' && [...$('t_category').options].some(o=>o.value==='Other'&&o.textContent==='Other'),'auto-filled category follows a new pairing; "Other" from the item is shown in the picker');
+  $('t_category').value='Health'; w.onTodoCategoryChange();
+  $('t_link').value='1'; w.onTodoLinkChange();
+  ok($('t_category').value==='Health','a hand-picked category is not replaced by pairing');
+  w.saveTodoModal();
+  ok(todo(50).category==='Health' && todo(50).linkId===1,'saved with the hand pick');
+  w.openTodoModal(50);
+  $('t_link').value='2'; w.onTodoLinkChange();
+  ok($('t_category').value==='Health','an existing to-do\'s category is not replaced by a new pairing');
+  $('t_category').value=''; w.onTodoCategoryChange(); $('t_link').value='3'; w.onTodoLinkChange(); w.saveTodoModal();
+  ok(todo(50).category==='Other','pairing an item in "Other" saves Other');
+  w.openTodoModal(50);
+  $('t_category').value=''; w.onTodoCategoryChange();
   $('t_link').value='2'; w.onTodoLinkChange();
   ok($('t_category').value==='Marine','choosing a budget item pair sets its category (even one not in the shared list)');
   $('t_category').value='Home'; w.onTodoCategoryChange();
